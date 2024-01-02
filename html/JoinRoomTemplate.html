@@ -1,0 +1,35 @@
+<div id="template-root" class="container">
+
+    <div class="row mb-4">
+        <div class="col-12">
+            <label for="name-input" class="form-label">Name</label>
+            <input id="name-input" class="form-control" aria-describedby="name-help"/>
+            <div id="name-help" class="form-text">
+                Your name can be anything you want but it must be unique in the room
+                you are going to join.
+            </div>
+        </div>
+    </div>
+    <div class="row mb-4">
+        <div class="col-12">
+            <label for="room-input" class="form-label">Room Code</label>
+            <input id="room-input" class="form-control" placeholder="xxxx" maxlength=4 aria-describedby="room-help"/>
+            <div id="room-help" class="form-text">
+                The room code must be a 4 character string.
+            </div>
+        </div>
+    </div>
+    <div class="row mb-4 text-center">
+        <div class="col-12">
+            <p id="error-text" class="text-danger"></p>
+        </div>
+    </div>
+    <div class="row text-center justify-content-center">
+        <div class="col-auto">
+            <button id="back-button" class="btn btn-outline-primary" onclick="HANDLERS.loadLanding()">Back</button>
+        </div>
+        <div class="col-auto">
+            <button id="submit-join-button" type="submit" class="btn btn-outline-primary" onclick="HANDLERS.join()">Join Room</button>
+        </div>
+    </div>
+</div>

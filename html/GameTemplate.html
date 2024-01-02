@@ -1,0 +1,41 @@
+<div id="template-root" class="d-flex flex-column justify-content-start">
+    <div class="row mb-4 text-center justify-content-center">
+        <div class="col-auto">
+            <p class="lead">Room Code:</p>
+        </div>
+        <div class="col-auto">
+            <p class="lead text-decoration"><strong id="room-code"></strong></p>
+        </div>
+    </div>
+
+    <div class="row mb-1 text-center">
+        <div class="col-12">
+            <h4 id="category-text"></h4>
+        </div>
+    </div>
+
+    <div class="row mb-4 text-center">
+        <div class="col-12">
+            <h2><pre id="mystery-text" style="white-space: pre-wrap;"></pre></h2>
+        </div>
+    </div>
+
+    <div class="row mb-4 justify-content-center">
+        <div class="col-auto">
+            <input id="guess-input" class="form-control" aria-describedby="guess-help" autocomplete="off"/>
+            <div id="guess-help" class="form-text">
+                Enter a guess and press Submit. Include any punctuation.
+                You can guess as many times as you want!
+            </div>
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-outline-success" onclick="HANDLERS.guess()"> Submit </button>
+        </div>
+    </div>
+
+    <div class="row text-center">
+        <div class="col-12">
+            <p id="error-text" class="text-danger"></p>
+        </div>
+    </div>
+</div>
