@@ -1,23 +1,29 @@
 /**
- * Single source of truth for room, board, and presence state on the client.
+ * Single source of truth for room, board, presence, and input state on the client.
  *
  * Owns the socket; components never touch one directly. Holds optimistic `pendingOps` and exposes
  * `serverState + pendingOps` as `view`, so there is no rollback machinery — re-deriving is cheap
- * (ADR-0001). Does not own routing or rendering; see `<pt-app>` for those.
+ * (ADR-0001). Every input source lands on the same few methods here, which is where the Notes/Solve
+ * branch happens once rather than in each component. Does not own routing or rendering; see
+ * `<pt-app>` for those.
  */
 
 import { io } from 'socket.io-client';
 
 import { applyOp, applyOps, emptyBoard } from '../../shared/board-reducer.js';
-import { FOCUS_THROTTLE_MS } from '../../shared/constants.js';
+import { FOCUS_THROTTLE_MS, NOTICE_TIMEOUT_MS } from '../../shared/constants.js';
 import {
+    CHECK_STATE,
     CLIENT_EVENT,
     ERROR,
-    OP_TYPE,
+    INPUT_MODE,
     PROTOCOL_VERSION,
     ROOM_STATE,
     SERVER_EVENT,
 } from '../../shared/protocol.js';
+
+import { clearOp, opForDigit, opResult, restoreOp, setOp } from './ops.js';
+import { UndoStack, sameCell, snapshotCell } from './undo-stack.js';
 
 /** `localStorage` key holding the reconnect token for one room. */
 function tokenKey(code) {
@@ -49,6 +55,7 @@ function initialState() {
     return {
         connection: 'idle',
         error: null,
+        notice: null,
         code: null,
         playerId: null,
         room: null,
@@ -61,6 +68,10 @@ function initialState() {
         startedAt: null,
         clockOffsetMs: 0,
         solved: null,
+        inputMode: INPUT_MODE.SOLVE,
+        checkResults: {},
+        assists: 0,
+        canUndo: false,
     };
 }
 
@@ -71,6 +82,8 @@ export class RoomStore {
     #nextOpId = 1;
     #lastFocusSentAt = 0;
     #focusTimer = null;
+    #noticeTimer = null;
+    #undo = new UndoStack();
 
     /**
      * The current state. Treated as immutable by callers — every mutation goes through a method.
@@ -148,7 +161,8 @@ export class RoomStore {
     }
 
     /**
-     * Asks the server to start a puzzle. Host-only; a non-host call is rejected server-side.
+     * Asks the server to start a puzzle, from Puzzle Select or from the congrats modal. Host-only;
+     * a non-host call is rejected server-side.
      *
      * @param {object} spec - Puzzle specification: `type`, `difficulty`, and `size`.
      * @returns {Promise<void>} Resolves once the server has accepted.
@@ -159,24 +173,156 @@ export class RoomStore {
     }
 
     /**
-     * Writes a value into a cell, applying it locally before the server has seen it.
+     * Handles a digit from any input source — keyboard, keypad, or touch — branching on the
+     * Notes/Solve mode.
+     *
+     * @param {number} cell - Cell index.
+     * @param {string} value - The digit pressed.
+     * @returns {void}
+     */
+    inputDigit(cell, value) {
+        const current = snapshotCell(this.#state.view.cells[cell]);
+        const op = opForDigit({
+            opId: this.#makeOpId(),
+            cell,
+            value,
+            isNotes: this.#state.inputMode === INPUT_MODE.NOTES,
+            current,
+        });
+        if (op) this.#sendOp(op, current);
+    }
+
+    /**
+     * Writes a value into a cell regardless of input mode, bypassing the Notes branch.
      *
      * @param {number} cell - Cell index.
      * @param {string} value - The value to write.
      * @returns {void}
      */
     setValue(cell, value) {
-        this.#sendOp({ opId: this.#makeOpId(), t: OP_TYPE.SET, cell, value });
+        const current = snapshotCell(this.#state.view.cells[cell]);
+        this.#sendOp(setOp(this.#makeOpId(), cell, value), current);
     }
 
     /**
-     * Clears a cell.
+     * Clears a cell of its value and its marks.
      *
      * @param {number} cell - Cell index.
      * @returns {void}
      */
     clearCell(cell) {
-        this.#sendOp({ opId: this.#makeOpId(), t: OP_TYPE.CLEAR, cell });
+        const current = snapshotCell(this.#state.view.cells[cell]);
+        this.#sendOp(clearOp(this.#makeOpId(), cell), current);
+    }
+
+    /**
+     * Switches between entering values and entering pencil marks.
+     *
+     * @param {string} mode - One of `INPUT_MODE`.
+     * @returns {void}
+     */
+    setInputMode(mode) {
+        if (mode !== INPUT_MODE.SOLVE && mode !== INPUT_MODE.NOTES) return;
+        this.#set({ inputMode: mode });
+    }
+
+    /**
+     * Undoes this player's most recent edit by making a new one that restores the earlier value.
+     *
+     * Forward-only: if somebody else has written to that cell since, the entry is dropped and the
+     * board is left alone, because rewinding over their work would be the greater surprise
+     * (design-spec.md §6).
+     *
+     * @returns {void}
+     */
+    undo() {
+        const entry = this.#undo.pop();
+        this.#set({ canUndo: this.#undo.size > 0 });
+        if (!entry) return;
+
+        const current = snapshotCell(this.#state.view.cells[entry.cell]);
+        if (!sameCell(current, entry.after)) {
+            this.#notice('that cell has changed since — undo skipped');
+            return;
+        }
+
+        this.#sendOp(restoreOp(this.#makeOpId(), entry.cell, entry.before), current, {
+            record: false,
+        });
+    }
+
+    /**
+     * Asks the server to grade every filled cell. Free — it never touches the streak — but it does
+     * count against the room's assists, and the result goes to everyone.
+     *
+     * @returns {Promise<void>} Resolves once the server has accepted.
+     */
+    async check() {
+        await this.#requestOrNotice(CLIENT_EVENT.GAME_CHECK, {});
+    }
+
+    /**
+     * Asks the server to fill in the whole grid. Host-only, destructive, and resets the streak —
+     * always behind a confirm dialog.
+     *
+     * @returns {Promise<void>} Resolves once the server has accepted.
+     */
+    async reveal() {
+        await this.#requestOrNotice(CLIENT_EVENT.GAME_REVEAL, {});
+    }
+
+    /**
+     * Returns the whole room to Puzzle Select, abandoning the current puzzle. Host-only.
+     *
+     * @returns {Promise<void>} Resolves once the server has accepted.
+     */
+    async backToSelect() {
+        await this.#requestOrNotice(CLIENT_EVENT.ROOM_BACK_TO_SELECT, {});
+    }
+
+    /**
+     * Removes another player's seat. Host-only; a non-host call is rejected server-side.
+     *
+     * @param {string} playerId - The player to remove. Never the caller's own id.
+     * @returns {Promise<void>} Resolves once the server has accepted.
+     * @throws {Error} If the caller is not the host or that player has already gone.
+     */
+    async kickPlayer(playerId) {
+        await this.#request(CLIENT_EVENT.ROOM_KICK, { playerId });
+    }
+
+    /**
+     * Claims a palette colour for the local player.
+     *
+     * The roster arrives back from the server rather than being set here: the colour has to be
+     * unique across the room, and only the server knows what every other seat holds right now.
+     *
+     * @param {number} colorIndex - Index into the player palette.
+     * @returns {Promise<void>} Resolves once the server has accepted.
+     * @throws {Error} If somebody else holds that colour.
+     */
+    async chooseColor(colorIndex) {
+        await this.#request(CLIENT_EVENT.PLAYER_COLOR, { colorIndex });
+    }
+
+    /**
+     * Shows a short-lived line of feedback, for the cases a component notices rather than the
+     * socket — "pick a square first" and the like.
+     *
+     * @param {string} text - What to say. Replaces whatever notice is on screen.
+     * @returns {void}
+     */
+    notify(text) {
+        this.#notice(text);
+    }
+
+    /**
+     * Dismisses the congrats modal, leaving the completed grid on screen.
+     *
+     * @returns {void}
+     */
+    dismissSolved() {
+        if (this.#state.solved) this.#set({ solved: { ...this.#state.solved, dismissed: true } });
     }
 
     /**
@@ -214,6 +360,8 @@ export class RoomStore {
         if (code) writeToken(code, null);
         this.#socket?.disconnect();
         this.#socket = null;
+        this.#undo.clear();
+        clearTimeout(this.#noticeTimer);
         this.#state = initialState();
         this.#notify();
     }
@@ -232,7 +380,7 @@ export class RoomStore {
         socket.on('connect', () => this.#set({ connection: 'connected' }));
         socket.on('disconnect', () => this.#set({ connection: 'connecting' }));
         socket.on(SERVER_EVENT.ROOM_JOINED, (data) => this.#acceptSeat(data));
-        socket.on(SERVER_EVENT.ROOM_STATE, (room) => this.#set({ room }));
+        socket.on(SERVER_EVENT.ROOM_STATE, (room) => this.#acceptRoom(room));
         socket.on(SERVER_EVENT.ROOM_PLAYERS, (players) => {
             if (this.#state.room) this.#set({ room: { ...this.#state.room, players } });
         });
@@ -242,6 +390,7 @@ export class RoomStore {
         socket.on(SERVER_EVENT.GAME_FOCUS, ({ playerId, cell }) =>
             this.#acceptFocus(playerId, cell),
         );
+        socket.on(SERVER_EVENT.GAME_CHECK_RESULT, (result) => this.#acceptCheckResult(result));
         socket.on(SERVER_EVENT.GAME_SOLVED, (result) => this.#acceptSolved(result));
         socket.on(SERVER_EVENT.ERROR, (error) => this.#acceptError(error));
     }
@@ -260,6 +409,18 @@ export class RoomStore {
         });
     }
 
+    /**
+     * Emits an event whose failure is worth a line on screen rather than a thrown error — the
+     * assist controls, where "give it a moment" is the whole story.
+     */
+    async #requestOrNotice(event, payload) {
+        try {
+            await this.#request(event, payload);
+        } catch (error) {
+            this.#notice(error.message);
+        }
+    }
+
     /** Records the seat the server gave us, storing the reconnect token if this is a fresh join. */
     #acceptSeat(data) {
         if (data.playerToken) writeToken(data.code, data.playerToken);
@@ -273,9 +434,24 @@ export class RoomStore {
         this.#acceptSnapshot(data.snapshot, false);
     }
 
+    /**
+     * Records a new room view. Returning to `select` also drops what belonged to the finished
+     * puzzle, so a dismissed modal or stale check marks cannot survive into the next one.
+     */
+    #acceptRoom(room) {
+        const leftPuzzle = room.state === ROOM_STATE.SELECT;
+        this.#set({
+            room,
+            solved: leftPuzzle ? null : this.#state.solved,
+            checkResults: leftPuzzle ? {} : this.#state.checkResults,
+        });
+    }
+
     /** Replaces board state wholesale — the gap-recovery path, and how every puzzle starts. */
     #acceptSnapshot(snapshot, isNewPuzzle) {
         const board = snapshot.board ?? emptyBoard();
+        if (isNewPuzzle) this.#undo.clear();
+
         this.#set({
             doc: snapshot.doc,
             board,
@@ -284,8 +460,11 @@ export class RoomStore {
             focus: snapshot.focus ?? {},
             startedAt: snapshot.startedAt,
             clockOffsetMs: snapshot.serverNow - Date.now(),
+            assists: snapshot.assists ?? 0,
             solved: isNewPuzzle ? null : this.#state.solved,
             selection: isNewPuzzle ? null : this.#state.selection,
+            checkResults: isNewPuzzle ? {} : this.#state.checkResults,
+            canUndo: isNewPuzzle ? false : this.#state.canUndo,
         });
     }
 
@@ -303,6 +482,7 @@ export class RoomStore {
 
         const board = applyOp(this.#state.board, stamped, { seq: stamped.seq, by: stamped.by });
         const pendingOps = this.#state.pendingOps.filter((op) => op.opId !== stamped.opId);
+        this.#retireCheckResults(stamped);
         this.#setBoard(board, pendingOps);
     }
 
@@ -314,10 +494,25 @@ export class RoomStore {
         this.#set({ focus });
     }
 
-    /** Records a server-verified solve. The time shown is the server's, never a client's. */
+    /** Records a check the room ran. Replaces the previous marks rather than merging with them. */
+    #acceptCheckResult(result) {
+        this.#set({ checkResults: result.cells ?? {}, assists: result.assists });
+
+        const graded = Object.values(result.cells ?? {});
+        const wrong = graded.filter((state) => state === CHECK_STATE.WRONG).length;
+        this.#notice(wrong === 0 ? 'checked — nothing wrong so far' : `checked — ${wrong} wrong`);
+    }
+
+    /** Records a server-verified solve, or a reveal. The time shown is the server's, never ours. */
     #acceptSolved(result) {
+        this.#undo.clear();
         this.#setBoard(result.board, []);
-        this.#set({ solved: result });
+        this.#set({
+            solved: { ...result, dismissed: false },
+            assists: result.assists,
+            checkResults: {},
+            canUndo: false,
+        });
     }
 
     /** Surfaces a server error, dropping a dead room's token so the client can start over. */
@@ -325,14 +520,39 @@ export class RoomStore {
         if (error.code === ERROR.ROOM_NOT_FOUND && this.#state.code) {
             writeToken(this.#state.code, null);
         }
+
+        // Being removed is not a failed request but the end of a seat, so it clears the room the
+        // same way leaving does — keeping only the message, which is the only reason the player
+        // has to understand why the screen changed under them.
+        if (error.code === ERROR.KICKED) {
+            const code = this.#state.code;
+            if (code) writeToken(code, null);
+            this.#socket?.disconnect();
+            this.#socket = null;
+            this.#undo.clear();
+            clearTimeout(this.#noticeTimer);
+            this.#state = { ...initialState(), code, error, connection: 'error' };
+            this.#notify();
+            return;
+        }
+
         this.#set({ error, connection: 'error' });
     }
 
-    /** Applies an op locally, queues it as pending, and sends it. */
-    #sendOp(op) {
+    /**
+     * Applies an op locally, queues it as pending, sends it, and — unless this op *is* an undo —
+     * remembers what the cell held so it can be walked back.
+     */
+    #sendOp(op, current, { record = true } = {}) {
         if (this.#state.room?.state !== ROOM_STATE.PLAYING) return;
 
+        if (record) {
+            this.#undo.record({ cell: op.cell, before: current, after: opResult(op, current) });
+        }
+        this.#retireCheckResults(op);
         this.#setBoard(this.#state.board, [...this.#state.pendingOps, op]);
+        this.#set({ canUndo: this.#undo.size > 0 });
+
         this.#socket?.emit(CLIENT_EVENT.GAME_OP, { op }, (ack) => {
             if (ack?.ok) return;
             // A rejected op never happened: drop it and let the server's state stand.
@@ -341,6 +561,17 @@ export class RoomStore {
                 this.#state.pendingOps.filter((pending) => pending.opId !== op.opId),
             );
         });
+    }
+
+    /** Drops the check marks on any cell an op touches — a graded cell that changed is not graded. */
+    #retireCheckResults(op) {
+        const cells = op.cells ?? (op.cell == null ? [] : [op.cell]);
+        if (cells.length === 0) return;
+        if (!cells.some((cell) => this.#state.checkResults[cell] != null)) return;
+
+        const checkResults = { ...this.#state.checkResults };
+        for (const cell of cells) delete checkResults[cell];
+        this.#set({ checkResults });
     }
 
     /** Sends the current focus cell, recording when so the throttle can pace the next one. */
@@ -352,6 +583,13 @@ export class RoomStore {
     /** Asks for a full snapshot after detecting a gap. */
     #requestSync() {
         this.#socket?.emit(CLIENT_EVENT.SYNC_REQUEST, {}, () => {});
+    }
+
+    /** Shows a short-lived line of feedback, replacing whatever was there. */
+    #notice(text) {
+        clearTimeout(this.#noticeTimer);
+        this.#set({ notice: { text, id: Date.now() } });
+        this.#noticeTimer = setTimeout(() => this.#set({ notice: null }), NOTICE_TIMEOUT_MS);
     }
 
     /**

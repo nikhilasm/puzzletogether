@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { PLAYER_COLOR_COUNT } from './constants.js';
 import { CLIENT_EVENT, OP_TYPE } from './protocol.js';
 import { validate } from './schema.js';
 
@@ -85,5 +86,76 @@ describe('validate', () => {
 
     it('treats focus with no cell as valid, since that is how focus is released', () => {
         expect(validate(CLIENT_EVENT.GAME_FOCUS, {}).ok).toBe(true);
+    });
+
+    it('accepts a marks op', () => {
+        const op = { opId: 'x', t: OP_TYPE.MARKS, cell: 4, marks: [1, 3, 7] };
+        expect(validate(CLIENT_EVENT.GAME_OP, { op }).ok).toBe(true);
+    });
+
+    it('rejects a mark outside any grid alphabet', () => {
+        const op = { opId: 'x', t: OP_TYPE.MARKS, cell: 4, marks: [99] };
+        expect(validate(CLIENT_EVENT.GAME_OP, { op }).ok).toBe(false);
+    });
+
+    it('rejects non-integer marks', () => {
+        const op = { opId: 'x', t: OP_TYPE.MARKS, cell: 4, marks: ['3'] };
+        expect(validate(CLIENT_EVENT.GAME_OP, { op }).ok).toBe(false);
+    });
+
+    it.each([
+        ['check', CLIENT_EVENT.GAME_CHECK],
+        ['reveal', CLIENT_EVENT.GAME_REVEAL],
+        ['back to select', CLIENT_EVENT.ROOM_BACK_TO_SELECT],
+    ])('accepts an empty %s payload', (_label, event) => {
+        expect(validate(event, {}).ok).toBe(true);
+    });
+
+    it('ignores a cell list smuggled into check, since check has no cell-scoped form', () => {
+        // A well-formed payload with extra keys is accepted and the extras are never read — the
+        // server grades the whole grid, so a client cannot use Check to probe one cell at a time.
+        expect(validate(CLIENT_EVENT.GAME_CHECK, { cells: [0, 1, 2] }).ok).toBe(true);
+    });
+
+    it('rejects a check payload that is not an object at all', () => {
+        expect(validate(CLIENT_EVENT.GAME_CHECK, null).ok).toBe(false);
+    });
+
+    it('accepts a kick naming a player', () => {
+        expect(validate(CLIENT_EVENT.ROOM_KICK, { playerId: 'a-uuid' }).ok).toBe(true);
+    });
+
+    it.each([
+        ['no player at all', {}],
+        ['an empty player id', { playerId: '' }],
+        ['a player id that is not a string', { playerId: 7 }],
+        ['a player id longer than any the server issues', { playerId: 'x'.repeat(65) }],
+    ])('rejects a kick with %s', (_label, payload) => {
+        expect(validate(CLIENT_EVENT.ROOM_KICK, payload).ok).toBe(false);
+    });
+
+    it('accepts a colour change inside the palette', () => {
+        expect(validate(CLIENT_EVENT.PLAYER_COLOR, { colorIndex: 0 }).ok).toBe(true);
+        expect(validate(CLIENT_EVENT.PLAYER_COLOR, { colorIndex: PLAYER_COLOR_COUNT - 1 }).ok).toBe(
+            true,
+        );
+    });
+
+    it.each([
+        ['past the end of the palette', { colorIndex: PLAYER_COLOR_COUNT }],
+        ['negative', { colorIndex: -1 }],
+        ['fractional', { colorIndex: 1.5 }],
+        ['a colour name rather than an index', { colorIndex: 'teal' }],
+        ['absent', {}],
+    ])('rejects a colour index that is %s', (_label, payload) => {
+        expect(validate(CLIENT_EVENT.PLAYER_COLOR, payload).ok).toBe(false);
+    });
+
+    it('ignores a player id smuggled into a colour change', () => {
+        // Extras are never read: the handler recolours the caller's own seat, so there is no way
+        // to phrase "recolour somebody else" that the server would act on.
+        expect(
+            validate(CLIENT_EVENT.PLAYER_COLOR, { colorIndex: 2, playerId: 'someone-else' }).ok,
+        ).toBe(true);
     });
 });

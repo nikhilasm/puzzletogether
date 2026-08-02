@@ -11,7 +11,7 @@ Three principles fall out of that, and every decision below traces back to one o
 
 1. **The grid is the loudest thing on screen.** Every other element is deliberately quiet so the puzzle carries the page. Chrome earns its ink or it goes.
 2. **Color belongs to people, not to chrome.** The only saturated elements are player identities and a single accent. No colored buttons, no colored banners, no status color as decoration.
-3. **Soft chrome, sharp puzzle.** Pills and rounded shapes for everything human-facing; hard right angles for the grid itself. That contrast — which the mock already has — *is* the identity.
+3. **Soft chrome, sharp puzzle.** Softened rectangles for everything human-facing; hard right angles for the grid itself. That contrast — which the mock already has — *is* the identity.
 
 ### Banned
 
@@ -24,7 +24,7 @@ These are the standard-SaaS tells. None of them appear in this product:
 | Glassmorphism, backdrop blur | Opaque surfaces with borders |
 | Drop shadows on cards | 1.5px borders; exactly one shadow app-wide |
 | Inter, Geist | Fraunces + Karla |
-| 8px radius on everything | Pills (999px) or square (0). Nothing between, except modals |
+| A different radius per component | One radius for chrome, one for modals, and square for the grid |
 | Skeleton shimmer, spinners | Short italic text in `--graphite` |
 | Pure `#FFFFFF` / `#000000` | Warm off-white and warm near-black |
 | Emoji as UI icons | Text labels, or inline SVG |
@@ -59,14 +59,16 @@ A modest 1.25 ratio. The wordmark is the only genuinely large text on the page �
 
 | Token | Size | Use |
 |---|---|---|
-| `--text-wordmark` | 2.75rem | "PuzzleTogether" only |
+| `--text-wordmark` | `clamp(1.75rem, 8.5vw, 2.75rem)` | "PuzzleTogether" only |
 | `--text-xl` | 1.5rem | Puzzle header, modal title |
 | `--text-lg` | 1.25rem | Room code, timer |
 | `--text-base` | 1rem | Body, buttons, player names |
 | `--text-sm` | 0.8rem | Cage/clue labels, footer |
-| `--text-xs` | 0.64rem | Pencil marks |
+| `--text-xs` | 0.64rem | Smallest UI text |
 
-Grid digit size is derived from cell size, not the scale: `font-size: 55%` of cell height.
+Grid content is derived from cell size, not the scale: the value at `55%` of cell height, pencil marks at `26%`. Marks scale with the cell for the same reason values do — a note in a 4×4's large cell and a note in a 9×9's small one should look like the same mark, not the same number of pixels.
+
+**`--text-wordmark` is the one responsive token.** At 2.75rem the wordmark overran a 320px viewport by 15px, and it is the only text in the system wide enough to do that. Clamping it keeps the full size from about 500px up and shrinks it below, rather than being overridden inside a component — where the next person to change the wordmark would not find it.
 
 Line height `1.5` for prose, `1.2` for headings, `1` inside grid cells. Letter-spacing is left alone everywhere except the wordmark (`-0.02em`) and the room code (`0.08em`).
 
@@ -144,14 +146,15 @@ Eight identities, extending the mock's crimson / magenta / orange / green / teal
 --player-6: #9176B7;  --player-7: #A8842C;
 ```
 
-Assigned round-robin by index on join, released on leave. The server hands out a `colorIndex`, never a hex — the theme decides the value, which is why one index can carry two colours.
+Assigned by lowest free index on join, released on leave, and **changeable by that player from their own chip** — the palette opens under the roster with the colours other people hold shown but unpickable. The server hands out a `colorIndex`, never a hex — the theme decides the value, which is why one index can carry two colours.
 
 > **The palette is per theme, unlike every other token pair.** The original single set failed: measured on cream, the eight candidates ranged 3.2:1 to 5.1:1 and five were short of AA. Darkening them to pass on cream then pushed them *below* AA on charcoal — a colour dark enough to read on paper is too dark to read on an evening desk. Splitting per theme keeps all eight hues; only lightness moves between them, so identities stay recognisable when someone switches theme mid-solve.
 
-Two hard rules regardless of the values:
+Three hard rules regardless of the values:
 
-- **Color is never the only channel.** A name always accompanies it. Presence dots reveal names on hover and focus.
+- **Color is never the only channel.** A name always accompanies it. Presence dots reveal names on hover and focus, and every swatch in the picker is labelled with its colour's name.
 - **Player color never tints puzzle content.** Entered digits are always `--ink`. Attribution lives in chips and presence dots, nowhere else.
+- **No two players in a room share a colour.** Enforced on the server, not by the picker's disabled swatches — a presence dot is the one place identity is carried by hue with no name beside it, so two players on one colour would make the grid ambiguous. A colour already held is shown greyed *and* struck through: dimming alone is easy to miss on a saturated swatch, and the same rule applies here as everywhere else — never one channel.
 
 ---
 
@@ -160,12 +163,13 @@ Two hard rules regardless of the values:
 ### Radius
 
 ```css
---radius-pill:  999px;  /* chips, buttons, toggles */
---radius-grid:  0;      /* the grid and every cell */
---radius-modal: 12px;   /* modals only */
+--radius-control: 6px;    /* chips, buttons, inputs, switches — everything human-facing */
+--radius-grid:    0;      /* the grid and every cell */
+--radius-modal:   12px;   /* modals only */
+--radius-round:   999px;  /* things that are actually round: presence dots, a switch track */
 ```
 
-Nothing else gets a radius. The pill-vs-square contrast is load-bearing — it's principle 3 made literal.
+Nothing else gets a radius. The soft-vs-square contrast is load-bearing — it's principle 3 made literal — but it is carried by a *softened rectangle*, not a pill. **Revised in Phase 2**: chrome was originally 999px on everything, and at that radius a row of buttons reads as a row of lozenges floating over the page rather than as a form laid on it. 6px keeps the chrome soft against the grid's hard corners while letting a button still look like a button. `--radius-round` is not a fallback for boxes — the only things allowed to use it are things that are genuinely circular.
 
 ### Borders, not shadows
 
@@ -181,11 +185,14 @@ Going shadowless is the strongest anti-SaaS move available and costs nothing.
 ### Grid line weights carry meaning
 
 ```css
---grid-hairline: 1px solid color-mix(in srgb, var(--graphite) 30%, transparent);
---grid-heavy:    2.5px solid var(--ink);   /* region/cage boundaries, outer edge */
+--grid-hairline:    1px solid color-mix(in srgb, var(--graphite) 30%, transparent);
+--grid-heavy:       2.5px solid var(--ink);   /* the frame's outer edge */
+--grid-heavy-width: 2.5px;                    /* region/cage rules, drawn as an overlay */
 ```
 
 The mock's heavy cage borders are a signature. Keep them emphatic — this is where the grid earns "loudest thing on screen."
+
+**Region rules are an overlay, not a border**, and every cell keeps the same 1px hairlines whatever region it sits in. As a border the heavy rule changed the cell's box, which put rows a pixel out in Firefox, and it mitred with the hairline on the adjoining edge, notching the rule at every crossing. Both are the same lesson: a line that carries meaning should not also carry geometry.
 
 ### Texture
 
@@ -205,6 +212,26 @@ body {
 
 It should be invisible until you look for it. This is the detail that makes the page read as *puzzle stationery* rather than *app surface*. If it ever becomes noticeable at a glance, it's too strong — drop the opacity, don't remove the idea.
 
+### Icons
+
+Seven of them, drawn as inline SVG in `client/ui/icons.js`: **erase, undo, pencil (Notes), sun, moon, leave, close (remove a player)**. Emoji stay banned — they arrive as someone else's artwork at someone else's weight, and they don't recolour. These are line drawings on a 24×24 box that inherit `currentColor` and `--stroke-icon` (1.5, the border weight), so an icon inside a disabled control greys out with it and neither theme needs a second asset.
+
+```css
+--stroke-icon: 1.5;   /* the border weight, so icons and rules read as one hand */
+```
+
+**An icon never carries meaning alone.** Erase, Undo, and Leave room keep their words; the switch icons repeat a visible label. The one unlabelled icon is the host's remove control, which is why its `aria-label` names the player it would remove. Every icon is `aria-hidden`, because the control around it already has a name. An eighth should be a decision, not a reflex — the moment there are twelve, the page is a toolbar.
+
+### Controls: buttons versus switches
+
+A **button** says *do this* — Check, Reveal, Start another. A **switch** says *this is how things are* — Notes, Dark theme. The distinction is worth keeping literal: switches are `role="switch"` with the state in the track, so you can read the setting without reading the label, and screen readers announce it as a state rather than an action. Both settle to `--radius-control`; only the track inside a switch is round.
+
+An engaged switch borrows the same 16% accent wash a selected cell uses. It never fills with colour — colour belongs to people (principle 2).
+
+### The focus ring
+
+One ring, everywhere: `2px solid var(--accent)` at `2px` offset (`3px` on the grid, to clear its heavy frame). It lives in `focusRing` in `client/styles/controls.js` and has to be composed into **every shadow root holding something focusable** — the rule in `base.css` reaches the light DOM only, so a component that omits it silently falls back to the browser's ring and the app grows a second focus colour. That is exactly what happened before Phase 2's revision pass.
+
 ---
 
 ## 5. Motion
@@ -216,6 +243,7 @@ Physical and sparse.
 | Cell value entered | 90ms scale-pop (`0.85 → 1`), not a fade. It should feel like a mark landing. |
 | Presence dot appears | 120ms ease-in fade + scale |
 | Modal opens | 160ms fade + 4px rise |
+| Switch flips | 90ms slide of the knob, borrowing `--motion-mark`. A switch that teleports reads as a redraw rather than as a thing you moved. |
 | Everything else | none |
 
 No page transitions, no spinners, no skeleton shimmer. Loading states are short italic text in `--graphite` ("finding a puzzle…").
@@ -241,13 +269,13 @@ Mobile: the column is already narrow, so the layout doesn't restructure — it j
 
 ## 7. Verification
 
-Part of the Phase 1 done-when criteria:
+Part of the Phase 1 and Phase 2 done-when criteria. All five have now been run:
 
-- **Contrast**: a script asserts every foreground token clears **4.5:1** against its theme's `--paper`, and every player color clears 4.5:1 on both themes. `--accent` is exempt at 3:1 but is then banned from body-size text by lint rule or review. Run it in `npm test` so the palette can't silently regress.
-- **Both themes at 320px and 1440px** — no horizontal scroll, no clipped grid, no illegible pairing.
-- **Fonts blocked**: the app renders correctly with webfonts disabled. No layout shift, no invisible text (`font-display: swap`, real fallback stacks).
-- **Grayscale check**: screenshot the game screen in grayscale. Every player must still be distinguishable by name; nothing critical may depend on hue.
-- **Reduced motion**: with the OS setting on, no animation runs.
+- **Contrast** ✅ — a script asserts every foreground token clears **4.5:1** against its theme's `--paper`, and every player color clears 4.5:1 on both themes. `--accent` is exempt at 3:1 but is then banned from body-size text by lint rule or review. Runs in `npm test` so the palette can't silently regress.
+- **Both themes at 320px and 1440px** ✅ (Phase 2) — no horizontal scroll, no clipped grid, no illegible pairing. The one failure was the wordmark at 320px; see §2.
+- **Fonts blocked** ✅ (Phase 2) — the app renders correctly with `.woff`/`.woff2` aborted. No layout shift, no invisible text, no horizontal scroll (`font-display: swap`, real fallback stacks).
+- **Grayscale check** ✅ (Phase 2) — the game screen screenshots in grayscale with every player still named. Nothing critical depends on hue.
+- **Reduced motion** ✅ — every duration collapses to `0ms` under the media query in `base.css`.
 
 ---
 
@@ -257,3 +285,4 @@ Part of the Phase 1 done-when criteria:
 - ~~**The player palette is unverified**~~ **Verified in Phase 1**, at the cost of going per theme (§3). All eight hues survived.
 - **The two-accent split is a papercut.** It's easy to reach for `--accent` in body text out of habit. If review catches this repeatedly, collapse to the single darker value and accept a slightly duller wordmark.
 - **Givens versus entries are distinguished by weight alone** (700 against 500), because colour is reserved for people. It is a quieter difference than most sudoku apps use; if it reads as too subtle in play, the next lever is size, not colour.
+- **Check feedback is the one thing allowed to recolour puzzle content** (`--correct` / `--wrong` on the value). It is transient — any edit to the cell retires the mark — and it is named in the cell's aria-label, so it is never carried by colour alone. If it starts to feel like the grid is scoring you rather than answering you, the lever is duration, not saturation.

@@ -5,7 +5,13 @@
  * authority (`playerId === room.hostId`) is a separate, later step.
  */
 
-import { DIFFICULTIES, MAX_NAME_LENGTH, PUZZLE_TYPES, ROOM_CODE_LENGTH } from './constants.js';
+import {
+    DIFFICULTIES,
+    MAX_NAME_LENGTH,
+    PLAYER_COLOR_COUNT,
+    PUZZLE_TYPES,
+    ROOM_CODE_LENGTH,
+} from './constants.js';
 import { CLIENT_EVENT, OP_TYPE } from './protocol.js';
 
 /** Largest grid this build accepts, which also bounds every cell index. */
@@ -126,6 +132,15 @@ export const SCHEMAS = {
         }),
     },
     [CLIENT_EVENT.ROOM_LEAVE]: {},
+    [CLIENT_EVENT.ROOM_BACK_TO_SELECT]: {},
+    // A `playerId` is a UUID the server issued; the handler checks it names a seat in *this* room.
+    [CLIENT_EVENT.ROOM_KICK]: {
+        playerId: string({ max: 64 }),
+    },
+    // Shape only: whether the colour is *free* depends on the room, so the handler decides that.
+    [CLIENT_EVENT.PLAYER_COLOR]: {
+        colorIndex: integer({ max: PLAYER_COLOR_COUNT - 1 }),
+    },
     [CLIENT_EVENT.GAME_START]: {
         type: oneOf(PUZZLE_TYPES),
         difficulty: oneOf(DIFFICULTIES),
@@ -137,6 +152,10 @@ export const SCHEMAS = {
     [CLIENT_EVENT.GAME_FOCUS]: {
         cell: integer({ max: MAX_CELLS - 1, optional: true }),
     },
+    // Check takes no cell list: it checks whatever the room has filled in, so a client cannot use
+    // it to interrogate the solution one cell at a time.
+    [CLIENT_EVENT.GAME_CHECK]: {},
+    [CLIENT_EVENT.GAME_REVEAL]: {},
     [CLIENT_EVENT.SYNC_REQUEST]: {},
 };
 

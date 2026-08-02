@@ -230,6 +230,9 @@ One file, one concern. A module past ~300 lines is asking to be split.
 
 - **Tokens only.** No hard-coded color, font, radius, or spacing value in a component — every one comes from a custom property defined in `client/styles/tokens.css`. A literal hex in a component file is a review failure. This is what keeps the dark theme a token swap rather than an audit.
 - Component styles live in a `static styles` block using Lit's `css` tag. Global styles are confined to `styles/base.css`.
+- **Set `box-sizing: border-box` in any shadow root whose layout depends on it.** The reset in `base.css` does not cross a shadow boundary. Two bugs came from this: chips that overflowed their grid track, and cells whose `aspect-ratio` measured a content box that a border had changed.
+- **Anything shared between components is a `css` fragment in `styles/controls.js`, composed into `static styles`.** A shadow root inherits custom properties but not rules, so a global selector cannot reach inside one. Any component holding something focusable composes `focusRing` (or `controls`, which includes it) — omitting it doesn't fail loudly, it just grows a second focus colour.
+- **Icons come from `ui/icons.js`**, are `aria-hidden`, and never carry meaning a label doesn't already carry. Consumers compose `iconStyle`.
 - 4-space indent, one declaration per line, logical property order: layout → box → typography → visual → motion.
 - Respect `prefers-reduced-motion` on anything that animates.
 
@@ -243,9 +246,17 @@ bug. `client/` and `server/` are formatted by Prettier and covered by tests; the
 type-checked. This narrows [ADR-0006](adr/0006-jsdoc-checkjs-for-type-safety.md)'s first mechanism
 without changing its second.
 
+**`tests/` is linted, unlike `client/` and `server/`** — not a widening of the rule above but the same reasoning applied: everything else in the repo is checked by a test, and the tests are the one thing nothing else checks. They get browser globals, since the callbacks passed to `page.evaluate()` run in the page.
+
+**Prettier covers code, not prose** (decided in Phase 2, `.prettierignore`). It reflows Markdown
+paragraphs and re-lays-out tables, which costs more in readability than it buys in consistency —
+`docs/` is read far more often than it is diffed. §1's 4-space rule still applies to Markdown;
+review is what enforces it there.
+
 | Rule | Where | How |
 |---|---|---|
-| Indentation, quotes, width, commas, semicolons | everywhere | Prettier — auto-fixed |
+| Indentation, quotes, width, commas, semicolons | JS, CSS, HTML, JSON | Prettier — auto-fixed |
+| Indentation and layout in Markdown | `docs/`, `README.md` | Review — Prettier is turned off there |
 | `const`/`let`, `===`, unused vars | `shared/` | ESLint — errors |
 | `shared/` dependency direction | `shared/` | ESLint `no-restricted-imports` — error |
 | Type correctness of JSDoc | `shared/` | `npm run typecheck` (`tsc --noEmit`, `checkJs`) |

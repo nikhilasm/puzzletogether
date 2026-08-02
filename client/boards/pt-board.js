@@ -11,6 +11,7 @@ import { LitElement, css, html, nothing } from 'lit';
 import { repeat } from 'lit/directives/repeat.js';
 
 import { effectiveValue, isEditable, toCoords } from '../../shared/puzzle-doc.js';
+import { focusRing } from '../styles/controls.js';
 
 import './pt-cell.js';
 import './pt-presence-layer.js';
@@ -32,38 +33,44 @@ export class PtBoard extends LitElement {
         selfId: { type: String },
         selection: { type: Number },
         interactive: { type: Boolean },
+        checkResults: { type: Object },
     };
 
-    static styles = css`
-        :host {
-            display: block;
-            width: 100%;
-        }
+    static styles = [
+        focusRing,
+        css`
+            :host {
+                display: block;
+                width: 100%;
+            }
 
-        .frame {
-            position: relative;
-            border: var(--grid-heavy);
-            border-radius: var(--radius-grid);
-        }
+            .frame {
+                position: relative;
+                border: var(--grid-heavy);
+                border-radius: var(--radius-grid);
+            }
 
-        .grid {
-            display: grid;
-            /*
-             * The grid's own hairlines and the frame's heavy border would double up on the last
-             * row and column, so cells drop their trailing edge.
-             */
-            margin: 0 -1px -1px 0;
-        }
+            .grid {
+                display: grid;
+                touch-action: manipulation;
+                /*
+                 * The grid's own hairlines and the frame's heavy border would double up on the last
+                 * row and column, so cells drop their trailing edge.
+                 */
+                margin: 0 -1px -1px 0;
+            }
 
-        .grid:focus {
-            outline: none;
-        }
+            /* Clicking a square focuses the grid; only keyboard focus should draw a ring. */
+            .grid:focus:not(:focus-visible) {
+                outline: none;
+            }
 
-        .grid:focus-visible {
-            outline: 2px solid var(--accent);
-            outline-offset: 3px;
-        }
-    `;
+            /* Colour comes from the shared ring; this only pushes it clear of the heavy frame. */
+            .grid:focus-visible {
+                outline-offset: 3px;
+            }
+        `,
+    ];
 
     #resizeObserver = null;
 
@@ -76,6 +83,27 @@ export class PtBoard extends LitElement {
         this.selfId = null;
         this.selection = null;
         this.interactive = true;
+        this.checkResults = {};
+    }
+
+    /**
+     * How many columns pencil marks are laid out in, so a digit always sits in the same corner.
+     * Subclasses override when their alphabet is not a square.
+     *
+     * @returns {number} Column count for the mark grid.
+     */
+    get markColumns() {
+        return 3;
+    }
+
+    /**
+     * How many rows that mark grid has. Declared rather than left implicit, so a mark's position
+     * does not depend on which other marks happen to be in the cell.
+     *
+     * @returns {number} Row count for the mark grid.
+     */
+    get markRows() {
+        return 3;
     }
 
     /** Tracks the grid's rendered width so cells can size their digits from it. */
@@ -145,9 +173,17 @@ export class PtBoard extends LitElement {
         );
     }
 
-    /** Routes every input source — keyboard now, keypad and touch in Phase 2 — through one path. */
+    /** Routes physical-keyboard input; the keypad and touch reach the same store methods. */
     #onKeyDown(event) {
-        if (!this.doc || this.selection == null) return;
+        if (!this.doc) return;
+
+        if (event.key.toLowerCase() === 'z' && (event.ctrlKey || event.metaKey)) {
+            event.preventDefault();
+            this.dispatchEvent(new CustomEvent('pt-undo', { bubbles: true, composed: true }));
+            return;
+        }
+
+        if (this.selection == null) return;
 
         if (ARROWS[event.key]) {
             event.preventDefault();
@@ -204,7 +240,6 @@ export class PtBoard extends LitElement {
                     style="grid-template-columns: repeat(${cols}, 1fr);"
                     @keydown=${this.#onKeyDown}
                     @pointerdown=${this.#onPointerDown}
-                    @blur=${() => this.#select(null)}
                 >
                     ${repeat(
                         Array.from({ length: rows }, (_unused, row) => row),
@@ -215,6 +250,7 @@ export class PtBoard extends LitElement {
                 <pt-presence-layer
                     .focus=${this.focus}
                     .players=${this.players}
+                    .rows=${rows}
                     .cols=${cols}
                     .selfId=${this.selfId}
                 ></pt-presence-layer>
@@ -241,6 +277,8 @@ export class PtBoard extends LitElement {
         const docCell = this.doc.cells[idx];
         const { row, col } = toCoords(idx, this.doc.size);
         const value = effectiveValue(this.doc, this.board, idx);
+        const marks = this.board.cells[idx]?.marks ?? [];
+        const check = this.checkResults?.[idx] ?? null;
 
         return html`
             <pt-cell
@@ -248,7 +286,10 @@ export class PtBoard extends LitElement {
                 .index=${idx}
                 .value=${value}
                 .label=${docCell.label}
-                .marks=${this.board.cells[idx]?.marks ?? []}
+                .marks=${marks}
+                .markCols=${this.markColumns}
+                .markRows=${this.markRows}
+                .check=${check}
                 ?given=${docCell.given != null}
                 ?block=${docCell.block}
                 ?selected=${this.selection === idx}
@@ -256,8 +297,21 @@ export class PtBoard extends LitElement {
                 ?heavy-bottom=${this.isHeavyBottom(idx)}
                 aria-selected=${this.selection === idx}
                 aria-readonly=${docCell.given != null}
-                aria-label="row ${row + 1} column ${col + 1}, ${value ?? 'empty'}"
+                aria-label=${this.#cellLabel(row, col, value, marks, check)}
             ></pt-cell>
         `;
+    }
+
+    /**
+     * The cell's spoken description. Marks and check feedback are named rather than left to colour
+     * and position, since neither survives a screen reader (design-spec.md §11).
+     */
+    #cellLabel(row, col, value, marks, check) {
+        const parts = [`row ${row + 1} column ${col + 1}`];
+        if (value != null) parts.push(value);
+        else if (marks.length > 0) parts.push(`notes ${marks.join(' ')}`);
+        else parts.push('empty');
+        if (check) parts.push(check);
+        return parts.join(', ');
     }
 }

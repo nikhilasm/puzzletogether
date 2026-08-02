@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { applyOp, applyOps, emptyBoard } from './board-reducer.js';
+import { applyOp, applyOps, emptyBoard, toggleMark } from './board-reducer.js';
 import { OP_TYPE } from './protocol.js';
 
 /** A `set` op, with the boilerplate filled in. */
@@ -93,5 +93,61 @@ describe('applyOps', () => {
         expect(inOrder.cells[0].value).toBe('3');
         expect(inOrder.cells[1].value).toBeNull();
         expect(inOrder.seq).toBe(5);
+    });
+});
+
+describe('toggleMark', () => {
+    it('adds a mark that is absent and removes one that is present', () => {
+        expect(toggleMark([1, 3], 5)).toEqual([1, 3, 5]);
+        expect(toggleMark([1, 3, 5], 3)).toEqual([1, 5]);
+    });
+
+    it('keeps marks sorted, so two equal mark sets compare equal', () => {
+        expect(toggleMark([9, 2], 5)).toEqual([2, 5, 9]);
+    });
+
+    it('does not mutate the marks it was given', () => {
+        const marks = [1, 2];
+        toggleMark(marks, 3);
+        expect(marks).toEqual([1, 2]);
+    });
+});
+
+describe('marks ops', () => {
+    /**
+     * A cell holds a value or marks, never both — it is how a cell renders, and it is what makes a
+     * cell's whole state expressible in one op, which is what undo relies on.
+     */
+    it('replaces the value when marks are written over it', () => {
+        const withValue = applyOp(emptyBoard(), setOp('a', 0, '4'), { seq: 1, by: 'p1' });
+        const marked = applyOp(
+            withValue,
+            { opId: 'b', t: OP_TYPE.MARKS, cell: 0, marks: [2, 7] },
+            { seq: 2, by: 'p1' },
+        );
+
+        expect(marked.cells[0].value).toBeNull();
+        expect(marked.cells[0].marks).toEqual([2, 7]);
+    });
+
+    it('drops the marks when a value is entered, since they were notes toward it', () => {
+        const marked = applyOp(
+            emptyBoard(),
+            { opId: 'a', t: OP_TYPE.MARKS, cell: 0, marks: [2, 7] },
+            { seq: 1, by: 'p1' },
+        );
+        const filled = applyOp(marked, setOp('b', 0, '4'), { seq: 2, by: 'p1' });
+
+        expect(filled.cells[0].marks).toEqual([]);
+    });
+
+    it('normalises duplicate marks so an echoed op cannot double them up', () => {
+        const marked = applyOp(
+            emptyBoard(),
+            { opId: 'a', t: OP_TYPE.MARKS, cell: 0, marks: [3, 3, 1] },
+            { seq: 1, by: 'p1' },
+        );
+
+        expect(marked.cells[0].marks).toEqual([1, 3]);
     });
 });

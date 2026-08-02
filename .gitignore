@@ -1,5 +1,8 @@
 node_modules/
 client/dist/
 coverage/
+test-results/
+playwright-report/
 .env
 *.log
+.claude/

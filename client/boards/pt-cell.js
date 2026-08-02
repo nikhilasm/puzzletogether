@@ -1,5 +1,5 @@
 /**
- * One grid cell: label, value, and pencil marks.
+ * One grid cell: label, value, pencil marks, and check feedback.
  *
  * Created once per cell and updated by property assignment, never re-created — this is the element
  * whose update cost decides whether a 25×25 grid stays smooth (design-spec.md §11). Everything in
@@ -14,6 +14,9 @@ export class PtCell extends LitElement {
         value: { type: String },
         label: { type: String },
         marks: { type: Array },
+        markCols: { type: Number },
+        markRows: { type: Number },
+        check: { type: String, reflect: true },
         given: { type: Boolean, reflect: true },
         block: { type: Boolean, reflect: true },
         selected: { type: Boolean, reflect: true },
@@ -23,6 +26,13 @@ export class PtCell extends LitElement {
 
     static styles = css`
         :host {
+            /*
+             * Border-box, and every cell keeps the same 1px hairlines whatever its region borders
+             * are. Under content-box, aspect-ratio measured the content box, so a cell carrying a
+             * 2.5px region border came out shorter than its neighbours — which is the 1px vertical
+             * misalignment Firefox showed and Chromium mostly rounded away.
+             */
+            box-sizing: border-box;
             position: relative;
             display: flex;
             align-items: center;
@@ -35,14 +45,38 @@ export class PtCell extends LitElement {
             line-height: 1;
             cursor: pointer;
             user-select: none;
+            /* Stops a double-tap on the grid zooming the page on iOS. */
+            touch-action: manipulation;
         }
 
-        :host([heavy-right]) {
-            border-right: var(--grid-heavy);
+        /*
+         * Region rules are drawn *over* the hairlines rather than replacing them. As borders they
+         * mitred with the same cell's hairline on the adjoining edge, which cut a pale notch across
+         * the heavy rule at every crossing — the subdivision showing through the major division.
+         * A positioned pseudo-element paints after the element's own borders, so it covers that
+         * corner, and it costs the cell no geometry.
+         */
+        :host([heavy-right])::after,
+        :host([heavy-bottom])::before {
+            content: '';
+            position: absolute;
+            z-index: 1;
+            background: var(--ink);
+            pointer-events: none;
         }
 
-        :host([heavy-bottom]) {
-            border-bottom: var(--grid-heavy);
+        :host([heavy-right])::after {
+            top: 0;
+            right: -1px;
+            width: var(--grid-heavy-width);
+            height: calc(100% + 1px);
+        }
+
+        :host([heavy-bottom])::before {
+            bottom: -1px;
+            left: 0;
+            width: calc(100% + 1px);
+            height: var(--grid-heavy-width);
         }
 
         :host([block]) {
@@ -72,6 +106,18 @@ export class PtCell extends LitElement {
             font-weight: 500;
         }
 
+        /*
+         * Check feedback is the one thing allowed to recolour a value, and it is transient: any
+         * edit to the cell retires the mark (design-spec.md §4).
+         */
+        :host([check='correct']) .value {
+            color: var(--correct);
+        }
+
+        :host([check='wrong']) .value {
+            color: var(--wrong);
+        }
+
         .value.pop {
             animation: pop var(--motion-mark) ease-out;
         }
@@ -84,14 +130,27 @@ export class PtCell extends LitElement {
             color: var(--graphite);
         }
 
+        /*
+         * Marks sit in fixed positions so a digit is always in the same corner of every cell, which
+         * is what makes a grid of notes scannable. Size derives from the cell, like the value does.
+         *
+         * Both axes are declared. With only the columns named, the rows were implicit and sized to
+         * whatever happened to be in them, so adding or removing a mark re-laid out the others —
+         * exactly the shifting the fixed positions exist to prevent.
+         */
         .marks {
             position: absolute;
-            right: 3px;
-            bottom: 2px;
-            left: 3px;
-            font-size: var(--text-xs);
+            inset: 0;
+            display: grid;
+            grid-template-columns: repeat(var(--mark-cols, 3), 1fr);
+            grid-template-rows: repeat(var(--mark-rows, 3), 1fr);
+            align-items: center;
+            justify-items: center;
+            padding: 6%;
+            font-size: calc(var(--cell-size, 40px) * 0.26);
             color: var(--pencil);
-            text-align: left;
+            line-height: 1;
+            pointer-events: none;
         }
 
         @keyframes pop {
@@ -110,6 +169,9 @@ export class PtCell extends LitElement {
         this.value = null;
         this.label = null;
         this.marks = [];
+        this.markCols = 3;
+        this.markRows = 3;
+        this.check = null;
         this.given = false;
         this.block = false;
         this.selected = false;
@@ -138,11 +200,27 @@ export class PtCell extends LitElement {
                       >`
                     : nothing
             }
-            ${
-                this.marks?.length
-                    ? html`<span class="marks">${this.marks.join(' ')}</span>`
-                    : nothing
-            }
+            ${this.value == null && this.marks?.length ? this.#renderMarks() : nothing}
+        `;
+    }
+
+    /** The pencil marks, each placed at the position its digit always occupies. */
+    #renderMarks() {
+        return html`
+            <span
+                class="marks"
+                style="--mark-cols: ${this.markCols}; --mark-rows: ${this.markRows};"
+                aria-hidden="true"
+            >
+                ${this.marks.map((mark) => {
+                    const slot = mark - 1;
+                    const row = Math.floor(slot / this.markCols) + 1;
+                    const col = (slot % this.markCols) + 1;
+                    return html`<span style="grid-row: ${row}; grid-column: ${col};"
+                        >${mark}</span
+                    >`;
+                })}
+            </span>
         `;
     }
 }

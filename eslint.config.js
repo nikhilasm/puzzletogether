@@ -8,12 +8,31 @@ import globals from 'globals';
  * of the wire depend on, and the only place a silent mismatch causes a desync rather than a visible
  * bug. Application code in `client/` and `server/` is not linted; formatting there is Prettier's
  * job and correctness is the tests'.
+ *
+ * `tests/` is the exception to that reasoning rather than a widening of it: it is the only code in
+ * the repo nothing else checks. Everything else has a test; the tests have lint.
  */
 export default [
     {
         ignores: ['client/**', 'server/**', 'node_modules/**', '*.config.js'],
     },
     js.configs.recommended,
+    {
+        // Browser globals appear inside `page.evaluate()` callbacks, which run in the page.
+        files: ['tests/**/*.js'],
+        languageOptions: {
+            ecmaVersion: 2023,
+            sourceType: 'module',
+            globals: {
+                ...globals.browser,
+                ...globals.node,
+            },
+        },
+        rules: {
+            'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+            'prefer-const': 'error',
+        },
+    },
     {
         files: ['shared/**/*.js'],
         languageOptions: {

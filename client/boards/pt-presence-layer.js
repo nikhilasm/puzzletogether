@@ -18,6 +18,7 @@ export class PtPresenceLayer extends LitElement {
     static properties = {
         focus: { type: Object },
         players: { type: Array },
+        rows: { type: Number },
         cols: { type: Number },
         selfId: { type: String },
     };
@@ -39,9 +40,9 @@ export class PtPresenceLayer extends LitElement {
         }
 
         .dot {
-            width: 7px;
-            height: 7px;
-            border-radius: var(--radius-pill);
+            width: var(--presence-dot);
+            height: var(--presence-dot);
+            border-radius: var(--radius-round);
             animation: appear var(--motion-presence) ease-in;
         }
 
@@ -67,6 +68,7 @@ export class PtPresenceLayer extends LitElement {
         super();
         this.focus = {};
         this.players = [];
+        this.rows = 9;
         this.cols = 9;
         this.selfId = null;
     }
@@ -89,10 +91,13 @@ export class PtPresenceLayer extends LitElement {
         const grouped = this.#byCell();
         if (grouped.size === 0) return nothing;
 
+        // Both axes, explicitly. With only the columns declared, every row past the first was an
+        // implicit track sized to its dot, so a dot below row 1 landed nowhere near its cell.
         return html`
             <style>
                 :host {
                     grid-template-columns: repeat(${this.cols}, 1fr);
+                    grid-template-rows: repeat(${this.rows}, 1fr);
                 }
             </style>
             ${[...grouped.entries()].map(([cell, players]) => this.#renderCell(cell, players))}

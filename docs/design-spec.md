@@ -88,7 +88,7 @@ The brand rests on one metaphor: **a printed puzzle page, not a dashboard.** The
 
 - **The grid is the loudest thing on screen.** Everything else is deliberately quiet. Chrome earns its ink or it goes.
 - **Color belongs to people, not to chrome.** The only saturated elements are player identities and a single accent.
-- **Soft chrome, sharp puzzle.** Pills for everything human-facing, hard right angles for the grid. That contrast — already present in the mock — *is* the identity.
+- **Soft chrome, sharp puzzle.** Softened rectangles for everything human-facing, hard right angles for the grid. That contrast — already present in the mock — *is* the identity.
 
 Cream paper rather than white, warm near-black ink, no cool gray anywhere. Fraunces (display) + Karla (UI) + DM Mono (room code), self-hosted. Borders instead of shadows. A ~3% graph-paper texture on the background. See [brand.md](brand.md) for values.
 
@@ -100,23 +100,37 @@ Cream paper rather than white, warm near-black ink, no cool gray anywhere. Fraun
 
 - **Wordmark** — "Puzzle" in `--ink` + "Together" in `--accent`, Fraunces with `WONK`.
 - **`Room kqjy`** — DM Mono, `--accent`. **Room codes are 4 lowercase characters.**
-- **Players** — pill chips, two per row, each name in that player's color, the host's pill carrying a ★. Disconnected players dim during the grace period before dropping off.
+- **Players** — `x/n` above chips, two per row, each name in that player's color, the host's chip carrying a ★ and your own a quiet `you`. Disconnected players dim during the grace period before dropping off.
+  - **Your own chip is a button**: it opens a palette of the eight colors, with the ones other players hold greyed and struck through — shown rather than hidden, so you can see what the room already holds. Color is the only piece of identity a player can change, so it is edited where it is shown rather than behind a settings screen, and the server, not the disabled attribute, is what enforces uniqueness.
+  - **The host gets a remove control on everybody else's chip**, behind a confirm dialog. It is the one action in the app done *to* another person, which is why it is confirmed and why it is host-only. The removed player lands back on the landing screen with the reason on screen; nothing stops them rejoining with the code, because there are no accounts to ban.
 - **Puzzle header** — `**Kenken**: Medium 4x4` (type bold, then difficulty and size).
 - **Live solve timer** — mm:ss, counting up.
 - **The grid** — heavy cage/region borders, small cage or clue labels in each cell's top-left.
   - **Entered values are large, bold, and `--ink` — not tinted by author.** Attribution is not carried by value color.
-  - **Presence is colored dots in the cell's top-right**, one per player focused there; the mock shows two in a single cell. Render up to 3, then `+n`.
-  - **Pencil marks** are small `--pencil` digits below the label.
-- **`Notes | Solve` segmented toggle** — input mode: pencil marks vs. entering values.
+  - **Presence is colored dots in the cell's top-right**, one per player focused there; the mock shows two in a single cell. Render up to 3, then `+n`. The overlay declares **both grid axes**: with only its columns named, every row past the first was an implicit track sized to its dot, and a dot below the top row landed nowhere near its cell.
+  - **Pencil marks** are small `--pencil` digits, each in the fixed slot its digit always occupies, in a mark grid that also declares **both axes** — for the same reason, and because a mark that moves when its neighbours change defeats the point of fixed slots.
+  - **Every cell is the same box, whatever borders it carries.** Cells are `border-box` with 1px hairlines throughout, and region rules are drawn as an overlay on top rather than as a heavier border. As a border, the heavy rule changed the cell's geometry (visible in Firefox as a 1px row misalignment, which Chromium rounded away) and mitred with the hairline on the adjoining edge, cutting a pale notch across the rule at every crossing.
+- **`Notes` switch** — input mode: pencil marks vs. entering values. **Revised in Phase 2** from the mock's `Notes | Solve` segmented pair to a single labelled switch, and moved to sit directly above the keypad. Two segments implied two independent things to choose between when there is really one setting, of which Solve is simply the off state — and the control belongs with the digits whose meaning it changes, not down among Check and Reveal.
 - **`Check` and `Reveal` buttons** — check current entries; reveal the full grid. **Reveal is renamed from the mock's "Solve"** to kill the collision with the input-mode toggle, and it opens a confirm dialog ("Reveal the whole puzzle? This ends your room's solve streak.") because it is destructive and resets the streak.
 - **`Back to Puzzle Select`** — **host-only.** Returns the whole room to puzzle select and abandons the current puzzle.
-- **Footer** — hairline rule, theme toggle, version line, GitHub link.
+- **`Leave room`** — on this screen and on Puzzle Select both, quiet and last. Leaving is not something you should have to abandon a puzzle to do.
+- **Footer** — hairline rule, `Dark theme` switch, version line, GitHub link.
 
-Screens: **Landing → Create / Join → Puzzle Select → Game.** "Puzzle Select" replaces the prototype's generic lobby — it is where the host picks type, difficulty, and size while everyone waits, and where the room returns between puzzles.
+Actions are buttons and settings are switches — see [brand.md §4](brand.md) for why the distinction is kept literal, and for the icon and focus-ring rules that go with it.
+
+Screens: **Landing → Create / Join → Puzzle Select → Game.** "Puzzle Select" replaces the prototype's generic lobby — it is where the host picks type, difficulty, and size while everyone waits, and where the room returns between puzzles. It also carries the room's only **`Leave room`** button, set quietly below the host's controls.
+
+### Landing
+
+Two **tabs** — `Create` and `Join` — over a single form. Create asks for a name; Join asks for a name and a room code. The tabs are set as **text over a shared rule**, not as a pair of buttons: they name which half of the form you are looking at rather than offering two actions, and boxed they competed with the button that actually does something. **Revised in Phase 2**: showing both paths at once meant two buttons and three fields on screen with nothing saying which button the code field belonged to, and the first thing a new visitor has to do should not be a puzzle. The name input is rendered once, outside the branch, so changing tabs does not lose what you typed. Arriving on a room URL without a seat opens the Join tab with the code filled in, because that is the question that visitor was already asking.
 
 ### On-screen keypad
 
 Number-based puzzles (sudoku, kenken) show a persistent keypad below the grid, NYT-sudoku style: digits `1..n` sized to the puzzle's alphabet, plus delete. It routes through the same op path as physical keyboard input and respects the Notes/Solve mode. It stays visible on desktop, not just touch — it doubles as an affordance showing which digits remain available. Nonogram reuses the slot for a fill / mark / erase tri-toggle; crossword falls back to the native keyboard.
+
+**Undo sits in this row too**, beside Erase, rather than with Check and Reveal. The mock has no Undo control, and Ctrl+Z is not a thing a phone has — so it needed a button, and putting it with Erase keeps every way of changing a cell in one place. Ctrl+Z still works when the grid has keyboard focus.
+
+The block reads **Notes switch → digits → Erase / Undo**, so everything that decides what a keypress means sits above the keys, and everything that undoes one sits below.
 
 ### Completion modal
 
@@ -131,7 +145,8 @@ On server-verified completion, **every player** gets a dismissable congrats moda
 ```
 puzzletogether/
 ├─ package.json  vite.config.js  jsconfig.json    # checkJs: true
-├─ eslint.config.js  .prettierrc
+├─ eslint.config.js  .prettierrc  playwright.config.js
+├─ tests/                      # Playwright: the app in a real browser, two clients (§12)
 ├─ Dockerfile  .env.example  .github/workflows/ci.yml
 ├─ docs/                       # see §1
 ├─ data/crosswords/
@@ -145,7 +160,7 @@ puzzletogether/
 │  └─ board-reducer.js         # applyOp() — shared by server and client
 ├─ server/
 │  ├─ index.js  config.js
-│  ├─ rooms/{store,lifecycle,codes}.js
+│  ├─ rooms/{store,lifecycle,codes,progress}.js
 │  ├─ net/{handlers,auth,ratelimit}.js
 │  └─ puzzles/
 │     ├─ provider.js           # getPuzzle({type, difficulty, size}) seam
@@ -154,11 +169,11 @@ puzzletogether/
 │     └─ sudoku/  kenken/  nonogram/  crossword/
 └─ client/
    ├─ index.html  main.js
-   ├─ styles/{tokens.css,base.css}   # the brand system, as custom properties
+   ├─ styles/{tokens.css,base.css,controls.js}   # the brand system, as custom properties
    ├─ theme.js                       # light/dark, persisted
-   ├─ store/{room-store.js,store-controller.js}
+   ├─ store/{room-store.js,store-controller.js,ops.js,undo-stack.js}
    ├─ views/{pt-app,pt-landing,pt-puzzle-select,pt-game,pt-congrats-modal,pt-confirm}.js
-   ├─ ui/{pt-player-chips,pt-timer,pt-keypad,pt-mode-toggle}.js
+   ├─ ui/{pt-player-chips,pt-timer,pt-keypad,pt-mode-toggle,pt-switch,pt-puzzle-picker,icons}.js
    └─ boards/{pt-board,pt-cell,pt-presence-layer,pt-sudoku-board,…}.js
 ```
 
@@ -183,6 +198,8 @@ Not a CRDT and not OT. Grid cells are independent registers — there is no inse
 ```
 
 Server echo adds `{ seq, by: playerId, at }`. Board state is `{ seq, cells: { [idx]: { value, marks, by, seq } } }`. `by` is retained for the solved screen and analytics, **not** for tinting values — color belongs to people, and entered digits are `--ink`.
+
+**A cell holds a value or marks, never both** (settled in Phase 2). A `set` clears the cell's marks — they were notes toward it — and a `marks` op clears the value. This is how a cell already rendered, and it is what makes a cell's entire state expressible in a single op, which is what lets undo restore any earlier state with one write rather than a pair of them. Without it, undoing back to a marks-only state silently left the old digit in place.
 
 **Optimistic application.** The client applies its own op immediately, holds it in `pendingOps`, and renders `serverState + pendingOps`. When the echo arrives with a matching `opId`, the op leaves the pending list. If a remote op lands on a cell with a pending local op, the render function resolves it — no rollback machinery, because re-deriving is cheap.
 
@@ -284,11 +301,21 @@ room = {
 
 Client → server, all with acks of the form `cb({ ok: true, data }) | cb({ ok: false, error: { code, message } })`:
 
-`room:create`, `room:join`, `room:leave`, `room:kick`, `room:settings`, `room:backToSelect`, `game:start`, `game:newPuzzle`, `game:op`, `game:focus`, `game:check`, `game:reveal`, `sync:request`
+`room:create`, `room:join`, `room:leave`, `room:kick`, `room:settings`, `room:backToSelect`, `player:color`, `game:start`, `game:op`, `game:focus`, `game:check`, `game:reveal`, `sync:request`
+
+Repo layout: unit tests sit beside their modules; `tests/` at the root holds the Playwright suite (§12).
 
 Server → client:
 
 `room:state`, `room:players`, `room:host`, `game:started`, `game:snapshot`, `game:op`, `game:focus`, `game:checkResult`, `game:solved`, `error`
+
+**`game:newPuzzle` was folded into `game:start`** in Phase 2. Starting from `select` and starting again from `solved` differ in nothing but the state they leave, so the second event would have been a second thing to keep in step with the first for no gain. `room:settings` is still unimplemented — nothing so far needs it.
+
+**`room:kick` is host-only and takes a `playerId`.** The removed player is told before their seat is dropped — once it is gone there is nothing left to tell them about — via a `KICKED` error, which is the one error a client receives without having asked for anything. Their reconnect token dies with the seat, so it cannot be used to walk back in; the room code still can, because there are no accounts here and a kick is a nudge rather than a ban.
+
+**`player:color` carries a palette index and nothing else.** A seat only ever speaks for itself, so there is no target player in the payload — you cannot recolour anybody else, and the handler needs no authority check beyond "you hold a seat". The server refuses an index another player holds: a room's colours must stay unique, because presence dots are the one place identity is carried by hue with no name beside it. The answer comes back as a `room:players` broadcast rather than an ack payload, since the client cannot know what the rest of the room holds.
+
+**`game:check` grades the whole grid and its result is broadcast to the room**, not returned privately to the caller. Assists are counted per room, so a check is something the room did rather than something one player did quietly — and a check with no cell list is one a client cannot use to interrogate the solution a cell at a time. `game:reveal` is grid-scope and host-only; there is no cell-scope reveal.
 
 ```js
 // game:solved
@@ -305,27 +332,35 @@ The handshake carries `PROTOCOL_VERSION`; a major mismatch returns a "please ref
 ## 11. Client architecture
 
 - `<pt-app>` root with a tiny hash router: `#/` → landing, `#/room/kqjy` → puzzle select or game, driven by `room.state`.
+- **The route owns the seat.** Navigating away from a room releases it — back button, wordmark, and the `Leave room` button are all the same path, so they cannot drift apart, and no player can sit on the landing screen while the room still lists them as present. A reload is deliberately *not* this path: it fires no `hashchange`, so a refresh mid-solve still restores from the reconnect token. The room header and roster render only on the room route, so nothing of a room survives on screen after leaving one.
 - **One `RoomStore`** (plain observable class) owns the socket, room state, board state, pending ops, and timer offset. Components never hold sockets. A Lit `ReactiveController` (`StoreController`) subscribes any element to the slices it needs.
 - **Rendering perf** is the thing to get right early. Cells render once as `<pt-cell>` elements keyed by index via `repeat()`; per-cell updates mutate that element's reactive properties directly rather than re-rendering the grid. Presence dots live in a separate `<pt-presence-layer>` overlay, so focus traffic never touches cell DOM. Verify on a 25×25 nonogram in Phase 1, not Phase 3.
 - **Input** flows through one path regardless of source — physical keyboard, on-screen keypad, or touch — branching on the Notes/Solve mode. Crossword adds Tab/Enter direction toggle, auto-advance, and entry highlighting; nonogram adds drag-fill batched into one `fill` op.
-- **Theme**: `data-theme` on `<html>` plus the brand custom properties; the footer toggle persists to `localStorage`, initial value respects `prefers-color-scheme`.
-- **Accessibility**: `role="grid"`/`gridcell`, aria-labels carrying clue and cage text, a live region for presence changes and completion, managed focus, `prefers-reduced-motion` honored, and presence conveyed by name as well as dot color — never color alone.
+- **Theme**: `data-theme` on `<html>` plus the brand custom properties; the footer switch persists to `localStorage`, initial value respects `prefers-color-scheme`, and an inline bootstrap in `index.html` applies it before first paint so a dark-preferring visitor never sees a flash of cream.
+- **Shared styling** lives in `client/styles/controls.js` as `css` fragments each component composes into its own `static styles`. Shadow roots inherit properties, not rules, so anything that must be consistent app-wide — the focus ring above all — has to be *distributed*, not declared once globally.
+- **Accessibility**: `role="grid"`/`gridcell`, aria-labels carrying clue and cage text, a live region for presence changes and completion, managed focus, `prefers-reduced-motion` honored, and presence conveyed by name as well as dot color — never color alone. Settings are `role="switch"` so their state is announced as a state; the landing tabs follow the `tablist` pattern, including arrow-key movement; every color swatch is labelled with its color's name; icons are decorative and `aria-hidden`, never the only carrier of meaning.
 
 ---
 
 ## 12. Testing, tooling, CI
 
-**Vitest** — Vite is already in the stack, so one config, with jsdom for Lit component tests.
+Two suites, split by what they can actually see.
 
-Highest-value targets, in order:
+**Vitest** (`npm test`) for logic — pure modules, no DOM. Highest-value targets, in order:
 
 1. **Generator invariants** (property-style): 200 puzzles per type, asserting exactly one solution, stable difficulty rating, and for nonogram that the line-solver resolves it.
 2. **Board reducer**: op ordering under LWW, and the key equivalence — sequential op application equals the snapshot.
 3. **Protocol schema validation**: malformed payloads rejected, never crashing a handler.
-4. **Room lifecycle**: reconnect-token restore, host election on disconnect, streak increment/reset rules, GC deleting rooms and clearing timers.
+4. **Room lifecycle**: reconnect-token restore, host election on disconnect, colour uniqueness, streak increment/reset rules, GC deleting rooms and clearing timers.
 5. **Bank loader**: every file in `data/crosswords/` validates against the schema.
 
-ESLint flat config + Prettier, both configured to the conventions in [code-style.md](code-style.md). CI on GitHub Actions, Node 22: `npm ci && npm run lint && npm run typecheck && npm test && npm run build`.
+**Playwright** (`npm run test:ui`) for everything that needs a real engine: `tests/` drives the built app against a real server, with a second browser context wherever the assertion is about two players. It covers the landing tabs, the roster and colour picking, removing a player, the ways out of a room, the keypad and switches, and grid geometry. `playwright.config.js` builds and starts the server itself, so the command is the whole setup.
+
+**It runs in Chromium *and* Firefox, deliberately.** The grid is drawn with sub-pixel borders and two nested grids whose tracks must resolve identically in both; the one cell-alignment bug that reached a user was Firefox-only, because Chromium had rounded it away. A single-engine suite would have agreed with the bug.
+
+The browser suite is also where the **rules that are distributed by hand** get checked — the focus ring and the control radius are repeated into every shadow root, so the only place to confirm they agree is where they land.
+
+ESLint flat config + Prettier, both configured to the conventions in [code-style.md](code-style.md). CI on GitHub Actions, Node 22: `npm ci && npm run lint && npm run typecheck && npm test && npm run test:ui && npm run build`.
 
 Deployment is a single Node process with a Dockerfile and `PORT`/`NODE_ENV`. Multi-instance later means `@socket.io/redis-adapter` plus moving rooms out of process memory — noted in [ADR-0002](adr/0002-in-memory-rooms-no-database.md), not built now.
 

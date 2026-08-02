@@ -13,7 +13,11 @@
     --font-mono: 'DM Mono', ui-monospace, monospace;
     --wordmark-variation: 'SOFT' 40, 'WONK' 1, 'opsz' 84;
 
-    --text-wordmark: 2.75rem;
+    /*
+     * The wordmark is the only text wide enough to overrun a phone. It holds its full size from
+     * about 500px up and shrinks below that, rather than being overridden per component.
+     */
+    --text-wordmark: clamp(1.75rem, 8.5vw, 2.75rem);
     --text-xl: 1.5rem;
     --text-lg: 1.25rem;
     --text-base: 1rem;
@@ -45,14 +49,22 @@
     --player-6: #7a5aa8;
     --player-7: #8a6c24;
 
-    /* Shape and line */
-    --radius-pill: 999px;
+    /*
+     * Shape and line. Chrome is a softened rectangle and the puzzle is square — `--radius-round` is
+     * for things that are actually round (presence dots, a switch track), not for boxes.
+     */
+    --radius-control: 6px;
     --radius-grid: 0;
     --radius-modal: 12px;
+    --radius-round: 999px;
     --border: 1.5px solid var(--rule);
+    --stroke-icon: 1.5;
     --shadow-modal: 0 8px 32px rgb(31 29 26 / 0.18);
     --grid-hairline: 1px solid color-mix(in srgb, var(--graphite) 30%, transparent);
     --grid-heavy: 2.5px solid var(--ink);
+    /* The same weight as a bare length: region rules are drawn as an overlay, not as a border. */
+    --grid-heavy-width: 2.5px;
+    --presence-dot: 9px;
 
     /* Texture */
     --texture-gap: 24px;

@@ -78,12 +78,32 @@ function nextCellState(current, op, meta) {
             // Entering a value clears that cell's pencil marks — they were notes toward it.
             return { value: op.value ?? null, marks: [], ...stamp };
         case OP_TYPE.MARKS:
-            return { value: current.value, marks: normalizeMarks(op.marks ?? []), ...stamp };
+            // A cell holds a value or marks, never both. That is how a cell renders, how players
+            // think about it, and — because it makes a cell's whole state expressible in one op —
+            // what lets undo restore any earlier state with a single write.
+            return { value: null, marks: normalizeMarks(op.marks ?? []), ...stamp };
         case OP_TYPE.CLEAR:
             return { value: null, marks: [], ...stamp };
         default:
             return current;
     }
+}
+
+/**
+ * Toggles one pencil mark in a cell's mark set.
+ *
+ * Marks are set semantics, so Notes-mode input is a toggle rather than an append — pressing `4`
+ * twice leaves the cell as it started.
+ *
+ * @param {number[]} marks - The cell's current marks.
+ * @param {number} digit - The mark to add or remove.
+ * @returns {number[]} A new sorted, duplicate-free mark set.
+ */
+export function toggleMark(marks, digit) {
+    const next = new Set(marks);
+    if (next.has(digit)) next.delete(digit);
+    else next.add(digit);
+    return normalizeMarks([...next]);
 }
 
 /**

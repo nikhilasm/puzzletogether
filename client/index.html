@@ -5,6 +5,28 @@
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>PuzzleTogether</title>
         <meta name="description" content="Solve one shared puzzle grid together, in real time." />
+        <!--
+            Mirrors resolveTheme() in theme.js. It runs here, before the stylesheet paints, because
+            a module script is deferred and a dark-theme visitor would otherwise get a flash of
+            cream. theme.js re-applies the same value and owns everything after this line.
+        -->
+        <script>
+            (function () {
+                try {
+                    var stored = window.localStorage.getItem('pt:theme');
+                } catch (error) {
+                    stored = null;
+                }
+                var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                var theme =
+                    stored === 'light' || stored === 'dark'
+                        ? stored
+                        : prefersDark
+                          ? 'dark'
+                          : 'light';
+                document.documentElement.setAttribute('data-theme', theme);
+            })();
+        </script>
         <script type="module" src="/main.js"></script>
     </head>
     <body>

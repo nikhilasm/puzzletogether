@@ -11,14 +11,25 @@
  */
 export const PROTOCOL_VERSION = 1;
 
-/** Client → server events. Every one takes an ack callback. */
+/**
+ * Client → server events. Every one takes an ack callback.
+ *
+ * `GAME_START` covers design-spec.md §10's `game:newPuzzle` as well: starting from `select` and
+ * starting again from `solved` differ in nothing but the state they leave, so a second event with
+ * identical semantics would only be a second thing to keep in step.
+ */
 export const CLIENT_EVENT = {
     ROOM_CREATE: 'room:create',
     ROOM_JOIN: 'room:join',
     ROOM_LEAVE: 'room:leave',
+    ROOM_BACK_TO_SELECT: 'room:backToSelect',
+    ROOM_KICK: 'room:kick',
+    PLAYER_COLOR: 'player:color',
     GAME_START: 'game:start',
     GAME_OP: 'game:op',
     GAME_FOCUS: 'game:focus',
+    GAME_CHECK: 'game:check',
+    GAME_REVEAL: 'game:reveal',
     SYNC_REQUEST: 'sync:request',
 };
 
@@ -32,6 +43,7 @@ export const SERVER_EVENT = {
     GAME_SNAPSHOT: 'game:snapshot',
     GAME_OP: 'game:op',
     GAME_FOCUS: 'game:focus',
+    GAME_CHECK_RESULT: 'game:checkResult',
     GAME_SOLVED: 'game:solved',
     ERROR: 'error',
 };
@@ -45,6 +57,9 @@ export const ERROR = {
     NOT_IN_ROOM: 'NOT_IN_ROOM',
     SEAT_TAKEN: 'SEAT_TAKEN',
     NOT_HOST: 'NOT_HOST',
+    NOT_ALLOWED: 'NOT_ALLOWED',
+    /** Sent to the removed player, never as an ack — it is the one error nobody asked for. */
+    KICKED: 'KICKED',
     WRONG_STATE: 'WRONG_STATE',
     INVALID_OP: 'INVALID_OP',
     RATE_LIMITED: 'RATE_LIMITED',
@@ -64,6 +79,22 @@ export const ROOM_STATE = {
     SELECT: 'select',
     PLAYING: 'playing',
     SOLVED: 'solved',
+};
+
+/** What a checked cell turned out to be. `EMPTY` cells are omitted from a check result. */
+export const CHECK_STATE = {
+    CORRECT: 'correct',
+    WRONG: 'wrong',
+    EMPTY: 'empty',
+};
+
+/**
+ * Input mode for the Notes/Solve toggle. Client-side only — an op already says whether it writes a
+ * value or pencil marks, so the server never needs to know which mode produced it.
+ */
+export const INPUT_MODE = {
+    SOLVE: 'solve',
+    NOTES: 'notes',
 };
 
 /**
@@ -134,7 +165,8 @@ export const ROOM_STATE = {
  * @typedef {object} PlayerView
  * @property {string} id - Server-assigned player id.
  * @property {string} name - Display name; may collide, carries no authority.
- * @property {number} colorIndex - Index into the per-theme player palette.
+ * @property {number} colorIndex - Index into the per-theme player palette. Assigned on join and
+ *   changeable by that player alone, via `PLAYER_COLOR`; unique within a room at all times.
  * @property {boolean} connected - False while inside the disconnect grace period.
  */
 
@@ -157,6 +189,32 @@ export const ROOM_STATE = {
  * @property {number|null} startedAt - Server clock at puzzle start, for the local timer.
  * @property {number} serverNow - Server clock at send time, used to compute the client offset.
  * @property {Object<string, number>} focus - `playerId` to focused cell index.
+ * @property {number} assists - Check and Reveal uses against the current puzzle.
+ */
+
+/**
+ * The outcome of a Check, broadcast to the whole room.
+ *
+ * Shared rather than private on purpose: assists are counted per room, so a check is something the
+ * room did, not something one player did quietly.
+ *
+ * @typedef {object} CheckResult
+ * @property {Object<number, string>} cells - Cell index to a `CHECK_STATE` value. Empty cells are
+ *   omitted, since "you have not filled this in" is not a finding.
+ * @property {string} by - `playerId` of whoever pressed Check.
+ * @property {number} assists - The room's assist count after this check.
+ * @property {number} at - Server clock when the check ran.
+ */
+
+/**
+ * Sent on completion, whether the room solved the puzzle or revealed it.
+ *
+ * @typedef {object} SolvedResult
+ * @property {number} elapsedMs - Server-computed solve time; no client's clock is trusted for it.
+ * @property {number} streak - The room's streak after this puzzle — zero when `revealed`.
+ * @property {number} assists - Check and Reveal uses against this puzzle.
+ * @property {boolean} revealed - True when the grid was revealed rather than solved.
+ * @property {BoardState} board - The final board, so late joiners see the finished grid.
  */
 
 /**

@@ -7,7 +7,7 @@
  */
 
 import { applyOp } from '../../shared/board-reducer.js';
-import { FOCUS_RATE_LIMIT, OP_RATE_LIMIT } from '../../shared/constants.js';
+import { ASSIST_RATE_LIMIT, FOCUS_RATE_LIMIT, OP_RATE_LIMIT } from '../../shared/constants.js';
 import { CLIENT_EVENT, ERROR, ROOM_STATE, SERVER_EVENT, fail, ok } from '../../shared/protocol.js';
 import { validate } from '../../shared/schema.js';
 import { config } from '../config.js';
@@ -17,9 +17,11 @@ import {
     dropPlayer,
     electHost,
     markDisconnected,
+    setPlayerColor,
     toRoomView,
     toSnapshot,
 } from '../rooms/lifecycle.js';
+import { abandonPuzzle, checkPuzzle, revealPuzzle, solvePuzzle } from '../rooms/progress.js';
 import { createRoom, getRoom, touchRoom } from '../rooms/store.js';
 
 import { currentSeat, isHost, isProtocolCompatible, restoreSeat } from './auth.js';
@@ -67,6 +69,21 @@ function onGraceExpired(io, room, playerId) {
 }
 
 /**
+ * Resolves the caller's seat, acking a structured error when they hold none.
+ *
+ * Every handler past `room:join` needs this as its first step, which is why it is a helper rather
+ * than four repeated lines.
+ */
+function seatOrFail(socket, ack) {
+    const seat = currentSeat(socket);
+    if (!seat) {
+        ack(fail(ERROR.NOT_IN_ROOM, 'you are not in a room'));
+        return null;
+    }
+    return seat;
+}
+
+/**
  * Wraps a handler with payload validation and error containment, so no handler has to repeat
  * either.
  */
@@ -98,7 +115,11 @@ function guard(event, handler) {
  * @returns {void}
  */
 export function registerHandlers(io, socket) {
-    const buckets = createBuckets({ op: OP_RATE_LIMIT, focus: FOCUS_RATE_LIMIT });
+    const buckets = createBuckets({
+        op: OP_RATE_LIMIT,
+        focus: FOCUS_RATE_LIMIT,
+        assist: ASSIST_RATE_LIMIT,
+    });
 
     // Creates a room and seats the caller as its host.
     socket.on(
@@ -140,11 +161,8 @@ export function registerHandlers(io, socket) {
     socket.on(
         CLIENT_EVENT.ROOM_LEAVE,
         guard(CLIENT_EVENT.ROOM_LEAVE, (_payload, ack) => {
-            const seat = currentSeat(socket);
-            if (!seat) {
-                ack(fail(ERROR.NOT_IN_ROOM, 'you are not in a room'));
-                return;
-            }
+            const seat = seatOrFail(socket, ack);
+            if (!seat) return;
 
             onGraceExpired(io, seat.room, seat.player.id);
             socket.leave(seat.room.code);
@@ -153,15 +171,65 @@ export function registerHandlers(io, socket) {
         }),
     );
 
+    // Host-only: removes another player's seat outright, and tells them why.
+    socket.on(
+        CLIENT_EVENT.ROOM_KICK,
+        guard(CLIENT_EVENT.ROOM_KICK, (payload, ack) => {
+            const seat = seatOrFail(socket, ack);
+            if (!seat) return;
+            if (!isHost(seat.room, seat.player.id)) {
+                ack(fail(ERROR.NOT_HOST, 'only the host can remove a player'));
+                return;
+            }
+            if (payload.playerId === seat.player.id) {
+                ack(fail(ERROR.NOT_ALLOWED, 'use Leave room to remove yourself'));
+                return;
+            }
+
+            const target = seat.room.players.get(payload.playerId);
+            if (!target) {
+                ack(fail(ERROR.NOT_IN_ROOM, 'that player is not in this room'));
+                return;
+            }
+
+            // Told before dropped: once the seat is gone the socket has nothing to be told about.
+            const targetSocket = target.socketId ? io.sockets.sockets.get(target.socketId) : null;
+            targetSocket?.emit(SERVER_EVENT.ERROR, {
+                code: ERROR.KICKED,
+                message: 'the host removed you from the room',
+            });
+
+            onGraceExpired(io, seat.room, target.id);
+            targetSocket?.leave(seat.room.code);
+            if (targetSocket) targetSocket.data = {};
+            ack(ok());
+        }),
+    );
+
+    // Changes the caller's own colour. A seat only ever speaks for itself, so there is no target
+    // player in the payload — you cannot recolour anybody else.
+    socket.on(
+        CLIENT_EVENT.PLAYER_COLOR,
+        guard(CLIENT_EVENT.PLAYER_COLOR, (payload, ack) => {
+            const seat = seatOrFail(socket, ack);
+            if (!seat) return;
+
+            if (!setPlayerColor(seat.room, seat.player.id, payload.colorIndex)) {
+                ack(fail(ERROR.NOT_ALLOWED, 'somebody else has that colour'));
+                return;
+            }
+
+            broadcastPlayers(io, seat.room);
+            ack(ok());
+        }),
+    );
+
     // Host-only: fetches a puzzle and moves the room into `playing`.
     socket.on(
         CLIENT_EVENT.GAME_START,
         guard(CLIENT_EVENT.GAME_START, async (payload, ack) => {
-            const seat = currentSeat(socket);
-            if (!seat) {
-                ack(fail(ERROR.NOT_IN_ROOM, 'you are not in a room'));
-                return;
-            }
+            const seat = seatOrFail(socket, ack);
+            if (!seat) return;
             if (!isHost(seat.room, seat.player.id)) {
                 ack(fail(ERROR.NOT_HOST, 'only the host can start a puzzle'));
                 return;
@@ -207,11 +275,8 @@ export function registerHandlers(io, socket) {
                 return;
             }
 
-            const seat = currentSeat(socket);
-            if (!seat) {
-                ack(fail(ERROR.NOT_IN_ROOM, 'you are not in a room'));
-                return;
-            }
+            const seat = seatOrFail(socket, ack);
+            if (!seat) return;
 
             const room = seat.room;
             if (room.state !== ROOM_STATE.PLAYING) {
@@ -248,11 +313,8 @@ export function registerHandlers(io, socket) {
                 return;
             }
 
-            const seat = currentSeat(socket);
-            if (!seat) {
-                ack(fail(ERROR.NOT_IN_ROOM, 'you are not in a room'));
-                return;
-            }
+            const seat = seatOrFail(socket, ack);
+            if (!seat) return;
 
             const cell = payload.cell ?? null;
             if (cell == null) {
@@ -273,13 +335,96 @@ export function registerHandlers(io, socket) {
     socket.on(
         CLIENT_EVENT.SYNC_REQUEST,
         guard(CLIENT_EVENT.SYNC_REQUEST, (_payload, ack) => {
-            const seat = currentSeat(socket);
-            if (!seat) {
-                ack(fail(ERROR.NOT_IN_ROOM, 'you are not in a room'));
+            const seat = seatOrFail(socket, ack);
+            if (!seat) return;
+
+            socket.emit(SERVER_EVENT.GAME_SNAPSHOT, toSnapshot(seat.room));
+            ack(ok());
+        }),
+    );
+
+    // Grades every filled cell against the solution. Free: it never touches the streak.
+    socket.on(
+        CLIENT_EVENT.GAME_CHECK,
+        guard(CLIENT_EVENT.GAME_CHECK, (_payload, ack) => {
+            const seat = seatOrFail(socket, ack);
+            if (!seat) return;
+
+            const room = seat.room;
+            if (room.state !== ROOM_STATE.PLAYING) {
+                ack(fail(ERROR.WRONG_STATE, 'no puzzle is in progress'));
+                return;
+            }
+            if (!room.settings.checkingAllowed) {
+                ack(fail(ERROR.NOT_ALLOWED, 'checking is switched off in this room'));
+                return;
+            }
+            if (!buckets.assist.tryConsume()) {
+                ack(fail(ERROR.RATE_LIMITED, 'give it a moment before checking again'));
                 return;
             }
 
-            socket.emit(SERVER_EVENT.GAME_SNAPSHOT, toSnapshot(seat.room));
+            const result = checkPuzzle(room, getPuzzleModule(room.doc.type));
+            result.by = seat.player.id;
+
+            // Broadcast, not private: assists are counted per room, so a check is something the
+            // room did rather than something one player did quietly.
+            io.to(room.code).emit(SERVER_EVENT.GAME_CHECK_RESULT, result);
+            ack(ok());
+        }),
+    );
+
+    // Host-only: fills the grid from the solution, which ends the puzzle and resets the streak.
+    socket.on(
+        CLIENT_EVENT.GAME_REVEAL,
+        guard(CLIENT_EVENT.GAME_REVEAL, (_payload, ack) => {
+            const seat = seatOrFail(socket, ack);
+            if (!seat) return;
+            if (!isHost(seat.room, seat.player.id)) {
+                ack(fail(ERROR.NOT_HOST, 'only the host can reveal the puzzle'));
+                return;
+            }
+
+            const room = seat.room;
+            if (room.state !== ROOM_STATE.PLAYING) {
+                ack(fail(ERROR.WRONG_STATE, 'no puzzle is in progress'));
+                return;
+            }
+            if (!room.settings.revealAllowed) {
+                ack(fail(ERROR.NOT_ALLOWED, 'revealing is switched off in this room'));
+                return;
+            }
+            if (!buckets.assist.tryConsume()) {
+                ack(fail(ERROR.RATE_LIMITED, 'give it a moment'));
+                return;
+            }
+
+            io.to(room.code).emit(SERVER_EVENT.GAME_SOLVED, revealPuzzle(room));
+            broadcastRoom(io, room);
+            ack(ok());
+        }),
+    );
+
+    // Host-only: abandons the current puzzle and returns the whole room to Puzzle Select.
+    socket.on(
+        CLIENT_EVENT.ROOM_BACK_TO_SELECT,
+        guard(CLIENT_EVENT.ROOM_BACK_TO_SELECT, (_payload, ack) => {
+            const seat = seatOrFail(socket, ack);
+            if (!seat) return;
+            if (!isHost(seat.room, seat.player.id)) {
+                ack(fail(ERROR.NOT_HOST, 'only the host can return the room to puzzle select'));
+                return;
+            }
+
+            const room = seat.room;
+            if (room.state === ROOM_STATE.SELECT) {
+                ack(fail(ERROR.WRONG_STATE, 'the room is already at puzzle select'));
+                return;
+            }
+
+            abandonPuzzle(room);
+            broadcastRoom(io, room);
+            io.to(room.code).emit(SERVER_EVENT.GAME_SNAPSHOT, toSnapshot(room));
             ack(ok());
         }),
     );
@@ -301,17 +446,7 @@ export function registerHandlers(io, socket) {
  * claimed by a client.
  */
 function finishPuzzle(io, room) {
-    room.state = ROOM_STATE.SOLVED;
-    room.streak += 1;
-    touchRoom(room);
-
-    io.to(room.code).emit(SERVER_EVENT.GAME_SOLVED, {
-        elapsedMs: Date.now() - room.startedAt,
-        streak: room.streak,
-        assists: room.assists,
-        revealed: false,
-        board: room.board,
-    });
+    io.to(room.code).emit(SERVER_EVENT.GAME_SOLVED, solvePuzzle(room));
     broadcastRoom(io, room);
 }
 

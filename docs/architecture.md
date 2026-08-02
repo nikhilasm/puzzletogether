@@ -139,7 +139,7 @@ sequenceDiagram
     P->>C: enter name and room code
     C->>S: connect with no auth token
     C->>S: room:join name, code
-    S->>R: create playerId, assign color
+    S->>R: create playerId, assign lowest free color
     S->>R: set as host if first in room
     S->>R: issue playerToken, map token to playerId
     S-->>C: ack ok, playerToken, room state
@@ -161,6 +161,10 @@ sequenceDiagram
 A disconnected player is **not** removed immediately. Their chip dims for a ~2 minute grace period, during which the token still reclaims their identity. Host status survives the grace period too; only after it expires does the longest-connected player get promoted.
 
 This is the direct fix for the prototype's empty `disconnect` handler, which leaked players into rooms permanently.
+
+**Being removed is leaving, decided by somebody else.** `room:kick` is host-only; the target is told over their own socket before the seat is dropped, and their reconnect token dies with it. The client treats that message the way it treats leaving — the room is cleared, only the reason is kept — so there is one path out of a room and one shape of state after it.
+
+**Leaving is immediate, and the route is what triggers it.** `room:leave` gives up the seat now rather than on grace expiry, and the client sends it whenever the hash stops naming the room — the `Leave room` button only navigates. That keeps the button, the wordmark, and the browser's back button on one path, so none of them can leave a player listed in a room they have walked away from. A reload is not that path: it fires no `hashchange`, so the reconnect token still does its job.
 
 ---
 
@@ -218,6 +222,11 @@ flowchart TB
     GAME --> MODE["pt-mode-toggle"]
     GAME --> MODAL["pt-congrats-modal"]
 
+    APP --> THEMESW["pt-switch<br/>Dark theme"]
+    MODE --> SWITCH["pt-switch<br/>Notes"]
+    SEL --> PICKER["pt-puzzle-picker"]
+    MODAL --> PICKER
+
     BOARD --> CELL["pt-cell × rows*cols"]
     BOARD --> PRES["pt-presence-layer"]
 
@@ -234,6 +243,8 @@ flowchart TB
 **Presence traffic never touches cell DOM.** Focus updates arrive at ~10/s per player, and routing them through `<pt-cell>` would re-render the grid constantly. `<pt-presence-layer>` is an absolutely-positioned overlay that draws the dots itself.
 
 **Cells render once.** `repeat()` keyed by cell index creates each `<pt-cell>` a single time; subsequent updates set reactive properties on the specific element that changed. This is the main frontend performance unknown, which is why a 25×25 grid gets tested in Phase 1 rather than when nonogram actually ships in Phase 3.
+
+**Shared leaves hold no state.** `<pt-switch>` and `<pt-puzzle-picker>` appear in more than one place, so neither owns what it shows: the switch is told whether it is on and reports the flip, which is why the Notes switch and the store can never disagree about the input mode. `client/styles/controls.js` and `client/ui/icons.js` are the styling counterpart — `css` fragments and templates composed into each shadow root, since a shadow root inherits properties but not rules.
 
 ---
 

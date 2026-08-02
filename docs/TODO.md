@@ -4,7 +4,7 @@
 >
 > Phases and their done-when criteria come from [design-spec.md §13](design-spec.md#13-phases).
 
-**Current phase**: 1 — vertical slice
+**Current phase**: 2 — the full game screen
 **Branch**: `feature-puzzletogether`
 **Last updated**: 2026-08-02
 
@@ -99,7 +99,8 @@ Legend: `[ ]` pending · `[x]` done · `[~]` in progress · `[!]` blocked · `[-
       1.7ms presence update. ADR-0003's fallback is not needed.
 - [x] `--accent` / player-palette contrast script passes — runs in `npm test`
 - [x] Room GC and host re-election confirmed with shortened timings
-- [ ] Fonts-blocked rendering check (brand.md §7) — not yet run
+- [x] Fonts-blocked rendering check (brand.md §7) — **run in Phase 2**; no layout shift, no
+      invisible text, no horizontal scroll with `.woff`/`.woff2` blocked
 
 > **Deviation from [brand.md §3](brand.md#3-color)**: the player palette is now **per theme**. No
 > single set of eight can clear 4.5:1 on both cream and charcoal — a colour dark enough for paper
@@ -111,22 +112,117 @@ Legend: `[ ]` pending · `[x]` done · `[~]` in progress · `[!]` blocked · `[-
 
 *Done when: a full session — create, pick, solve, modal, start another — is playable on a phone without touching the console, and the streak increments and resets per [design-spec.md §4](design-spec.md#4-the-game-screen).*
 
-- [ ] Puzzle Select screen (host picks type / difficulty / size)
-- [ ] On-screen keypad, sized to the puzzle alphabet, shared input path
-- [ ] `Notes | Solve` mode toggle
-- [ ] Pencil marks (`marks` op, `--pencil` rendering)
-- [ ] `Check` RPC + per-cell result rendering
-- [ ] `Reveal` RPC + confirm dialog naming the streak consequence
-- [ ] Assist counter per room
-- [ ] Per-player forward-only undo
-- [ ] Congrats modal — solve time, streak, dismissable, all players
-- [ ] Host-only new-puzzle controls in the modal
-- [ ] Host-only Back to Puzzle Select (abandons puzzle, resets streak)
-- [ ] Streak increment/reset rules wired and tested
-- [ ] Dark theme + persisted toggle
-- [ ] Mobile layout and touch input
-- [ ] Accessibility pass — grid roles, live regions, focus management, reduced motion
-- [ ] Grayscale check: players distinguishable without hue
+**Screens and controls**
+- [x] Puzzle Select screen (host picks type / difficulty / size) — `<pt-puzzle-picker>`, shared with
+      the congrats modal so "start another" offers exactly the same choices
+- [x] On-screen keypad, sized to the puzzle alphabet, shared input path; dims exhausted digits
+- [x] Notes / Solve mode toggle — shipped as `Notes | Solve` segments, revised to a single switch
+- [x] Pencil marks (`marks` op, `--pencil` rendering) — laid out in fixed positions per digit
+- [x] `Check` RPC + per-cell result rendering, **broadcast to the whole room**
+- [x] `Reveal` RPC + confirm dialog naming the streak consequence
+- [x] Assist counter per room — shown on the game screen and in the modal, survives a refresh
+- [x] Per-player forward-only undo — `UndoStack`, skipped with a notice when the cell has moved on
+- [x] Congrats modal — solve time, streak, assists, dismissable, all players
+- [x] Host-only new-puzzle controls in the modal
+- [x] Host-only Back to Puzzle Select (abandons puzzle, resets streak)
+- [x] Streak increment/reset rules wired and tested — `server/rooms/progress.js`
+- [x] Dark theme + persisted toggle, with an inline bootstrap so dark never flashes cream
+- [x] Mobile layout and touch input
+- [x] Accessibility pass — grid roles, live regions, focus management, reduced motion
+- [x] Grayscale check: players distinguishable without hue
+
+> **Undo lives in the keypad row**, beside Erase, rather than beside Check and Reveal. The mock has
+> no Undo control at all, and the phase's done-when criterion is a phone session — so it had to be
+> reachable by thumb. Putting it with Erase keeps every way of changing a cell in one place.
+
+> **`game:newPuzzle` was folded into `game:start`.** Starting from `select` and starting again from
+> `solved` differ in nothing but the state they leave, and design-spec.md §10 is updated to match.
+> A second event with identical semantics would only be a second thing to keep in step.
+
+**Tests**
+- [x] `client/store/undo-stack.test.js` — ordering, no-op edits, depth limit
+- [x] `client/store/ops.test.js` — Notes/Solve branch, mark toggling, undo restoration
+- [x] `server/rooms/progress.test.js` — the streak rules, Check being free, Reveal filling the grid
+- [x] `client/theme.test.js` — stored choice beats the OS, unknown values ignored
+- [x] `shared/board-reducer.test.js` — mark semantics
+- [x] `shared/schema.test.js` — the three new events, marks-op bounds
+
+**Verify**
+- [x] Socket harness, 31 checks — Check broadcast and assist counting, Reveal host-gating and
+      streak reset, genuine solve incrementing, abandon rules, marks over the wire, assist rate limit
+- [x] Two-browser session, 41 checks — Notes → mark → other player sees it, Undo, Check grading,
+      keypad solve, modal on both clients with the same server time, start another, Reveal confirm,
+      Back to Puzzle Select taking the whole room
+- [x] 320px phone emulation — no horizontal scroll, 51×44 keypad keys, tap-a-square-tap-a-digit
+- [x] Grayscale screenshot — every player still named
+- [x] Fonts blocked — no layout shift, no invisible text
+- [x] Dark theme at 320px and 1440px, toggle persists across a reload
+
+> **Two bugs the browser pass caught**, both fixed:
+> 1. Undoing back to a marks-only state left the digit in place, because a `marks` op preserved the
+>    cell's value. Resolved by making a cell hold **a value or marks, never both** — which is how a
+>    cell already rendered, and which makes a cell's whole state expressible in one op. That is what
+>    lets undo restore any earlier state with a single write. See [design-spec.md §6](design-spec.md#6-the-shared-state-model-the-core-problem).
+> 2. The wordmark overran a 320px viewport by 15px. `--text-wordmark` is now a `clamp()` rather than
+>    a fixed `2.75rem`; it holds full size from ~500px up.
+
+> **Prettier no longer checks Markdown** (`.prettierignore`). It reflows prose paragraphs and
+> re-lays-out tables, which costs more in readability than it buys. [code-style.md §10](code-style.md#10-enforcement)
+> is updated; the 4-space rule for docs is now review's job.
+
+**Revision pass on the built UI** (50 browser checks: radius, ring colour, icons, switch state and
+wiring, control order, both themes, 320px):
+- [x] Chrome drops from `--radius-pill` to `--radius-control` (6px) — [brand.md §4](brand.md) records
+      why the original 999px was wrong; the grid keeps its sharp corners and `--radius-round` is left
+      for things that are genuinely round
+- [x] One focus ring, in `--accent`, as a `focusRing` fragment composed into every shadow root that
+      holds something focusable — the `base.css` rule reaches the light DOM only, so the keypad and
+      the landing inputs had been falling back to the browser's own ring
+- [x] `client/ui/icons.js` — erase, undo, pencil, sun, moon as inline SVG on `currentColor`
+- [x] `<pt-switch>` — the Notes and Dark theme toggles become `role="switch"`, replacing a segmented
+      pair and a button whose label changed under you
+- [x] Notes moves above the keypad, so the control deciding what a key means sits over the keys
+
+**Room and landing pass** (54 browser checks across two clients: tabs, palette, leaving, back/forward,
+320px):
+- [x] `player:color` — a player picks their own colour from their chip; the server refuses one
+      another seat holds, so uniqueness does not depend on the picker's disabled swatches
+- [x] `Leave room` on Puzzle Select
+- [x] Leaving a room is what *navigating away from it* means — the button, the wordmark, and the
+      back button share one path, and the roster no longer survives on the landing screen
+- [x] Landing becomes `Create` / `Join` tabs over one form; a room URL with no seat opens Join with
+      the code filled in
+- [x] `server/rooms/lifecycle.test.js` — colour assignment, reuse after a leave, and the uniqueness
+      rule under players swapping around
+
+**Lobby pass, and the browser suite made permanent** (`tests/`, 82 checks in Chromium and Firefox —
+`npm run test:ui`):
+- [x] `room:kick` — the host removes a player behind a confirm dialog; the removed player is told
+      before the seat is dropped and lands back on the landing screen with the reason
+- [x] `you` on your own chip, `x/n` above the roster, and a Leave room button on the game screen as
+      well as Puzzle Select, both carrying an icon
+- [x] Landing tabs restyled as text over a rule rather than as buttons
+- [x] Taken colours greyed *and* struck through — never one channel
+- [x] **Chips are one box.** A button and a span brought different defaults into a shadow root that
+      never got the page's `box-sizing` reset, so your own chip outgrew its track and looked
+      different on your screen than on anybody else's
+- [x] **Cells are one box.** Same root cause: `aspect-ratio` measured a content box that a heavy
+      region border had shrunk, which Firefox showed as a 1px row misalignment. Region rules are now
+      an overlay, which also stops them mitring with the hairlines and notching at every crossing
+- [x] **Both grid axes declared**, in the mark grid and the presence layer. Implicit rows sized
+      themselves to their contents, so marks shifted as their neighbours changed and presence dots
+      landed correctly only on the top row
+- [x] Presence dots enlarged to `--presence-dot`, and repaint the moment their player recolours
+
+> **The browser suite is kept, not thrown away.** Every one of the visual bugs above was found by a
+> person looking at the screen, and three of them were invisible to any assertion the unit tests
+> could make. Firefox is in the matrix for the same reason: the alignment bug did not reproduce in
+> Chromium at all.
+
+> **`x/n` reads `x/8`, not `x/10`.** `MAX_PLAYERS_PER_ROOM` is 8 because the palette is 8 and a
+> room's colours must stay unique — raising the cap means adding two colours that clear 4.5:1 on
+> both themes ([brand.md §3](brand.md)) and re-running the contrast gate. Worth doing deliberately,
+> not as a side effect of a counter.
 
 ---
 
@@ -170,7 +266,8 @@ Legend: `[ ]` pending · `[x]` done · `[~]` in progress · `[!]` blocked · `[-
 - [ ] Protocol schema tests — malformed payloads rejected, no handler crashes
 - [ ] Room lifecycle tests — reconnect, host election, streak rules, GC
 - [ ] Bank loader test — every file validates
-- [ ] GitHub Actions CI: `npm ci && npm run lint && npm run typecheck && npm test && npm run build`
+- [ ] GitHub Actions CI: `npm ci && npm run lint && npm run typecheck && npm test && npm run test:ui && npm run build`
+      (`npx playwright install --with-deps chromium firefox` first)
 - [ ] Dockerfile + `.env.example`
 - [ ] Load test — N simulated players in one room
 - [ ] README covering local dev and the multi-instance constraint
@@ -187,7 +284,8 @@ Carried from [design-spec.md §14](design-spec.md#14-risks-and-open-questions). 
 | 2 | Does Fraunces `WONK` survive contact with real screens? | Phase 1 | **Resolved — keep.** Reads as hand-cut rather than generic-serif at 2.75rem; it is the most distinctive thing on the page. |
 | 3 | Does the paper texture read as subtle or as noise? | Phase 1 | **Resolved — keep at 3%.** Invisible until looked for, on both the landing and game screens. |
 | 4 | Can 8 player colors all clear AA on cream, or drop to 6? | Phase 1 | **Resolved — 8 survive, but per theme.** One shared set cannot clear 4.5:1 on both backgrounds; `--player-N` is now defined in each theme block. |
-| 5 | Does per-cell LWW feel bad in practice? | Phase 2 playtest | Open — soft-lock fallback in [ADR-0001](adr/0001-shared-state-lww-per-cell.md) |
+| 5 | Does per-cell LWW feel bad in practice? | Phase 2 playtest | Open — the machinery is now all there to judge it, but two scripted browsers are not a playtest. Soft-lock fallback stays in [ADR-0001](adr/0001-shared-state-lww-per-cell.md). |
 | 6 | Is Lit fast enough for a 25×25 grid? | Phase 1 | **Resolved — yes, comfortably.** 625 cells: 19ms first render, 2.9ms median / 5.3ms p95 single-cell update, 1.7ms presence update. |
 | 7 | KenKen uniqueness cost above 7×7 | Phase 3 | Open |
-| 8 | Sudoku difficulty targeting misses the requested band ~1% of the time | Phase 2 | Open — the label is always the *measured* rating, so nothing is mislabelled; only the request is occasionally not honoured. |
+| 8 | Sudoku difficulty targeting misses the requested band ~1% of the time | Phase 2 | **Resolved for the sizes that matter.** 4×4 and 6×6 always measure `easy` — there is no room for a technique beyond singles — so Puzzle Select disables the difficulty picker below 9×9 and says why (`DIFFICULTY_MIN_SIDE`). At 9×9 the ~1% miss stands, and the label remains the measured rating. |
+| 9 | Undo is per-player and forward-only — does it surprise people? | Phase 3 playtest | Open. A cell that somebody else has touched since is left alone and the player gets a notice; whether that reads as "safe" or as "broken" needs real players. Flagged as a risk in [design-spec.md §14](design-spec.md#14-risks-and-open-questions) from the start. |
