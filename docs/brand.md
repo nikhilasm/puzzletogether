@@ -128,18 +128,25 @@ Computed against each theme's `--paper`:
 
 ### Player palette
 
-Eight identities, extending the mock's crimson / magenta / orange / green / teal:
+Eight identities, extending the mock's crimson / magenta / orange / green / teal. **Verified in Phase 1** — every value below clears 4.5:1 against its own theme's `--paper`, asserted by `client/styles/tokens.test.js` on every `npm test`.
 
 ```css
---player-0: #D64545;  --player-1: #B5539E;
+/* light — "paper" */
+--player-0: #D23434;  --player-1: #AE4B97;
+--player-2: #A75D16;  --player-3: #3D7E32;
+--player-4: #177C7C;  --player-5: #5B63C4;
+--player-6: #7A5AA8;  --player-7: #8A6C24;
+
+/* dark — "evening desk" */
+--player-0: #DA5858;  --player-1: #BC63A7;
 --player-2: #C9701A;  --player-3: #4B9B3E;
---player-4: #1D9A9A;  --player-5: #5B63C4;
---player-6: #7A5AA8;  --player-7: #A8842C;
+--player-4: #1D9A9A;  --player-5: #757CCD;
+--player-6: #9176B7;  --player-7: #A8842C;
 ```
 
-Assigned round-robin on join, released on leave.
+Assigned round-robin by index on join, released on leave. The server hands out a `colorIndex`, never a hex — the theme decides the value, which is why one index can carry two colours.
 
-> **These are candidate values, not verified ones.** They are tuned by eye for hue separation, including under the common color-vision deficiencies, but several sit near the 4.5:1 line on cream — `#D64545` measures about 4.1:1, which is short for player names at body size. **Phase 1 must run the contrast check in §7 and nudge any failures darker before these ship.** Hue separation is the constraint that must survive the nudging; exact values are not precious.
+> **The palette is per theme, unlike every other token pair.** The original single set failed: measured on cream, the eight candidates ranged 3.2:1 to 5.1:1 and five were short of AA. Darkening them to pass on cream then pushed them *below* AA on charcoal — a colour dark enough to read on paper is too dark to read on an evening desk. Splitting per theme keeps all eight hues; only lightness moves between them, so identities stay recognisable when someone switches theme mid-solve.
 
 Two hard rules regardless of the values:
 
@@ -246,6 +253,7 @@ Part of the Phase 1 done-when criteria:
 
 ## 8. Known risks
 
-- **Fraunces `WONK` and the paper texture are the two elements most likely to divide opinion.** Both are one-line reversions. Judge them on real screens in Phase 1, not in the abstract.
-- **The player palette is unverified** (§3). Contrast fixes may compress hue separation; if eight distinguishable colors can't all clear AA on cream, reduce to six rather than shipping unreadable names.
+- ~~**Fraunces `WONK` and the paper texture are the two elements most likely to divide opinion.**~~ **Settled in Phase 1 on real screens: both kept.** The wordmark reads hand-cut rather than generic-serif, and the texture at 3% is invisible until looked for.
+- ~~**The player palette is unverified**~~ **Verified in Phase 1**, at the cost of going per theme (§3). All eight hues survived.
 - **The two-accent split is a papercut.** It's easy to reach for `--accent` in body text out of habit. If review catches this repeatedly, collapse to the single darker value and accept a slightly duller wordmark.
+- **Givens versus entries are distinguished by weight alone** (700 against 500), because colour is reserved for people. It is a quieter difference than most sudoku apps use; if it reads as too subtle in play, the next lever is size, not colour.

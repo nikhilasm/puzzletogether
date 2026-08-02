@@ -1,0 +1,370 @@
+/**
+ * Every socket event handler, and the only place room state is mutated in response to a client.
+ *
+ * The order is always the same and never varies by event: schema-validate the payload, resolve the
+ * seat, authorize, then act (code-style.md §8). Handlers reply with a structured ack and never
+ * throw — a throw inside a Socket.IO handler kills the connection.
+ */
+
+import { applyOp } from '../../shared/board-reducer.js';
+import { FOCUS_RATE_LIMIT, OP_RATE_LIMIT } from '../../shared/constants.js';
+import { CLIENT_EVENT, ERROR, ROOM_STATE, SERVER_EVENT, fail, ok } from '../../shared/protocol.js';
+import { validate } from '../../shared/schema.js';
+import { config } from '../config.js';
+import { getPuzzle, getPuzzleModule, prewarm } from '../puzzles/provider.js';
+import {
+    addPlayer,
+    dropPlayer,
+    electHost,
+    markDisconnected,
+    toRoomView,
+    toSnapshot,
+} from '../rooms/lifecycle.js';
+import { createRoom, getRoom, touchRoom } from '../rooms/store.js';
+
+import { currentSeat, isHost, isProtocolCompatible, restoreSeat } from './auth.js';
+import { createBuckets } from './ratelimit.js';
+
+/** Pushes the current roster to everyone in a room. */
+function broadcastPlayers(io, room) {
+    io.to(room.code).emit(SERVER_EVENT.ROOM_PLAYERS, toRoomView(room).players);
+}
+
+/** Pushes the full room view, used when state, settings, or host changes. */
+function broadcastRoom(io, room) {
+    io.to(room.code).emit(SERVER_EVENT.ROOM_STATE, toRoomView(room));
+}
+
+/** Everything a client needs on joining or reconnecting. */
+function joinPayload(room, player, token) {
+    return {
+        code: room.code,
+        playerId: player.id,
+        playerToken: token,
+        room: toRoomView(room),
+        snapshot: toSnapshot(room),
+    };
+}
+
+/** Attaches a socket to a room's broadcast channel and records its seat. */
+function takeSeat(socket, room, player) {
+    socket.data.code = room.code;
+    socket.data.playerId = player.id;
+    socket.join(room.code);
+}
+
+/**
+ * Drops a player whose grace period expired, re-electing a host if it was theirs.
+ *
+ * This is the fix for the prototype's empty `disconnect` stub, which leaked players into rooms
+ * permanently (design-spec.md §2).
+ */
+function onGraceExpired(io, room, playerId) {
+    if (!dropPlayer(room, playerId)) return;
+    if (room.hostId === playerId) room.hostId = null;
+    electHost(room);
+    broadcastRoom(io, room);
+}
+
+/**
+ * Wraps a handler with payload validation and error containment, so no handler has to repeat
+ * either.
+ */
+function guard(event, handler) {
+    return async (payload, callback) => {
+        const ack = typeof callback === 'function' ? callback : () => {};
+        const body = payload ?? {};
+
+        const result = validate(event, body);
+        if (!result.ok) {
+            ack(fail(ERROR.BAD_PAYLOAD, result.message));
+            return;
+        }
+
+        try {
+            await handler(body, ack);
+        } catch (error) {
+            console.error(`[${event}] handler failed:`, error);
+            ack(fail(ERROR.INTERNAL, 'the server could not complete that request'));
+        }
+    };
+}
+
+/**
+ * Registers every handler for one socket.
+ *
+ * @param {import('socket.io').Server} io - The Socket.IO server, for broadcasts.
+ * @param {import('socket.io').Socket} socket - The freshly connected socket.
+ * @returns {void}
+ */
+export function registerHandlers(io, socket) {
+    const buckets = createBuckets({ op: OP_RATE_LIMIT, focus: FOCUS_RATE_LIMIT });
+
+    // Creates a room and seats the caller as its host.
+    socket.on(
+        CLIENT_EVENT.ROOM_CREATE,
+        guard(CLIENT_EVENT.ROOM_CREATE, (payload, ack) => {
+            const room = createRoom();
+            const { player, token } = addPlayer(room, payload.name, socket.id);
+            takeSeat(socket, room, player);
+            ack(ok(joinPayload(room, player, token)));
+            broadcastRoom(io, room);
+        }),
+    );
+
+    // Joins an existing room by code, issuing a fresh seat and reconnect token.
+    socket.on(
+        CLIENT_EVENT.ROOM_JOIN,
+        guard(CLIENT_EVENT.ROOM_JOIN, (payload, ack) => {
+            const room = getRoom(payload.code.toLowerCase());
+            if (!room) {
+                ack(fail(ERROR.ROOM_NOT_FOUND, `no room with code ${payload.code}`));
+                return;
+            }
+
+            let seat;
+            try {
+                seat = addPlayer(room, payload.name, socket.id);
+            } catch {
+                ack(fail(ERROR.ROOM_FULL, 'that room is full'));
+                return;
+            }
+
+            takeSeat(socket, room, seat.player);
+            ack(ok(joinPayload(room, seat.player, seat.token)));
+            broadcastRoom(io, room);
+        }),
+    );
+
+    // Leaves a room deliberately, which gives up the seat immediately rather than on grace expiry.
+    socket.on(
+        CLIENT_EVENT.ROOM_LEAVE,
+        guard(CLIENT_EVENT.ROOM_LEAVE, (_payload, ack) => {
+            const seat = currentSeat(socket);
+            if (!seat) {
+                ack(fail(ERROR.NOT_IN_ROOM, 'you are not in a room'));
+                return;
+            }
+
+            onGraceExpired(io, seat.room, seat.player.id);
+            socket.leave(seat.room.code);
+            socket.data = {};
+            ack(ok());
+        }),
+    );
+
+    // Host-only: fetches a puzzle and moves the room into `playing`.
+    socket.on(
+        CLIENT_EVENT.GAME_START,
+        guard(CLIENT_EVENT.GAME_START, async (payload, ack) => {
+            const seat = currentSeat(socket);
+            if (!seat) {
+                ack(fail(ERROR.NOT_IN_ROOM, 'you are not in a room'));
+                return;
+            }
+            if (!isHost(seat.room, seat.player.id)) {
+                ack(fail(ERROR.NOT_HOST, 'only the host can start a puzzle'));
+                return;
+            }
+            if (seat.room.state === ROOM_STATE.PLAYING) {
+                ack(fail(ERROR.WRONG_STATE, 'a puzzle is already in progress'));
+                return;
+            }
+
+            const spec = {
+                type: payload.type,
+                difficulty: payload.difficulty,
+                size: payload.size,
+            };
+            const { doc, solution } = await getPuzzle(spec);
+            const room = seat.room;
+
+            room.settings = { ...room.settings, ...spec };
+            room.doc = doc;
+            room.solution = solution;
+            room.board = { seq: 0, cells: {} };
+            room.startedAt = Date.now();
+            room.assists = 0;
+            room.focus.clear();
+            room.state = ROOM_STATE.PLAYING;
+            touchRoom(room);
+
+            broadcastRoom(io, room);
+            io.to(room.code).emit(SERVER_EVENT.GAME_STARTED, toSnapshot(room));
+            ack(ok());
+
+            // Get the next puzzle of this shape ready while everyone is busy with this one.
+            prewarm(spec);
+        }),
+    );
+
+    // Applies one cell op: the hot path (architecture.md §3).
+    socket.on(
+        CLIENT_EVENT.GAME_OP,
+        guard(CLIENT_EVENT.GAME_OP, (payload, ack) => {
+            if (!buckets.op.tryConsume()) {
+                ack(fail(ERROR.RATE_LIMITED, 'slow down'));
+                return;
+            }
+
+            const seat = currentSeat(socket);
+            if (!seat) {
+                ack(fail(ERROR.NOT_IN_ROOM, 'you are not in a room'));
+                return;
+            }
+
+            const room = seat.room;
+            if (room.state !== ROOM_STATE.PLAYING) {
+                ack(fail(ERROR.WRONG_STATE, 'no puzzle is in progress'));
+                return;
+            }
+
+            const module = getPuzzleModule(room.doc.type);
+            if (!module.validateOp(room.doc, payload.op)) {
+                ack(fail(ERROR.INVALID_OP, 'that op is not legal on this puzzle'));
+                return;
+            }
+
+            const seq = room.board.seq + 1;
+            room.board = applyOp(room.board, payload.op, { seq, by: seat.player.id });
+            touchRoom(room);
+
+            const stamped = { ...payload.op, seq, by: seat.player.id, at: Date.now() };
+            io.to(room.code).emit(SERVER_EVENT.GAME_OP, stamped);
+            ack(ok({ seq }));
+
+            if (module.isComplete(room.doc, room.board, room.solution)) {
+                finishPuzzle(io, room);
+            }
+        }),
+    );
+
+    // Broadcasts where a player is looking. Presence only — it locks nothing.
+    socket.on(
+        CLIENT_EVENT.GAME_FOCUS,
+        guard(CLIENT_EVENT.GAME_FOCUS, (payload, ack) => {
+            if (!buckets.focus.tryConsume()) {
+                ack(fail(ERROR.RATE_LIMITED, 'too many focus updates'));
+                return;
+            }
+
+            const seat = currentSeat(socket);
+            if (!seat) {
+                ack(fail(ERROR.NOT_IN_ROOM, 'you are not in a room'));
+                return;
+            }
+
+            const cell = payload.cell ?? null;
+            if (cell == null) {
+                seat.room.focus.delete(seat.player.id);
+            } else {
+                seat.room.focus.set(seat.player.id, cell);
+            }
+
+            socket.to(seat.room.code).emit(SERVER_EVENT.GAME_FOCUS, {
+                playerId: seat.player.id,
+                cell,
+            });
+            ack(ok());
+        }),
+    );
+
+    // Serves a full snapshot after a client detects a `seq` gap.
+    socket.on(
+        CLIENT_EVENT.SYNC_REQUEST,
+        guard(CLIENT_EVENT.SYNC_REQUEST, (_payload, ack) => {
+            const seat = currentSeat(socket);
+            if (!seat) {
+                ack(fail(ERROR.NOT_IN_ROOM, 'you are not in a room'));
+                return;
+            }
+
+            socket.emit(SERVER_EVENT.GAME_SNAPSHOT, toSnapshot(seat.room));
+            ack(ok());
+        }),
+    );
+
+    // Holds the seat for the grace period rather than dropping it immediately.
+    socket.on('disconnect', () => {
+        const seat = currentSeat(socket);
+        if (!seat || seat.player.socketId !== socket.id) return;
+
+        markDisconnected(seat.room, seat.player.id, config.disconnectGraceMs, (room, playerId) =>
+            onGraceExpired(io, room, playerId),
+        );
+        broadcastPlayers(io, seat.room);
+    });
+}
+
+/**
+ * Records a solved puzzle and tells the room. Completion is decided here, from server state, never
+ * claimed by a client.
+ */
+function finishPuzzle(io, room) {
+    room.state = ROOM_STATE.SOLVED;
+    room.streak += 1;
+    touchRoom(room);
+
+    io.to(room.code).emit(SERVER_EVENT.GAME_SOLVED, {
+        elapsedMs: Date.now() - room.startedAt,
+        streak: room.streak,
+        assists: room.assists,
+        revealed: false,
+        board: room.board,
+    });
+    broadcastRoom(io, room);
+}
+
+/**
+ * Wires connection-time identity: protocol check, then reconnect-token restore.
+ *
+ * @param {import('socket.io').Server} io - The Socket.IO server.
+ * @returns {void}
+ */
+export function registerConnectionHandler(io) {
+    io.on('connection', (socket) => {
+        socket.data = {};
+
+        if (!isProtocolCompatible(socket.handshake.auth?.protocolVersion)) {
+            socket.emit(SERVER_EVENT.ERROR, {
+                code: ERROR.PROTOCOL_MISMATCH,
+                message: 'this page is out of date — please refresh',
+            });
+            socket.disconnect(true);
+            return;
+        }
+
+        const restored = restoreSeat(socket);
+        if (restored) {
+            // Two tabs on one room share a token; the newer socket wins and the older is told why
+            // rather than silently misbehaving (ADR-0005).
+            if (restored.previousSocketId) {
+                const previous = io.sockets.sockets.get(restored.previousSocketId);
+                previous?.emit(SERVER_EVENT.ERROR, {
+                    code: ERROR.SEAT_TAKEN,
+                    message: 'this seat was claimed by another tab',
+                });
+                previous?.disconnect(true);
+            }
+
+            takeSeat(socket, restored.room, restored.player);
+            // The client already holds its token; what it needs back is which seat it is.
+            socket.emit(
+                SERVER_EVENT.ROOM_JOINED,
+                joinPayload(restored.room, restored.player, null),
+            );
+            broadcastPlayers(io, restored.room);
+        } else if (socket.handshake.auth?.token) {
+            socket.emit(SERVER_EVENT.ERROR, {
+                code: ERROR.ROOM_NOT_FOUND,
+                message: 'that room has ended',
+            });
+        }
+
+        registerHandlers(io, socket);
+
+        if (config.isDev) {
+            console.info(`[socket] ${socket.id} connected, restored=${Boolean(restored)}`);
+        }
+    });
+}

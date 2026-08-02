@@ -1,0 +1,102 @@
+/*
+ * The brand system as custom properties (brand.md).
+ *
+ * Every colour, font, radius, and spacing value in the app comes from here. A literal hex in a
+ * component is a review failure — that is what keeps the dark theme a token swap rather than an
+ * audit (code-style.md §9).
+ */
+
+:root {
+    /* Typography */
+    --font-display: 'Fraunces Variable', Georgia, serif;
+    --font-ui: 'Karla', system-ui, sans-serif;
+    --font-mono: 'DM Mono', ui-monospace, monospace;
+    --wordmark-variation: 'SOFT' 40, 'WONK' 1, 'opsz' 84;
+
+    --text-wordmark: 2.75rem;
+    --text-xl: 1.5rem;
+    --text-lg: 1.25rem;
+    --text-base: 1rem;
+    --text-sm: 0.8rem;
+    --text-xs: 0.64rem;
+
+    /* Colour — light, "paper" */
+    --paper: #fbf8f3;
+    --paper-raised: #fffdf9;
+    --ink: #1f1d1a;
+    --graphite: #6b6660;
+    --rule: #ded7cb;
+    --accent: #0e8fa8;
+    --accent-text: #0b7a8f;
+    --pencil: #3767cc;
+    --correct: #2f7a4a;
+    --wrong: #c4442e;
+
+    /*
+     * Player identities. Values are per theme: a colour dark enough to clear 4.5:1 on cream is too
+     * dark to clear it on charcoal, so one set cannot serve both (see the contrast test).
+     */
+    --player-0: #d23434;
+    --player-1: #ae4b97;
+    --player-2: #a75d16;
+    --player-3: #3d7e32;
+    --player-4: #177c7c;
+    --player-5: #5b63c4;
+    --player-6: #7a5aa8;
+    --player-7: #8a6c24;
+
+    /* Shape and line */
+    --radius-pill: 999px;
+    --radius-grid: 0;
+    --radius-modal: 12px;
+    --border: 1.5px solid var(--rule);
+    --shadow-modal: 0 8px 32px rgb(31 29 26 / 0.18);
+    --grid-hairline: 1px solid color-mix(in srgb, var(--graphite) 30%, transparent);
+    --grid-heavy: 2.5px solid var(--ink);
+
+    /* Texture */
+    --texture-gap: 24px;
+    --texture-opacity: 0.03;
+
+    /* Space */
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-6: 1.5rem;
+    --space-8: 2rem;
+    --space-12: 3rem;
+
+    --column-width: 640px;
+
+    /* Motion — collapsed to 0ms under prefers-reduced-motion, in base.css */
+    --motion-mark: 90ms;
+    --motion-presence: 120ms;
+    --motion-modal: 160ms;
+}
+
+/*
+ * Dark — "evening desk". Staged here so Phase 2 adds only the toggle, not a palette hunt. No
+ * `prefers-color-scheme` rule yet: the theme ships when its toggle and review do.
+ */
+:root[data-theme='dark'] {
+    --paper: #1a1815;
+    --paper-raised: #232019;
+    --ink: #ede7dc;
+    --graphite: #9a9288;
+    --rule: #3a342b;
+    --accent: #3fbbd4;
+    --accent-text: #3fbbd4;
+    --pencil: #7fa3e8;
+    --correct: #6fbf8b;
+    --wrong: #e88a76;
+
+    --player-0: #da5858;
+    --player-1: #bc63a7;
+    --player-2: #c9701a;
+    --player-3: #4b9b3e;
+    --player-4: #1d9a9a;
+    --player-5: #757ccd;
+    --player-6: #9176b7;
+    --player-7: #a8842c;
+}

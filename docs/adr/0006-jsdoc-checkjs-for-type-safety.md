@@ -1,6 +1,6 @@
 # ADR-0006 — JSDoc plus `checkJs` for type safety, and runtime validation at the boundary
 
-- **Status**: Accepted
+- **Status**: Accepted · **amended 2026-08-02 (Phase 1)** — see "Amendment: scope" below
 - **Date**: 2026-08-02
 - **Context**: [design-spec.md §10](../design-spec.md#10-socket-protocol) · [ADR-0003](0003-lit-and-vanilla-js-over-typescript.md)
 
@@ -29,6 +29,23 @@ There is also a separate problem that types do not solve at all: **a compiler ca
 - Every client-to-server handler validates before touching room state. Invalid payloads get a structured error ack; they never reach a handler.
 - Authorization is separate from validation and always server-side: a well-formed `game:reveal` from a non-host is rejected on authority, not shape.
 - `PROTOCOL_VERSION` travels in the handshake; a major mismatch returns "please refresh" instead of failing mysteriously after a deploy.
+
+## Amendment: scope (Phase 1)
+
+Mechanism 1 applies to **`shared/` only**. `npm run typecheck` and ESLint both run over the socket
+contract — `protocol.js`, `schema.js`, `board-reducer.js`, `constants.js`, `puzzle-doc.js` — and not
+over `client/` or `server/`.
+
+The reasoning is that this ADR's own argument is strongest exactly there and weakest elsewhere.
+What static checking buys is catching a renamed field or a changed shape *across the client/server
+boundary*, where the failure is a silent desync rather than a visible error. Inside application
+code, `checkJs` mostly produced noise about DOM narrowing and Lit's base-class typings — cost
+without the corresponding risk.
+
+Mechanism 2 is unaffected and does the load-bearing work: every inbound payload is still validated
+at the server boundary, which is what protects against hostile or stale clients. The "unannotated
+code silently becomes `any`" risk below now applies to `client/` and `server/` in full, and review
+is the only thing standing against it there.
 
 ## Consequences
 

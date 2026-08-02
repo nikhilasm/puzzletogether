@@ -237,15 +237,22 @@ One file, one concern. A module past ~300 lines is asking to be split.
 
 ## 10. Enforcement
 
-| Rule | How |
-|---|---|
-| Indentation, quotes, width, commas, semicolons | Prettier — auto-fixed |
-| `const`/`let`, `===`, floating promises, unused vars, import order | ESLint — errors |
-| `shared/` dependency direction | ESLint `no-restricted-imports` — error |
-| Type correctness of JSDoc | `npm run typecheck` (`tsc --noEmit`, `checkJs`) |
-| Conditional splitting style | Prettier does most of it; review catches the rest |
-| **Function, class, and public-method comments** | **Review** — ESLint can require a JSDoc block's presence, not that it says anything true |
-| No hard-coded design values in components | Review |
+**Scope, decided in Phase 1**: ESLint and `tsc --noEmit` run over **`shared/` only** — the socket
+contract, and the one place a silent mismatch desyncs the board rather than producing a visible
+bug. `client/` and `server/` are formatted by Prettier and covered by tests; they are not linted or
+type-checked. This narrows [ADR-0006](adr/0006-jsdoc-checkjs-for-type-safety.md)'s first mechanism
+without changing its second.
+
+| Rule | Where | How |
+|---|---|---|
+| Indentation, quotes, width, commas, semicolons | everywhere | Prettier — auto-fixed |
+| `const`/`let`, `===`, unused vars | `shared/` | ESLint — errors |
+| `shared/` dependency direction | `shared/` | ESLint `no-restricted-imports` — error |
+| Type correctness of JSDoc | `shared/` | `npm run typecheck` (`tsc --noEmit`, `checkJs`) |
+| Payload shapes at runtime | server boundary | `shared/schema.js`, covered by `schema.test.js` |
+| Conditional splitting style | everywhere | Prettier does most of it; review catches the rest |
+| **Function, class, and public-method comments** | everywhere | **Review** — a machine can require a JSDoc block's presence, not that it says anything true |
+| No hard-coded design values in components | `client/` | Review, plus the contrast gate in `tokens.test.js` |
 
 `npm run lint && npm run typecheck && npm test && npm run build` is what CI runs and what must pass before merge ([design-spec.md §12](design-spec.md#12-testing-tooling-ci)).
 
