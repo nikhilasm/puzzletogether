@@ -5,7 +5,7 @@ import { dirname, join } from 'node:path';
 import { Server } from 'socket.io';
 
 import { generateUniqueRoomCode, shuffle } from './utils.js';
-import ANSWERS from './answers.json' assert { type: 'json' };
+import ANSWERS from './answers.json' with { type: 'json' };
 
 const app = express();
 const HTTP_SERVER = createServer(app);
