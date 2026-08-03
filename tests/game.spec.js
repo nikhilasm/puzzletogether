@@ -48,7 +48,7 @@ test.describe('shape and focus', () => {
             'pt-keypad .actions button',
             'pt-player-chips .chip',
             'pt-switch button',
-            'pt-game .assist-buttons button',
+            'pt-game .puzzle-actions button',
         ]) {
             expect(await radius(selector), selector).toBe('6px');
         }
@@ -66,7 +66,7 @@ test.describe('shape and focus', () => {
             'pt-mode-toggle pt-switch button',
             'footer pt-switch button',
             'pt-sudoku-board .grid',
-            'pt-game .assist-buttons button',
+            'pt-game .puzzle-actions button',
         ];
 
         for (const theme of ['light', 'dark']) {
@@ -111,6 +111,52 @@ test.describe('shape and focus', () => {
         await expect(page.locator('pt-keypad .actions button').first()).toHaveText('Erase');
         await expect(page.locator('pt-keypad .actions button').last()).toHaveText('Undo');
         await expect(page.locator('pt-game .leave button')).toHaveText('Leave room');
+
+        const actions = page.locator('pt-game .puzzle-actions button');
+        await expect(actions).toHaveText(['Puzzle Select', 'Check', 'Reveal']);
+    });
+
+    test('the puzzle actions are one row, apart from the keys', async ({ page }) => {
+        const rows = await page.locator('pt-game').evaluate((game) => {
+            const buttons = [...game.shadowRoot.querySelectorAll('.puzzle-actions button')];
+            const keypad = game.shadowRoot.querySelector('pt-keypad').getBoundingClientRect();
+            return {
+                tops: buttons.map((el) => Math.round(el.getBoundingClientRect().top)),
+                belowKeypad: buttons[0].getBoundingClientRect().top > keypad.bottom,
+            };
+        });
+
+        expect(new Set(rows.tops).size, 'all three share a row').toBe(1);
+        expect(rows.belowKeypad).toBe(true);
+    });
+});
+
+test.describe('the notice line', () => {
+    test('says nothing and takes no room when there is nothing to say', async ({ page }) => {
+        await createRoom(page);
+        await startPuzzle(page);
+
+        const height = () =>
+            page.locator('pt-game .notice').evaluate((el) => el.getBoundingClientRect().height);
+
+        expect(await height()).toBe(0);
+
+        // A keypad press with no cell selected is the cheapest notice to provoke.
+        await page.locator('pt-keypad .digits button').first().click();
+        await expect(page.locator('pt-game .notice')).toHaveText('pick a square first');
+        expect(await height()).toBeGreaterThan(10);
+
+        // It sits under the keys whose result it reports, not down among the puzzle actions.
+        const order = await page.locator('pt-game').evaluate((game) => {
+            const box = (sel) => game.shadowRoot.querySelector(sel).getBoundingClientRect();
+            return {
+                keypad: box('pt-keypad').bottom,
+                notice: box('.notice').top,
+                actions: box('.puzzle-actions').top,
+            };
+        });
+        expect(order.notice).toBeGreaterThanOrEqual(order.keypad);
+        expect(order.notice).toBeLessThan(order.actions);
     });
 });
 

@@ -1,7 +1,7 @@
 /**
  * The icon set: inline SVG, drawn here rather than pulled from a pack.
  *
- * There are seven of them, they are all simple geometry, and a dependency would cost more than it
+ * There are ten of them, they are all simple geometry, and a dependency would cost more than it
  * saves. Emoji are banned as UI icons (brand.md §1) because they render as somebody else's artwork
  * at somebody else's weight — these instead inherit `currentColor` and the app's line weight, so an
  * icon inside a disabled control greys out with it and the dark theme needs no second asset.
@@ -80,6 +80,41 @@ export const leaveIcon = html`
 export const closeIcon = html`
     <svg viewBox="0 0 24 24" class="icon" aria-hidden="true">
         <path d="m7 7 10 10M17 7 7 17" />
+    </svg>
+`;
+
+/**
+ * Checking your work: a tick, the same idea `--correct` carries inside the grid.
+ *
+ * Deliberately not a magnifier. Check does not search the puzzle, it marks it — and the answer it
+ * gives back is drawn on the cells as ticks and crosses, so the button wears the result it produces.
+ */
+export const checkIcon = html`
+    <svg viewBox="0 0 24 24" class="icon" aria-hidden="true">
+        <path d="m5 12.5 4.5 4.5L19 7" />
+    </svg>
+`;
+
+/** Revealing the answer: an eye, because the solution was always there and is being shown. */
+export const revealIcon = html`
+    <svg viewBox="0 0 24 24" class="icon" aria-hidden="true">
+        <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" />
+        <circle cx="12" cy="12" r="3" />
+    </svg>
+`;
+
+/**
+ * Puzzle Select: the choice of puzzles, drawn as a set rather than as a back arrow.
+ *
+ * The destination is what makes this button different from Leave room, which sits a few pixels
+ * below it — two left arrows there would say the two controls do the same thing.
+ */
+export const puzzlesIcon = html`
+    <svg viewBox="0 0 24 24" class="icon" aria-hidden="true">
+        <rect x="3.5" y="3.5" width="7" height="7" rx="1.5" />
+        <rect x="13.5" y="3.5" width="7" height="7" rx="1.5" />
+        <rect x="3.5" y="13.5" width="7" height="7" rx="1.5" />
+        <rect x="13.5" y="13.5" width="7" height="7" rx="1.5" />
     </svg>
 `;
 

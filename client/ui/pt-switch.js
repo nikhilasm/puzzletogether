@@ -57,8 +57,10 @@ export class PtSwitch extends LitElement {
                 border-color: var(--accent);
             }
 
+            /* The track carries the state; the frame stays put. An accent border here read as a
+               focus ring on a control that is not focused, and said nothing the knob had not
+               already said. */
             button[aria-checked='true'] {
-                border-color: var(--accent);
                 color: var(--ink);
             }
 

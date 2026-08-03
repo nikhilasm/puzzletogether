@@ -13,7 +13,7 @@ import { effectiveValue, isEditable } from '../../shared/puzzle-doc.js';
 import { roomStore } from '../store/room-store.js';
 import { StoreController } from '../store/store-controller.js';
 import { controls } from '../styles/controls.js';
-import { iconStyle, leaveIcon } from '../ui/icons.js';
+import { checkIcon, iconStyle, leaveIcon, puzzlesIcon, revealIcon } from '../ui/icons.js';
 
 import './pt-confirm.js';
 import './pt-congrats-modal.js';
@@ -46,9 +46,13 @@ export class PtGame extends LitElement {
                 display: block;
             }
 
+            /* Title and timer are a caption on the grid, not a banner above it: they sit close
+               enough to read as one block with it, and the type steps down so the grid stays the
+               largest thing on the screen. Weight, not size, is what separates them from the
+               timer underneath. */
             .header {
-                margin: 0 0 var(--space-2);
-                font-size: var(--text-xl);
+                margin: 0 0 var(--space-1);
+                font-size: var(--text-lg);
                 font-weight: 400;
                 text-align: center;
             }
@@ -58,7 +62,7 @@ export class PtGame extends LitElement {
             }
 
             pt-timer {
-                margin-bottom: var(--space-4);
+                margin-bottom: var(--space-2);
             }
 
             .board {
@@ -86,10 +90,29 @@ export class PtGame extends LitElement {
                 align-items: center;
             }
 
-            .assist-buttons {
+            /*
+             * Everything that acts on the puzzle as a whole, in one row under a rule.
+             *
+             * Erase and Undo live on the keypad because they act on the cell you are in; Check,
+             * Reveal, and Back to Puzzle Select act on the room's puzzle, and two of the three are
+             * host-only. Keeping them apart is what stops a player reaching for Undo and finding
+             * Reveal. The rule is the separation — a border, not a shadow (brand.md §1).
+             */
+            .puzzle-actions {
                 display: flex;
+                flex-wrap: wrap;
                 gap: var(--space-3);
                 justify-content: center;
+                width: 100%;
+                max-width: 480px;
+                padding-top: var(--space-4);
+                border-top: var(--border);
+            }
+
+            .puzzle-actions button {
+                display: inline-flex;
+                gap: var(--space-2);
+                align-items: center;
             }
 
             .assists {
@@ -98,21 +121,29 @@ export class PtGame extends LitElement {
                 font-size: var(--text-sm);
             }
 
+            /*
+             * Sits under the keys, where the actions it reports on are.
+             *
+             * It stays in the DOM empty rather than being rendered conditionally — a live region
+             * has to exist before the text arrives or the announcement is missed — and takes no
+             * height at all in that state: an empty block has no line box, and the margins are
+             * hung off :not(:empty) so they arrive with the words.
+             */
             .notice {
-                min-height: 1.5rem;
                 margin: 0;
                 color: var(--graphite);
                 font-size: var(--text-sm);
                 font-style: italic;
+                text-align: center;
             }
 
-            .back {
-                margin-top: var(--space-2);
+            .notice:not(:empty) {
+                margin-bottom: var(--space-3);
             }
 
             /* Same control, same place in the reading order, on both screens. */
             .leave {
-                margin-top: var(--space-6);
+                margin-top: var(--space-2);
             }
 
             .leave button {
@@ -265,8 +296,11 @@ export class PtGame extends LitElement {
                 ></pt-sudoku-board>
             </div>
 
-            ${this.#renderKeypad(doc, state, isPlaying)} ${this.#renderControls(state, isPlaying)}
-            ${this.#renderDialogs(state)}
+            ${this.#renderKeypad(doc, state, isPlaying)}
+
+            <p class="notice" role="status" aria-live="polite">${state.notice?.text ?? ''}</p>
+
+            ${this.#renderControls(state, isPlaying)} ${this.#renderDialogs(state)}
         `;
     }
 
@@ -294,31 +328,48 @@ export class PtGame extends LitElement {
     }
 
     /**
-     * The assist buttons and the host's way out. Reveal is host-only and destructive, so it is the
-     * one control behind a confirm dialog.
+     * The puzzle-wide actions, then the way out of the room.
+     *
+     * The row renders only the actions this player actually has, and disappears entirely for a
+     * non-host in a room with checking switched off — an empty rule under the keypad would be a
+     * line drawn around nothing.
      */
     #renderControls(state, isPlaying) {
         const settings = state.room?.settings ?? {};
+        const canCheck = isPlaying && settings.checkingAllowed;
+        const canReveal = isPlaying && roomStore.isHost && settings.revealAllowed;
+        const canGoBack = roomStore.isHost;
 
         return html`
             <div class="controls">
                 ${
-                    isPlaying
+                    canCheck || canReveal || canGoBack
                         ? html`
-                              <div class="assist-buttons">
+                              <div class="puzzle-actions">
                                   ${
-                                      settings.checkingAllowed
+                                      canGoBack
+                                          ? html`<button
+                                                type="button"
+                                                ?disabled=${this.busy}
+                                                @click=${() => void roomStore.backToSelect()}
+                                            >
+                                                ${puzzlesIcon} Puzzle Select
+                                            </button>`
+                                          : nothing
+                                  }
+                                  ${
+                                      canCheck
                                           ? html`<button
                                                 type="button"
                                                 ?disabled=${this.busy}
                                                 @click=${() => void roomStore.check()}
                                             >
-                                                Check
+                                                ${checkIcon} Check
                                             </button>`
                                           : nothing
                                   }
                                   ${
-                                      roomStore.isHost && settings.revealAllowed
+                                      canReveal
                                           ? html`<button
                                                 type="button"
                                                 ?disabled=${this.busy}
@@ -326,7 +377,7 @@ export class PtGame extends LitElement {
                                                     this.confirmingReveal = true;
                                                 }}
                                             >
-                                                Reveal
+                                                ${revealIcon} Reveal
                                             </button>`
                                           : nothing
                                   }
@@ -339,21 +390,6 @@ export class PtGame extends LitElement {
                         ? html`<p class="assists">
                               ${state.assists === 1 ? '1 assist' : `${state.assists} assists`} used
                           </p>`
-                        : nothing
-                }
-
-                <p class="notice" role="status" aria-live="polite">${state.notice?.text ?? ''}</p>
-
-                ${
-                    roomStore.isHost
-                        ? html`<button
-                              class="back"
-                              type="button"
-                              ?disabled=${this.busy}
-                              @click=${() => void roomStore.backToSelect()}
-                          >
-                              Back to Puzzle Select
-                          </button>`
                         : nothing
                 }
 

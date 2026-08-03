@@ -214,19 +214,23 @@ It should be invisible until you look for it. This is the detail that makes the 
 
 ### Icons
 
-Seven of them, drawn as inline SVG in `client/ui/icons.js`: **erase, undo, pencil (Notes), sun, moon, leave, close (remove a player)**. Emoji stay banned — they arrive as someone else's artwork at someone else's weight, and they don't recolour. These are line drawings on a 24×24 box that inherit `currentColor` and `--stroke-icon` (1.5, the border weight), so an icon inside a disabled control greys out with it and neither theme needs a second asset.
+Ten of them, drawn as inline SVG in `client/ui/icons.js`: **erase, undo, pencil (Notes), sun, moon, leave, close (remove a player), check, reveal, puzzles (Puzzle Select)**. Emoji stay banned — they arrive as someone else's artwork at someone else's weight, and they don't recolour. These are line drawings on a 24×24 box that inherit `currentColor` and `--stroke-icon` (1.5, the border weight), so an icon inside a disabled control greys out with it and neither theme needs a second asset.
 
 ```css
 --stroke-icon: 1.5;   /* the border weight, so icons and rules read as one hand */
 ```
 
-**An icon never carries meaning alone.** Erase, Undo, and Leave room keep their words; the switch icons repeat a visible label. The one unlabelled icon is the host's remove control, which is why its `aria-label` names the player it would remove. Every icon is `aria-hidden`, because the control around it already has a name. An eighth should be a decision, not a reflex — the moment there are twelve, the page is a toolbar.
+**An icon never carries meaning alone.** Erase, Undo, Leave room, and the three puzzle actions keep their words; the switch icons repeat a visible label. The one unlabelled icon is the host's remove control, which is why its `aria-label` names the player it would remove. Every icon is `aria-hidden`, because the control around it already has a name. An eleventh should be a decision, not a reflex — the moment there are twenty, the page is a toolbar.
+
+**Two icons that mean different things must look different.** Puzzle Select is a set of four squares, not a back arrow, because Leave room sits a few pixels below it wearing an arrow already — two arrows in a column would say the two buttons do the same thing. Check is a tick rather than a magnifier for the opposite reason: it should look like the ticks and crosses it draws on the cells.
 
 ### Controls: buttons versus switches
 
 A **button** says *do this* — Check, Reveal, Start another. A **switch** says *this is how things are* — Notes, Dark theme. The distinction is worth keeping literal: switches are `role="switch"` with the state in the track, so you can read the setting without reading the label, and screen readers announce it as a state rather than an action. Both settle to `--radius-control`; only the track inside a switch is round.
 
 An engaged switch borrows the same 16% accent wash a selected cell uses. It never fills with colour — colour belongs to people (principle 2).
+
+**The state lives in the track and nowhere else.** An engaged switch got an accent border as well, until the obvious happened: an accent frame on a control nobody was focusing read as a stuck focus ring, since accent-on-the-outside means *focused* everywhere else in the app. The knob had already said it. A second channel is worth it when the first is colour alone (see the taken swatches, which are greyed *and* struck); it is a liability when it collides with a meaning the same treatment already carries.
 
 ### The focus ring
 

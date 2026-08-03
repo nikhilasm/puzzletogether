@@ -1,5 +1,5 @@
 /**
- * The player roster: one chip per player, two per row, host marked with a star, `x/n` above.
+ * The player roster: one chip per player, two per row, host marked with a leading star, `x/n` above.
  *
  * The only place besides the presence dots where player colour appears — and the name is always
  * beside it, because colour is never the only channel (brand.md §3).
@@ -348,11 +348,11 @@ export class PtPlayerChips extends LitElement {
         const label = `${player.name}${isSelf ? ', you' : ''}${isHost ? ', host' : ''} (${colorName})${status}`;
 
         const body = html`
+            ${isHost ? html`<span class="host" aria-hidden="true">★</span>` : nothing}
             <span class="name" style="color: var(--player-${player.colorIndex});">
                 ${player.name}
             </span>
             ${isSelf ? html`<span class="you">you</span>` : nothing}
-            ${isHost ? html`<span class="host" aria-hidden="true">★</span>` : nothing}
         `;
 
         return html`
