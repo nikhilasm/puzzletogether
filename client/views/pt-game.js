@@ -7,9 +7,12 @@
  */
 
 import { LitElement, css, html, nothing } from 'lit';
+import { html as staticHtml } from 'lit/static-html.js';
 
+import { PUZZLE_TYPE_NAMES } from '../../shared/constants.js';
 import { ROOM_STATE } from '../../shared/protocol.js';
 import { effectiveValue, isEditable } from '../../shared/puzzle-doc.js';
+import { boardFor } from '../boards/registry.js';
 import { roomStore } from '../store/room-store.js';
 import { StoreController } from '../store/store-controller.js';
 import { controls } from '../styles/controls.js';
@@ -17,7 +20,7 @@ import { checkIcon, iconStyle, leaveIcon, puzzlesIcon, revealIcon } from '../ui/
 
 import './pt-confirm.js';
 import './pt-congrats-modal.js';
-import '../boards/pt-sudoku-board.js';
+import '../ui/pt-brush-bar.js';
 import '../ui/pt-keypad.js';
 import '../ui/pt-mode-toggle.js';
 import '../ui/pt-timer.js';
@@ -177,6 +180,7 @@ export class PtGame extends LitElement {
         state.solved,
         state.room,
         state.inputMode,
+        state.brush,
         state.checkResults,
         state.assists,
         state.notice,
@@ -231,6 +235,11 @@ export class PtGame extends LitElement {
         roomStore.inputDigit(cell, event.detail.value);
     }
 
+    /** A finished nonogram stroke, already batched by the board into one run of cells. */
+    #onPaint(event) {
+        roomStore.paintCells(event.detail.cells, event.detail.value);
+    }
+
     /** Erase from the on-screen keypad. */
     #onKeypadErase() {
         const cell = this.#targetCell();
@@ -266,8 +275,9 @@ export class PtGame extends LitElement {
 
         const size = `${doc.size.rows}x${doc.size.cols}`;
         const difficulty = doc.difficulty[0].toUpperCase() + doc.difficulty.slice(1);
-        const type = doc.type[0].toUpperCase() + doc.type.slice(1);
+        const type = PUZZLE_TYPE_NAMES[doc.type] ?? doc.type;
         const isPlaying = state.room?.state === ROOM_STATE.PLAYING;
+        const board = boardFor(doc.type);
 
         return html`
             <h2 class="header"><strong>${type}</strong>: ${difficulty} ${size}</h2>
@@ -282,21 +292,13 @@ export class PtGame extends LitElement {
                 @pt-cell-select=${this.#onSelect}
                 @pt-cell-input=${this.#onCellInput}
                 @pt-cell-clear=${this.#onCellClear}
+                @pt-cells-paint=${this.#onPaint}
                 @pt-undo=${() => roomStore.undo()}
             >
-                <pt-sudoku-board
-                    .doc=${doc}
-                    .board=${state.view}
-                    .focus=${state.focus}
-                    .players=${state.room?.players ?? []}
-                    .selfId=${state.playerId}
-                    .selection=${state.selection}
-                    .checkResults=${state.checkResults}
-                    .interactive=${isPlaying}
-                ></pt-sudoku-board>
+                ${this.#renderBoard(board, doc, state, isPlaying)}
             </div>
 
-            ${this.#renderKeypad(doc, state, isPlaying)}
+            ${this.#renderInput(board, doc, state, isPlaying)}
 
             <p class="notice" role="status" aria-live="polite">${state.notice?.text ?? ''}</p>
 
@@ -304,18 +306,54 @@ export class PtGame extends LitElement {
         `;
     }
 
-    /** The Notes switch and the keypad, sized to this puzzle's alphabet. */
-    #renderKeypad(doc, state, isPlaying) {
+    /**
+     * The grid itself, whichever element this puzzle type renders with.
+     *
+     * A static template so the tag can vary while lit still caches one template per board type —
+     * `boardFor` hands back a `literal`, not a string, which is what keeps this from re-parsing the
+     * template on every render.
+     */
+    #renderBoard(board, doc, state, isPlaying) {
+        return staticHtml`
+            <${board.tag}
+                .doc=${doc}
+                .board=${state.view}
+                .focus=${state.focus}
+                .players=${state.room?.players ?? []}
+                .selfId=${state.playerId}
+                .selection=${state.selection}
+                .checkResults=${state.checkResults}
+                .interactive=${isPlaying}
+                .brush=${state.brush}
+            ></${board.tag}>
+        `;
+    }
+
+    /**
+     * Whatever decides what an input means, over the row that acts on a cell.
+     *
+     * The branch is on how the puzzle takes input, not on which puzzle it is — a nonogram has brushes
+     * where a sudoku has digits, and the crossword that arrives in Phase 4 has neither. The Undo row
+     * underneath is common to all of them.
+     */
+    #renderInput(board, doc, state, isPlaying) {
+        const setting =
+            board.input === 'brushes'
+                ? html`<pt-brush-bar
+                      .brush=${state.brush}
+                      .disabled=${!isPlaying}
+                      @pt-brush-change=${(event) => roomStore.setBrush(event.detail.brush)}
+                  ></pt-brush-bar>`
+                : html`<pt-mode-toggle
+                      .mode=${state.inputMode}
+                      .disabled=${!isPlaying}
+                      @pt-mode-change=${(event) => roomStore.setInputMode(event.detail.mode)}
+                  ></pt-mode-toggle>`;
+
         return html`
-            <div class="mode-bar">
-                <pt-mode-toggle
-                    .mode=${state.inputMode}
-                    .disabled=${!isPlaying}
-                    @pt-mode-change=${(event) => roomStore.setInputMode(event.detail.mode)}
-                ></pt-mode-toggle>
-            </div>
+            <div class="mode-bar">${setting}</div>
             <pt-keypad
-                .alphabet=${doc.meta.alphabet ?? ''}
+                .alphabet=${(board.input === 'digits' && doc.meta.alphabet) || ''}
                 .counts=${digitCounts(doc, state.view)}
                 .capacity=${doc.size.rows}
                 .canUndo=${state.canUndo}

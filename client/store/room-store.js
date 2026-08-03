@@ -22,7 +22,7 @@ import {
     SERVER_EVENT,
 } from '../../shared/protocol.js';
 
-import { clearOp, opForDigit, opResult, restoreOp, setOp } from './ops.js';
+import { clearOp, fillOp, opForDigit, opResult, restoreOp, setOp } from './ops.js';
 import { UndoStack, sameCell, snapshotCell } from './undo-stack.js';
 
 /** `localStorage` key holding the reconnect token for one room. */
@@ -69,6 +69,9 @@ function initialState() {
         clockOffsetMs: 0,
         solved: null,
         inputMode: INPUT_MODE.SOLVE,
+        // Which mark a nonogram tap lays down. Filling is what a solver does most, so it is the one
+        // you start on; the other two are what you switch to.
+        brush: 'fill',
         checkResults: {},
         assists: 0,
         canUndo: false,
@@ -216,6 +219,28 @@ export class RoomStore {
     }
 
     /**
+     * Writes one value across a run of cells — what a nonogram drag produces.
+     *
+     * The undo entries are written here rather than left to `#sendOp`, because they are per cell
+     * while the op is not: they carry a shared group id so the whole stroke walks back together.
+     *
+     * @param {number[]} cells - Cell indices the stroke covered.
+     * @param {string|null} value - The value to write, or null to empty them.
+     * @returns {void}
+     */
+    paintCells(cells, value) {
+        if (cells.length === 0) return;
+
+        const op = fillOp(this.#makeOpId(), cells, value);
+        for (const cell of cells) {
+            const before = snapshotCell(this.#state.view.cells[cell]);
+            this.#undo.record({ cell, before, after: opResult(op, before), group: op.opId });
+        }
+
+        this.#sendOp(op, null, { record: false });
+    }
+
+    /**
      * Switches between entering values and entering pencil marks.
      *
      * @param {string} mode - One of `INPUT_MODE`.
@@ -227,28 +252,84 @@ export class RoomStore {
     }
 
     /**
+     * Switches which mark a nonogram tap or drag lays down.
+     *
+     * Client-side only, like the Notes mode: the op says what it writes, so the server never needs to
+     * know which brush produced it. It is also **per player** — two people can be painting and
+     * crossing the same picture at once without fighting over one setting.
+     *
+     * @param {string} brush - One of `'fill'`, `'cross'`, or `'erase'`.
+     * @returns {void}
+     */
+    setBrush(brush) {
+        if (!['fill', 'cross', 'erase'].includes(brush)) return;
+        this.#set({ brush });
+    }
+
+    /**
      * Undoes this player's most recent edit by making a new one that restores the earlier value.
      *
-     * Forward-only: if somebody else has written to that cell since, the entry is dropped and the
-     * board is left alone, because rewinding over their work would be the greater surprise
-     * (design-spec.md §6).
+     * Forward-only: if somebody else has written to a cell since, that cell is left alone, because
+     * rewinding over their work would be the greater surprise (design-spec.md §6).
+     *
+     * A drag walks back as one action, and one cell of it having moved on does not strand the other
+     * nineteen — the cells still holding what this player left there are restored, and the notice
+     * says the rest were not.
      *
      * @returns {void}
      */
     undo() {
-        const entry = this.#undo.pop();
+        const entries = this.#undo.popGroup();
         this.#set({ canUndo: this.#undo.size > 0 });
-        if (!entry) return;
+        if (entries.length === 0) return;
 
-        const current = snapshotCell(this.#state.view.cells[entry.cell]);
-        if (!sameCell(current, entry.after)) {
-            this.#notice('that cell has changed since — undo skipped');
+        const restorable = entries.filter((entry) =>
+            sameCell(snapshotCell(this.#state.view.cells[entry.cell]), entry.after),
+        );
+
+        if (restorable.length === 0) {
+            this.#notice(
+                entries.length === 1
+                    ? 'that cell has changed since — undo skipped'
+                    : 'those squares have changed since — undo skipped',
+            );
             return;
         }
 
-        this.#sendOp(restoreOp(this.#makeOpId(), entry.cell, entry.before), current, {
-            record: false,
-        });
+        this.#restore(restorable);
+        if (restorable.length < entries.length) {
+            this.#notice('some squares had changed since — those were left as they are');
+        }
+    }
+
+    /**
+     * Puts a set of cells back the way their undo entries remember them.
+     *
+     * Cells that were left in the same state travel together as one `fill`, so undoing a
+     * twenty-cell drag is one write rather than twenty — which matters because twenty ops in a burst
+     * is most of a player's rate-limit allowance (`OP_RATE_LIMIT`) spent walking something back.
+     */
+    #restore(entries) {
+        const byValue = new Map();
+        for (const entry of entries) {
+            // Only value-only states can share an op; anything with marks is restored on its own.
+            const key = entry.before.marks.length > 0 ? Symbol('marks') : entry.before.value;
+            if (!byValue.has(key)) byValue.set(key, []);
+            byValue.get(key).push(entry);
+        }
+
+        for (const group of byValue.values()) {
+            const current = snapshotCell(this.#state.view.cells[group[0].cell]);
+            const op =
+                group.length === 1
+                    ? restoreOp(this.#makeOpId(), group[0].cell, group[0].before)
+                    : fillOp(
+                          this.#makeOpId(),
+                          group.map((entry) => entry.cell),
+                          group[0].before.value,
+                      );
+            this.#sendOp(op, current, { record: false });
+        }
     }
 
     /**

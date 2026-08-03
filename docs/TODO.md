@@ -4,9 +4,9 @@
 >
 > Phases and their done-when criteria come from [design-spec.md §13](design-spec.md#13-phases).
 
-**Current phase**: 2 — the full game screen
+**Current phase**: 3 — nonogram + kenken
 **Branch**: `feature-puzzletogether`
-**Last updated**: 2026-08-02
+**Last updated**: 2026-08-03
 
 Legend: `[ ]` pending · `[x]` done · `[~]` in progress · `[!]` blocked · `[-]` deferred, with a reason
 
@@ -230,15 +230,87 @@ wiring, control order, both themes, 320px):
 
 *Done when: both are playable and **adding them required no changes to `shared/` or `<pt-board>`**. If it did, the abstraction is wrong and gets fixed here.*
 
-- [ ] KenKen generator: Latin square → cage partition → op assignment → uniqueness check
-- [ ] KenKen time budget / retry cap for larger sizes
-- [ ] `<pt-kenken-board>` — cage borders, cage labels
-- [ ] Nonogram generator: bitmap → line-solver uniqueness rejection
-- [ ] `<pt-nonogram-board>` — clue gutters, tri-state cells
-- [ ] Nonogram drag-fill batched into single `fill` ops
-- [ ] Keypad slot becomes fill/mark/erase tri-toggle for nonogram
-- [ ] **Confirm no `shared/` or `<pt-board>` changes were needed** — if they were, record why and fix the abstraction
-- [ ] Visual check of the brand against the mock's actual KenKen layout
+**KenKen**
+- [x] KenKen generator: Latin square → cage partition → op assignment → uniqueness check
+- [x] KenKen time budget / retry cap for larger sizes — plus cage *splitting*, which is what makes
+      generation total rather than best-effort
+- [x] `<pt-kenken-board>` — cage borders, cage labels. **40 lines, and no `<pt-board>` change.**
+- [x] Sizes 4–7, difficulty as a generation parameter (recorded below)
+
+**Nonogram**
+- [x] Nonogram generator: bitmap → line-solver uniqueness rejection
+- [x] Measured difficulty from the same line-solver, calibrated per size
+- [x] `<pt-nonogram-board>` — clue gutters, tri-state cells, five-square counting bands
+- [x] Nonogram drag-fill batched into single `fill` ops, axis-locked, one press of Undo per stroke
+- [x] The run washes in the accent as the drag covers it, before the op commits — `isHighlighted`,
+      the same `<pt-board>` hook crossword's entry highlighting will use
+- [x] Filled squares take the whole cell, so a run reads as one bar rather than a line of dots
+- [x] 20×20 nonogram kept, but the option leads with a warning triangle in Puzzle Select and a line
+      saying why once picked; a type now defaults to its largest *uncautioned* size
+- [x] The grid is opaque — the graph-paper texture was showing through the cells as a second,
+      unaligned ruling inside the real one
+- [x] Nonogram's counting bands are the hairline's colour at 3px rather than `--ink`, which read as
+      thin filled squares competing with the picture. `--grid-frame-width` split out from
+      `--grid-heavy-width` so a board can thicken its inner rules without moving its own clue gutters
+- [x] Nonogram crosses sized to the square (0.92 of a cell) rather than to the type scale
+- [x] Keypad slot becomes a `Fill · Cross · Erase` tri-toggle; Notes and the digits drop out, Undo stays
+
+**Seams**
+- [x] `client/boards/registry.js` — board element and input style per type, so `<pt-game>` branches on
+      *how a puzzle takes input*, never on which puzzle it is
+- [x] `server/puzzles/value-grid.js` — `isComplete` / `checkCells` / `digitAlphabet` shared by sudoku
+      and kenken instead of copied into the new type
+- [x] `DIFFICULTY_MIN_SIDE` becomes per type — the floor was sudoku's, not the platform's
+- [x] **Confirmed: `shared/` needed no logic changes** (see below)
+
+**Tests**
+- [x] `server/puzzles/kenken/kenken.test.js` — clue truth, cage coverage and connectivity, Latin
+      square, uniqueness, 7×7 inside budget
+- [x] `server/puzzles/nonogram/nonogram.test.js` — line-solver deductions, ambiguity refused,
+      measured labels, completion on fills alone
+- [x] `tests/puzzle-types.spec.js` — 14 browser checks per engine
+
+**Verify**
+- [x] Full gate green: 181 unit tests, lint, typecheck, Prettier, build, **114 browser checks** in
+      Chromium and Firefox
+- [x] 20×20 nonogram at 320px — no horizontal scroll, square frame, 44px brush targets. It fits, but
+      the squares end up around ten pixels with the gutters taking a third of the width, which is
+      what the Puzzle Select caution now says out loud rather than leaving the host to discover
+- [x] Visual check of the brand against the mock's actual KenKen layout — cage rules read as the
+      mock's signature heavy borders; `+ − × ÷` render in Karla
+
+> **The abstraction held where it mattered and was extended where it did not.** No logic changed in
+> `protocol.js`, `schema.js`, `board-reducer.js`, or `puzzle-doc.js`: the batched `fill` op and the
+> one-character cell value were specified in Phase 1 and were waiting. `constants.js` gained list
+> entries, which is the intended cost of a type.
+>
+> `<pt-board>` gained `valueGlyphs` and `renderTopGutter` / `renderSideGutter`. That is a gap closing
+> rather than an abstraction failing — [design-spec.md §7](design-spec.md#7-the-puzzle-abstraction)
+> claimed since Phase 0 that subclasses supply cell rendering and clue gutters, and neither hook
+> existed because sudoku never asked. Both are general and cost the other types nothing.
+> **KenKen needed no `<pt-board>` change at all.**
+
+> **KenKen's difficulty is a generation parameter; nonogram's is measured.** Deliberate, not an
+> oversight. A nonogram's line-solver already has to run to prove the puzzle fair, and the sweeps it
+> takes *are* the difficulty — free and honest. Rating a KenKen would need a technique-ranked cage
+> solver, which is the same expensive search that already dominates its generation. So KenKen's label
+> is what was asked for and sudoku's and nonogram's are what was measured, and that difference is
+> written down here rather than discovered later.
+
+> **Three bugs the browser pass caught**, all in shared machinery rather than in the new types:
+> 1. `--cell-size` was published on the grid, which the clue gutters are not inside — so at 20×20 on
+>    a phone twenty clue rows sized themselves for a 40px cell and stretched the frame half again as
+>    tall as the squares in it. It is published on the host now.
+> 2. **A circular layout dependency**: clue size came from the cell size, which came from the grid
+>    width, which is what is left after the gutter, which is as wide as its clues. The board reflowed
+>    two or three times settling it, and a tap during the settle painted the wrong square. The board
+>    is a size container now and the clues size off `cqw`, which nothing downstream can move.
+> 3. Clicking a cell called `focus()`, which **scrolls**, so the grid moved out from under the finger
+>    still on it. `preventScroll` — a fix for every board type, not just nonogram.
+
+> **A stroke that ends outside the window still commits.** The release is watched on the window
+> rather than the grid, because letting go past the bottom of a tall grid is easy and used to discard
+> everything the player had just painted.
 
 ---
 
@@ -286,6 +358,6 @@ Carried from [design-spec.md §14](design-spec.md#14-risks-and-open-questions). 
 | 4 | Can 8 player colors all clear AA on cream, or drop to 6? | Phase 1 | **Resolved — 8 survive, but per theme.** One shared set cannot clear 4.5:1 on both backgrounds; `--player-N` is now defined in each theme block. |
 | 5 | Does per-cell LWW feel bad in practice? | Phase 2 playtest | Open — the machinery is now all there to judge it, but two scripted browsers are not a playtest. Soft-lock fallback stays in [ADR-0001](adr/0001-shared-state-lww-per-cell.md). |
 | 6 | Is Lit fast enough for a 25×25 grid? | Phase 1 | **Resolved — yes, comfortably.** 625 cells: 19ms first render, 2.9ms median / 5.3ms p95 single-cell update, 1.7ms presence update. |
-| 7 | KenKen uniqueness cost above 7×7 | Phase 3 | Open |
+| 7 | KenKen uniqueness cost above 7×7 | Phase 3 | **Resolved — 7×7 stands.** Measured across 15 puzzles per size and difficulty: ~1ms at 5×5 hard, ~11ms at 6×6 hard, **~170ms median / 870ms worst at 7×7 hard**; easy and medium are single-digit ms everywhere. Well inside a background pool refill, so no player waits on it. Above 7×7 was not measured and is not offered. |
 | 8 | Sudoku difficulty targeting misses the requested band ~1% of the time | Phase 2 | **Resolved for the sizes that matter.** 4×4 and 6×6 always measure `easy` — there is no room for a technique beyond singles — so Puzzle Select disables the difficulty picker below 9×9 and says why (`DIFFICULTY_MIN_SIDE`). At 9×9 the ~1% miss stands, and the label remains the measured rating. |
-| 9 | Undo is per-player and forward-only — does it surprise people? | Phase 3 playtest | Open. A cell that somebody else has touched since is left alone and the player gets a notice; whether that reads as "safe" or as "broken" needs real players. Flagged as a risk in [design-spec.md §14](design-spec.md#14-risks-and-open-questions) from the start. |
+| 9 | Undo is per-player and forward-only — does it surprise people? | Phase 3 playtest | Open, and now with more surface. A cell somebody else has touched since is left alone with a notice; whether that reads as "safe" or "broken" still needs real players. Phase 3 added the **partial** case: one drag is one undo, so if a single square of a twenty-square stroke has moved on, the other nineteen are restored and the notice says the rest were left. All-or-nothing was the alternative and seemed clearly worse; unverified with players. |

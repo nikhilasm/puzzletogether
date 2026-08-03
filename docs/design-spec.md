@@ -1,6 +1,6 @@
 # PuzzleTogether — Design Spec
 
-> **Status**: approved · **Branch**: `feature-puzzletogether` · **Last updated**: 2026-08-02
+> **Status**: approved · **Branch**: `feature-puzzletogether` · **Last updated**: 2026-08-03
 >
 > Companion documents: [brand.md](brand.md) · [architecture.md](architecture.md) · [code-style.md](code-style.md) · [adr/](adr/) · [TODO.md](TODO.md)
 
@@ -110,6 +110,7 @@ Cream paper rather than white, warm near-black ink, no cool gray anywhere. Fraun
   - **Entered values are large, bold, and `--ink` — not tinted by author.** Attribution is not carried by value color.
   - **Presence is colored dots in the cell's top-right**, one per player focused there; the mock shows two in a single cell. Render up to 3, then `+n`. The overlay declares **both grid axes**: with only its columns named, every row past the first was an implicit track sized to its dot, and a dot below the top row landed nowhere near its cell.
   - **Pencil marks** are small `--pencil` digits, each in the fixed slot its digit always occupies, in a mark grid that also declares **both axes** — for the same reason, and because a mark that moves when its neighbours change defeats the point of fixed slots.
+  - **The grid is opaque.** The page's graph-paper texture is the surface the puzzle sits *on*; showing through the cells it read as a second, unaligned ruling inside the real one. The background sits on the frame, so the selection and stroke washes still composite over one flat backdrop rather than over a colour of their own.
   - **Every cell is the same box, whatever borders it carries.** Cells are `border-box` with 1px hairlines throughout, and region rules are drawn as an overlay on top rather than as a heavier border. As a border, the heavy rule changed the cell's geometry (visible in Firefox as a 1px row misalignment, which Chromium rounded away) and mitred with the hairline on the adjoining edge, cutting a pale notch across the rule at every crossing.
 - **`Notes` switch** — input mode: pencil marks vs. entering values. **Revised in Phase 2** from the mock's `Notes | Solve` segmented pair to a single labelled switch, and moved to sit directly above the keypad. Two segments implied two independent things to choose between when there is really one setting, of which Solve is simply the off state — and the control belongs with the digits whose meaning it changes, not down among Check and Reveal.
 - **`Check` and `Reveal` buttons** — check current entries; reveal the full grid. **Reveal is renamed from the mock's "Solve"** to kill the collision with the input-mode toggle, and it opens a confirm dialog ("Reveal the whole puzzle? This ends your room's solve streak.") because it is destructive and resets the streak.
@@ -123,17 +124,31 @@ Actions are buttons and settings are switches — see [brand.md §4](brand.md) f
 
 Screens: **Landing → Create / Join → Puzzle Select → Game.** "Puzzle Select" replaces the prototype's generic lobby — it is where the host picks type, difficulty, and size while everyone waits, and where the room returns between puzzles. It also carries the room's only **`Leave room`** button, set quietly below the host's controls.
 
+**A choice can be offered and still carry a caveat.** A 20×20 nonogram is a good puzzle on a laptop and a cramped one on a phone, so the option wears a small warning triangle and, once picked, explains itself in a line beneath the row. It is not disabled: the host may well be on a laptop, and the point is that they are often *the one person in the room who cannot see the problem*. Two rules follow from the brand — the note is `--graphite` like every other note and never `--wrong`, because nothing has gone wrong; and the triangle rides in the option's accessible name as well, because a bare triangle says only that *something* is the matter. A type also **defaults to its largest uncautioned size**, since landing the host on the size the picker warns about would be an odd thing to warn about.
+
 ### Landing
 
 Two **tabs** — `Create` and `Join` — over a single form. Create asks for a name; Join asks for a name and a room code. The tabs are set as **text over a shared rule**, not as a pair of buttons: they name which half of the form you are looking at rather than offering two actions, and boxed they competed with the button that actually does something. **Revised in Phase 2**: showing both paths at once meant two buttons and three fields on screen with nothing saying which button the code field belonged to, and the first thing a new visitor has to do should not be a puzzle. The name input is rendered once, outside the branch, so changing tabs does not lose what you typed. Arriving on a room URL without a seat opens the Join tab with the code filled in, because that is the question that visitor was already asking.
 
 ### On-screen keypad
 
-Number-based puzzles (sudoku, kenken) show a persistent keypad below the grid, NYT-sudoku style: digits `1..n` sized to the puzzle's alphabet, plus delete. It routes through the same op path as physical keyboard input and respects the Notes/Solve mode. It stays visible on desktop, not just touch — it doubles as an affordance showing which digits remain available. Nonogram reuses the slot for a fill / mark / erase tri-toggle; crossword falls back to the native keyboard.
+Number-based puzzles (sudoku, kenken) show a persistent keypad below the grid, NYT-sudoku style: digits `1..n` sized to the puzzle's alphabet, plus delete. It routes through the same op path as physical keyboard input and respects the Notes/Solve mode. It stays visible on desktop, not just touch — it doubles as an affordance showing which digits remain available. Crossword falls back to the native keyboard.
 
 **Undo sits in this row too**, beside Erase, rather than with Check and Reveal. The mock has no Undo control, and Ctrl+Z is not a thing a phone has — so it needed a button, and putting it with Erase keeps every way of changing a cell in one place. Ctrl+Z still works when the grid has keyboard focus.
 
 The block reads **Notes switch → digits → Erase / Undo**, so everything that decides what a keypress means sits above the keys, and everything that undoes one sits below.
+
+**Nonogram takes the same slot with `Fill · Cross · Erase`** — a tri-toggle, because picking a brush changes what the grid does next rather than changing the grid, the same distinction that makes Notes a switch and Check a button. It replaces *both* the Notes switch and the digits: a nonogram has no digits to press, and no pencil marks either, because the cross **is** the note. Three mutually exclusive states is one more than a switch can hold, so it borrows the `aria-pressed` option-group pattern from the puzzle pickers.
+
+**Erase leaves the row for nonogram, Undo never does.** Erase clears the selected cell — the counterpart to pressing a digit into it — so a puzzle with no digits has no use for it, and nonogram erases by dragging with its erase brush. Undo belongs to every type there will ever be.
+
+**A tap paints one square and a drag paints a run**, batched into a single `fill` op on release. What the whole stroke will write is decided from its first square: starting on a square that already holds what the brush paints means the stroke *erases*, so one gesture covers both painting a run and taking it back, and a mis-tap is undone by tapping again. Deciding per square would leave a checkerboard behind. The drag locks to the row or column it started along, because nonogram runs are straight and an unlocked drag on a phone paints whatever the thumb wandered over. One drag is also **one press of Undo** — five presses to walk back one gesture would make the control useless on a 20×20.
+
+**The run is washed in the accent as the drag covers it, before anything is committed.** A stroke lands on release, so without this the grid says nothing until the gesture is over — and laying a run of a particular length against a clue is the entire reason to drag rather than tap. The wash is deeper than the selected cell's, because it has to stay legible over the marks already in the run, and it gives way to the marks themselves in the same frame the op is applied optimistically. `isHighlighted` is the `<pt-board>` hook behind it, and it is the same one crossword will use to highlight the entry under the cursor.
+
+**A filled square fills its whole cell.** Adjacent fills then meet, so a run reads as one bar the length of its clue — which is the thing a solver is counting. Inset blocks read as a row of separate dots that have to be counted one at a time. The hairlines still draw over the top, so the grid is a grid.
+
+**Nonogram draws a heavier rule every five squares.** It divides nothing — a nonogram has no regions — but matching a clue of 7 to a run of squares is guesswork on an unmarked 20×20 and immediate on a grid banded in fives. The bands are the **hairline's colour at three times its weight**, not `--ink`: in the fill colour they read as filled squares that happen to be thin, competing with the picture they exist to help measure. The outer frame keeps its `--ink` edge in every type.
 
 ### Completion modal
 
@@ -168,6 +183,7 @@ puzzletogether/
 │  └─ puzzles/
 │     ├─ provider.js           # getPuzzle({type, difficulty, size}) seam
 │     ├─ pool.js               # pre-warmed pools + worker_threads
+│     ├─ value-grid.js         # isComplete/checkCells for one-value-per-cell types
 │     ├─ bank.js               # file-backed provider (crossword)
 │     └─ sudoku/  kenken/  nonogram/  crossword/
 └─ client/
@@ -176,8 +192,8 @@ puzzletogether/
    ├─ theme.js                       # light/dark, persisted
    ├─ store/{room-store.js,store-controller.js,ops.js,undo-stack.js}
    ├─ views/{pt-app,pt-landing,pt-puzzle-select,pt-game,pt-congrats-modal,pt-confirm}.js
-   ├─ ui/{pt-player-chips,pt-timer,pt-keypad,pt-mode-toggle,pt-switch,pt-puzzle-picker,icons}.js
-   └─ boards/{pt-board,pt-cell,pt-presence-layer,pt-sudoku-board,…}.js
+   ├─ ui/{pt-player-chips,pt-timer,pt-keypad,pt-mode-toggle,pt-brush-bar,pt-switch,pt-puzzle-picker,icons}.js
+   └─ boards/{registry,pt-board,pt-cell,pt-presence-layer,pt-sudoku-board,pt-kenken-board,pt-nonogram-board}.js
 ```
 
 **Dev**: Vite on 5173 with `server.proxy` sending `/socket.io` and `/api` to Express on 3000; `npm run dev` runs both via `concurrently`.
@@ -239,8 +255,14 @@ One document schema covers all four types. Everything type-specific lives under 
 |---|---|---|
 | sudoku | `{ regionRows: 3, regionCols: 3, alphabet: '123456789' }` | digit or null, plus `marks[]` |
 | kenken | `{ cages: [{ id, cells: [idx], op: '+|-|*|/|=', target }], alphabet: '1234' }` | digit or null, plus `marks[]` |
-| nonogram | `{ rowClues: [[3,1],…], colClues: [[2],…] }` | tri-state `'fill' \| 'x' \| null` |
+| nonogram | `{ rowClues: [[3,1],…], colClues: [[2],…], values: { fill: '#', cross: 'x' } }` | tri-state `'#' \| 'x' \| null`, no `marks[]` |
 | crossword | `{ entries: [{ num, dir: 'A'\|'D', cells: [idx], clue, len }] }` | letter or null (rebus deferred) |
+
+**Nonogram's two values are single characters, and it names them in its own `meta`.** Single characters because `schema.js` bounds every cell value at one, and that rule holds for four types precisely because no type has been allowed to widen it. Named in `meta` rather than agreed as a shared constant because the board is then reading *what this puzzle uses* rather than knowing what nonograms use — the same reason sudoku's alphabet travels in the document.
+
+**Nonogram has no pencil marks**: the cross *is* the note, so it lives in the cell's value and `marks[]` stays empty. This is also why nonogram is the one type whose `isComplete` cannot be the shared value-grid comparison — a grid is solved by its **filled** squares alone, whether the player marked the blanks, marked them wrongly, or left them alone.
+
+**KenKen labels its cages through `DocCell.label`**, which already draws in a cell's top-left corner. The server writes `12+` or `3÷` onto each cage's first cell and the board never mentions labels at all.
 
 **Server module interface** — each `server/puzzles/<type>/index.js` default-exports:
 
@@ -258,15 +280,34 @@ One document schema covers all four types. Everything type-specific lives under 
 
 **Client**: `<pt-board>` owns grid geometry, cell DOM, selection, the presence layer, and op emission. Subclasses supply only cell rendering, the keyboard/keypad map, input filtering, and decorations (cage borders, clue gutters, entry highlighting). A fifth type = one server module + one Lit subclass, touching nothing shared.
 
+The subclass hooks, settled in Phase 3 when two new types actually pulled on them:
+
+| hook | answers | used by |
+|---|---|---|
+| `isHeavyRight` / `isHeavyBottom` | where the heavy rules go | sudoku regions, kenken cages, nonogram's counting bands |
+| `valueForKey` | what a keystroke writes here | all |
+| `markColumns` / `markRows` | how pencil marks lay out | sudoku, kenken |
+| `valueGlyphs` | whether a value is drawn as a character or as a mark | nonogram |
+| `renderTopGutter` / `renderSideGutter` | what is drawn alongside the grid, aligned to its tracks | nonogram |
+| `isHighlighted` | which cells the gesture in progress covers, as distinct from the selection | nonogram drags; crossword entries |
+
+**The board element for a type, and the kind of input it takes, are declared in `client/boards/registry.js`.** The game screen branches on the *input style* — `digits`, `brushes`, and `native` for the crossword to come — never on the type name. Sudoku and kenken share `digits` despite having nothing else in common, which is the point: there are far fewer ways to put something in a cell than there are puzzles.
+
 ---
 
 ## 8. Generation
 
 **Sudoku.** Randomized-backtracking solved grid → dig holes symmetrically, checking after each dig that exactly one solution remains (counting solver aborting at 2). Difficulty rated by which techniques a logical solver needs: singles → easy, pairs/pointing → medium, X-wing and beyond → hard. Single-digit to low-tens of milliseconds.
 
-**KenKen.** Random Latin square → flood-fill partition into cages with a size distribution → assign operations (`-` and `/` only for 2-cell cages where they divide evenly) → verify uniqueness with a cage-constraint solver, retrying on failure. Uniqueness verification is the expensive step and the main cost risk at larger sizes. The mock's 4×4 is trivially fast; offer up to 7×7.
+**KenKen.** Random Latin square → flood-fill partition into cages with a size distribution → assign operations (`-` and `/` only for 2-cell cages where they divide evenly) → verify uniqueness with a cage-constraint solver. Uniqueness verification is the expensive step and the main cost risk at larger sizes. Sizes 4–7 are offered; measured cost is ~1ms at 5×5 and ~170ms median / 870ms worst at a 7×7 hard, which the pre-warm pool absorbs.
 
-**Nonogram.** Random bitmap at a target density (or a small sprite library for recognizable images) → run a line-solver; **reject any puzzle the line-solver can't uniquely resolve**, since ambiguous nonograms are the classic failure mode.
+A partition that is *not* unique is **tightened rather than redrawn**: the largest cage is split in two and the solver asked again. This is the opposite direction from sudoku, which starts from a full grid and removes information — and it is what makes generation total. Splitting far enough leaves every cell in a cage of its own, where each clue simply names its digit, so the loop cannot fail to terminate; at worst it terminates on an easier puzzle than was asked for. The time budget and retry cap bound the search for a puzzle that needed *no* splitting, not whether one is produced.
+
+**KenKen's difficulty is a generation parameter, not a measurement** — the one place the platform knowingly departs from "the label is the measured rating". Cage sizes and the operation mix are drawn per difficulty, and `doc.difficulty` is what was asked for. Rating a KenKen honestly would need a technique-ranked cage solver, which is the same expensive search that already dominates generation. Single-cell cages are free digits, so how many a puzzle may keep is capped explicitly (8% of cells at easy, 2% at medium, none at hard) rather than left to the size distribution — cage growth *strands* singletons whatever the distribution asks for, and unchecked that put nine free digits in a 7×7 easy.
+
+**Nonogram.** Random bitmap at a target density → clue it → run a line-solver; **reject any puzzle the line-solver can't uniquely resolve**, since ambiguous nonograms are the classic failure mode. Random bitmaps rather than recognizable pictures for now: `drawBitmap` is the seam a sprite library drops into, and a hand-drawn sprite would face exactly the same rejection. Cells are drawn independently rather than in blobs — clustered pixels make a prettier picture and longer runs, and long runs are what the overlap deduction eats first, so blob-drawn grids came out uniformly easy.
+
+**Nonogram's difficulty is measured**, by the same solver that proves it fair: sweeping rows and columns until nothing changes is what a person does, so *how many sweeps it took* is a property of the puzzle rather than a parameter fed into it. The last sweep is not counted — it deduces nothing, it is only how the loop learns it has finished — and counting it would put a floor of two under every puzzle, which no small grid could ever fall below. Density steers the search toward the band requested; the label is what the puzzle earned. Thresholds are a fraction of the grid's side (0.3 medium, 0.45 hard), normalized because information travels one row and one column per sweep, so an absolute threshold would call every large grid hard and every small one easy.
 
 **Latency strategy: pre-warmed pools in a worker thread.** `server/puzzles/pool.js` keeps N ready puzzles per (type, difficulty, size), refilled in the background via `node:worker_threads` so generation never blocks the event loop — which matters most when the host hits "new puzzle" from the congrats modal and expects it instantly. `getPuzzle` pops from the pool, falling back to synchronous generation only if dry.
 
@@ -384,6 +425,10 @@ Phase 1 is a vertical slice deliberately, not scaffolding — the co-op sync mod
 **Phase 3 — nonogram + kenken.** The real test of §7. KenKen is what the mock depicts, so this is also when the visual design gets its truest check.
 *Done when*: both are playable and **adding them required no changes to `shared/` or `<pt-board>`**. If it did, the abstraction is wrong and gets fixed here.
 
+**Outcome: `shared/` held; `<pt-board>` did not, and was extended rather than special-cased.** No logic changed in `protocol.js`, `schema.js`, `board-reducer.js`, or `puzzle-doc.js` — the batched `fill` op and the one-character cell value had been specified in Phase 1 and were waiting. `constants.js` gained list entries, which is the intended cost of a type, and `DIFFICULTY_MIN_SIDE` became per-type because sudoku's floor turned out to be sudoku's, not the platform's.
+
+`<pt-board>` gained `valueGlyphs` and the two gutter hooks. That is a real gap closing rather than an abstraction failing: §7 had *claimed* since Phase 0 that subclasses supply "cell rendering ... and decorations (cage borders, clue gutters)", and no hook for either existed, because sudoku never asked for one. Both hooks are general and cost the other types nothing — a puzzle either draws a gutter or it does not, and a type that supplies no glyph map gets characters. **KenKen needed no `<pt-board>` change at all**, which is the cleaner half of the result.
+
 **Phase 4 — crossword + bank.** Bank format, loader, validator, `.puz`/`.ipuz` importer, clue-list UI, direction toggle, entry highlighting.
 *Done when*: a 15×15 puzzle is co-op solvable with synchronized clue-list state.
 
@@ -396,7 +441,7 @@ Docs are updated *within* each phase, not after — an ADR that no longer matche
 ## 14. Risks and open questions
 
 - **Crossword content licensing is the real blocker for Phase 4.** Which puzzles can legally ship? Hand-authored minis and public-domain sources are the safe start; needs a decision before Phase 4.
-- **KenKen uniqueness verification cost** grows sharply with grid size. The pre-warm pool hides latency, but sizes above ~7 may need a time budget and retry cap.
+- ~~**KenKen uniqueness verification cost** grows sharply with grid size.~~ **Measured in Phase 3 and settled.** It does grow sharply — ~1ms at a 5×5 hard against ~170ms median and 870ms worst at a 7×7 hard — but 7×7 is comfortably inside a background pool refill, so the cap stays where §8 put it. The time budget and retry cap were built anyway, and bound the search for a *good* partition rather than the production of one.
 - **LWW may feel bad** if two players fight over one cell. Presence dots should make it rare; if playtesting disagrees, the fallback is a short soft-lock on focused cells — deliberately not built now.
 - **Shared-document undo is inherently surprising.** Per-player forward-only is the best available answer; expect tuning after real play.
 - **Lit per-cell update performance** on large grids is the main frontend unknown. Prove it in Phase 1.

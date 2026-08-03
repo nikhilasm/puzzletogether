@@ -38,6 +38,21 @@ export function clearOp(opId, cell) {
 }
 
 /**
+ * Writes one value across many cells at once — what a nonogram drag becomes.
+ *
+ * Batched rather than sent per cell so that painting a run is one write, one echo, and one undo step
+ * for everybody in the room, instead of twenty of each racing each other over the wire.
+ *
+ * @param {string} opId - Client-unique op id.
+ * @param {number[]} cells - Cell indices to write.
+ * @param {string|null} value - The value to write, or null to empty them.
+ * @returns {Op} A `fill` op.
+ */
+export function fillOp(opId, cells, value) {
+    return { opId, t: OP_TYPE.FILL, cells, value };
+}
+
+/**
  * Replaces a cell's pencil marks wholesale — marks are set semantics, not an append log.
  *
  * @param {string} opId - Client-unique op id.
@@ -99,6 +114,7 @@ export function restoreOp(opId, cell, before) {
 export function opResult(op, current) {
     switch (op.t) {
         case OP_TYPE.SET:
+        case OP_TYPE.FILL:
             // Entering a value clears the cell's marks; they were notes toward it.
             return { value: op.value ?? null, marks: [] };
         case OP_TYPE.MARKS:

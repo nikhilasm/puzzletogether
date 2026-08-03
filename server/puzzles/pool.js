@@ -9,11 +9,13 @@
 
 import { Worker } from 'node:worker_threads';
 
+import kenken from './kenken/index.js';
+import nonogram from './nonogram/index.js';
 import { createRng, randomSeed } from './rng.js';
 import sudoku from './sudoku/index.js';
 
 /** Types this pool can generate in-process as a fallback. */
-const MODULES = { sudoku };
+const MODULES = { sudoku, kenken, nonogram };
 
 /** The pool key for a puzzle specification. */
 function poolKey({ type, difficulty, size }) {

@@ -8,7 +8,8 @@
 import { randomUUID } from 'node:crypto';
 
 import { OP_TYPE } from '../../../shared/protocol.js';
-import { effectiveValue, isEditable } from '../../../shared/puzzle-doc.js';
+import { isEditable } from '../../../shared/puzzle-doc.js';
+import { checkCellsByValue, digitAlphabet, isCompleteByValue } from '../value-grid.js';
 
 import { generateSudoku } from './generate.js';
 
@@ -21,11 +22,6 @@ const REGION_SHAPES = {
     6: { regionRows: 2, regionCols: 3 },
     9: { regionRows: 3, regionCols: 3 },
 };
-
-/** The value characters a grid of side `n` uses, in order. */
-function alphabetFor(n) {
-    return '123456789'.slice(0, n);
-}
 
 /** Converts a generated numeric grid into the doc's client-safe cell list. */
 function toDocCells(cells) {
@@ -69,7 +65,7 @@ export default {
             source: 'generated',
             seed: rng.seed,
             cells: toDocCells(generated.cells),
-            meta: { ...REGION_SHAPES[n], alphabet: alphabetFor(n) },
+            meta: { ...REGION_SHAPES[n], alphabet: digitAlphabet(n) },
         };
 
         return { doc, solution: Array.from(generated.solution, (value) => String(value)) };
@@ -95,41 +91,6 @@ export default {
         return true;
     },
 
-    /**
-     * Whether the board matches the solution in every cell. Completion is decided here, on the
-     * server, never claimed by a client.
-     *
-     * @param {import('../../../shared/protocol.js').PuzzleDoc} doc - The puzzle document.
-     * @param {import('../../../shared/protocol.js').BoardState} board - Current board.
-     * @param {string[]} solution - The full solution.
-     * @returns {boolean} True when the puzzle is solved.
-     */
-    isComplete(doc, board, solution) {
-        for (let idx = 0; idx < solution.length; idx += 1) {
-            if (effectiveValue(doc, board, idx) !== solution[idx]) return false;
-        }
-        return true;
-    },
-
-    /**
-     * Classifies the requested cells against the solution, for the Check feature.
-     *
-     * @param {import('../../../shared/protocol.js').PuzzleDoc} doc - The puzzle document.
-     * @param {import('../../../shared/protocol.js').BoardState} board - Current board.
-     * @param {string[]} solution - The full solution.
-     * @param {number[]} idxs - Cell indices to check.
-     * @returns {Object<number, string>} Cell index to `'correct'`, `'wrong'`, or `'empty'`.
-     */
-    checkCells(doc, board, solution, idxs) {
-        const result = {};
-        for (const idx of idxs) {
-            const value = effectiveValue(doc, board, idx);
-            if (value == null) {
-                result[idx] = 'empty';
-            } else {
-                result[idx] = value === solution[idx] ? 'correct' : 'wrong';
-            }
-        }
-        return result;
-    },
+    isComplete: isCompleteByValue,
+    checkCells: checkCellsByValue,
 };

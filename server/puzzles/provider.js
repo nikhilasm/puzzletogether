@@ -6,14 +6,16 @@
  * Phase 4 with no call-site change.
  */
 
+import kenken from './kenken/index.js';
+import nonogram from './nonogram/index.js';
 import { GeneratorPool } from './pool.js';
 import sudoku from './sudoku/index.js';
 
 /** Puzzle modules by type. A fifth type is one import and one entry. */
-const MODULES = { sudoku };
+const MODULES = { sudoku, kenken, nonogram };
 
-/** Which provider serves each type. */
-const PROVIDER_BY_TYPE = { sudoku: 'generator' };
+/** Which provider serves each type. `BankProvider` joins this map for crossword in Phase 4. */
+const PROVIDER_BY_TYPE = { sudoku: 'generator', kenken: 'generator', nonogram: 'generator' };
 
 const pool = new GeneratorPool();
 

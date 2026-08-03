@@ -1,7 +1,7 @@
 /**
  * The icon set: inline SVG, drawn here rather than pulled from a pack.
  *
- * There are ten of them, they are all simple geometry, and a dependency would cost more than it
+ * There are twelve of them, they are all simple geometry, and a dependency would cost more than it
  * saves. Emoji are banned as UI icons (brand.md §1) because they render as somebody else's artwork
  * at somebody else's weight — these instead inherit `currentColor` and the app's line weight, so an
  * icon inside a disabled control greys out with it and the dark theme needs no second asset.
@@ -115,6 +115,33 @@ export const puzzlesIcon = html`
         <rect x="13.5" y="3.5" width="7" height="7" rx="1.5" />
         <rect x="3.5" y="13.5" width="7" height="7" rx="1.5" />
         <rect x="13.5" y="13.5" width="7" height="7" rx="1.5" />
+    </svg>
+`;
+
+/**
+ * Filling a nonogram square: the mark itself, at the size the grid draws it.
+ *
+ * The only solid icon in the set. Everything else here is a stroked outline, and the exception is the
+ * point — this button paints a block, so it wears one.
+ */
+export const fillIcon = html`
+    <svg viewBox="0 0 24 24" class="icon" aria-hidden="true">
+        <rect x="5" y="5" width="14" height="14" fill="currentColor" stroke="none" />
+    </svg>
+`;
+
+/**
+ * A caveat on a choice that is still available: the standard triangle, drawn at the app's own weight.
+ *
+ * Deliberately not red and not a stop sign. It marks an option that works but has a cost, so it has
+ * to read as "know this" rather than "you cannot" — and it never appears without words nearby, since
+ * a bare triangle says only that *something* is wrong.
+ */
+export const warningIcon = html`
+    <svg viewBox="0 0 24 24" class="icon" aria-hidden="true">
+        <path d="M12 3.8 21.2 19.5a1 1 0 0 1-.9 1.5H3.7a1 1 0 0 1-.9-1.5Z" />
+        <path d="M12 9.5v4.2" />
+        <path d="M12 17.2v.1" />
     </svg>
 `;
 

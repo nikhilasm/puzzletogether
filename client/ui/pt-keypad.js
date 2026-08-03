@@ -118,26 +118,40 @@ export class PtKeypad extends LitElement {
         this.dispatchEvent(new CustomEvent(name, { detail, bubbles: true, composed: true }));
     }
 
+    /**
+     * The digits, if this puzzle has any, and the actions that go with them.
+     *
+     * A puzzle with no alphabet still gets this row, because **Undo belongs to every type**. Erase
+     * does not: it clears the selected cell, which is the counterpart to pressing a digit into it, so
+     * a puzzle with no digits has no use for it — nonogram erases by dragging with its erase brush,
+     * and a second Erase here would be a different gesture wearing the same word.
+     */
     render() {
         const digits = [...this.alphabet];
-        if (digits.length === 0) return nothing;
-
         const narrowCols = digits.length > 5 ? Math.ceil(digits.length / 2) : digits.length;
         const style = `--keypad-cols: ${digits.length}; --keypad-cols-narrow: ${narrowCols};`;
 
         return html`
-            <div class="digits" style=${style} role="group" aria-label="digits">
-                ${digits.map((digit) => this.#renderDigit(digit))}
-            </div>
+            ${
+                digits.length > 0
+                    ? html`<div class="digits" style=${style} role="group" aria-label="digits">
+                          ${digits.map((digit) => this.#renderDigit(digit))}
+                      </div>`
+                    : nothing
+            }
             <div class="actions">
-                <button
-                    type="button"
-                    ?disabled=${this.disabled}
-                    @pointerdown=${this.#onPointerDown}
-                    @click=${() => this.#emit('pt-keypad-erase', {})}
-                >
-                    ${eraseIcon} Erase
-                </button>
+                ${
+                    digits.length > 0
+                        ? html`<button
+                              type="button"
+                              ?disabled=${this.disabled}
+                              @pointerdown=${this.#onPointerDown}
+                              @click=${() => this.#emit('pt-keypad-erase', {})}
+                          >
+                              ${eraseIcon} Erase
+                          </button>`
+                        : nothing
+                }
                 <button
                     type="button"
                     ?disabled=${this.disabled || !this.canUndo}

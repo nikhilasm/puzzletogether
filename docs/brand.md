@@ -214,15 +214,35 @@ It should be invisible until you look for it. This is the detail that makes the 
 
 ### Icons
 
-Ten of them, drawn as inline SVG in `client/ui/icons.js`: **erase, undo, pencil (Notes), sun, moon, leave, close (remove a player), check, reveal, puzzles (Puzzle Select)**. Emoji stay banned — they arrive as someone else's artwork at someone else's weight, and they don't recolour. These are line drawings on a 24×24 box that inherit `currentColor` and `--stroke-icon` (1.5, the border weight), so an icon inside a disabled control greys out with it and neither theme needs a second asset.
+Twelve of them, drawn as inline SVG in `client/ui/icons.js`: **erase, undo, pencil (Notes), sun, moon, leave, close (remove a player), check, reveal, puzzles (Puzzle Select), fill (the nonogram brush), warning (a size that will be cramped on a phone)**. Emoji stay banned — they arrive as someone else's artwork at someone else's weight, and they don't recolour. These are line drawings on a 24×24 box that inherit `currentColor` and `--stroke-icon` (1.5, the border weight), so an icon inside a disabled control greys out with it and neither theme needs a second asset.
 
 ```css
 --stroke-icon: 1.5;   /* the border weight, so icons and rules read as one hand */
 ```
 
-**An icon never carries meaning alone.** Erase, Undo, Leave room, and the three puzzle actions keep their words; the switch icons repeat a visible label. The one unlabelled icon is the host's remove control, which is why its `aria-label` names the player it would remove. Every icon is `aria-hidden`, because the control around it already has a name. An eleventh should be a decision, not a reflex — the moment there are twenty, the page is a toolbar.
+**An icon never carries meaning alone.** Erase, Undo, Leave room, the three puzzle actions, and the three nonogram brushes keep their words; the switch icons repeat a visible label. Two icons have no words beside them, and both put the meaning in the accessible name instead: the host's remove control, whose `aria-label` names the player it would remove, and the warning triangle on a cautioned size, whose option is named `20×20, the squares get very small on a phone`. Every icon is `aria-hidden`, because the control around it already has a name. A thirteenth should be a decision, not a reflex — the moment there are twenty, the page is a toolbar.
+
+**A caution is not an error.** The warning triangle marks a choice that works and costs something, so it is `--graphite` like any other note and never `--wrong`, and it never disables what it marks. Red would say the host had made a mistake by looking at the option.
 
 **Two icons that mean different things must look different.** Puzzle Select is a set of four squares, not a back arrow, because Leave room sits a few pixels below it wearing an arrow already — two arrows in a column would say the two buttons do the same thing. Check is a tick rather than a magnifier for the opposite reason: it should look like the ticks and crosses it draws on the cells.
+
+**The one solid icon is the one that draws something solid.** `fill` is a filled square where every other icon is a stroked outline, because the mark it paints into the grid is a filled square. An icon that shows the mark its button makes is worth breaking the set's one visual rule for; nothing else has earned it.
+
+### Marks that are not letters
+
+A nonogram cell holds a filled square or a cross, not a character, and both borrow colours the app already uses for those ideas rather than inventing any. **A fill is an answer, so it is `--ink`** — the same weight and colour as an entered digit, and the reason a solved nonogram reads as a printed image rather than a UI state. **A cross is a note about where the picture is not, so it is `--pencil`**, exactly like a pencil mark in a sudoku. Check feedback recolours a filled square to `--correct` or `--wrong` the way it recolours a digit; it is still the one thing allowed to put colour in the grid, and it is still transient.
+
+**A fill takes the whole square.** It is the one mark in the app that is not inset, and the reason is legibility rather than decoration: adjacent fills meet, so a run reads as a single bar the length of its clue, which is the thing a solver is counting. Inset blocks read as separate dots to be counted one at a time. The hairlines draw over the top, so "sharp puzzle" survives — the grid is still visible through the picture.
+
+**A cross is sized to its square, not to the type scale.** It is a mark on a grid rather than a character in a sentence, and at text proportions it read as a small dot in a large empty cell — which is what an *unmarked* cell looks like from arm's length. It runs at 0.92 of the cell.
+
+**Heavy rules are not always `--ink`.** A sudoku's region rules are, because they divide the puzzle into parts that carry a rule about what may go where. A nonogram's bands divide nothing — they are there to be counted against — so they are the hairline's own colour at three times its weight. Drawn in `--ink` they read as filled squares that happen to be thin, competing with the picture they exist to help measure. `--grid-heavy-color` and `--grid-heavy-width` are the per-board override; `--grid-frame-width` is deliberately separate, because the outer frame is the puzzle's edge in every type and the gutters align themselves by it.
+
+**The grid is opaque.** The graph-paper texture is the surface the puzzle sits *on*. Showing through the cells it became a second, unaligned ruling inside the real one — faint, but exactly the kind of line the eye tries to read. The background sits on the frame rather than on each cell, so the selection and stroke washes still composite over one flat backdrop.
+
+**The accent wash means "what this input is aimed at".** The selected cell carries it at 16%, and a drag in progress carries it at 30% across every square it has covered. The deeper value is not emphasis for its own sake: it has to stay readable over marks that are already in the run. Both are the same idea and neither is a colour the grid keeps — colour still belongs to people.
+
+The clue gutters are `--graphite` and step down in size with the grid. They state the puzzle rather than being part of the picture, so the grid stays the loudest thing on the screen even when the clues outnumber it.
 
 ### Controls: buttons versus switches
 

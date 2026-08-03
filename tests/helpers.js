@@ -30,13 +30,24 @@ export async function joinRoom(page, name, code) {
     await page.locator('pt-player-chips').waitFor();
 }
 
-/** Starts a puzzle of the given side as the host, and waits for the grid. */
-export async function startPuzzle(page, side = '4×4') {
+/**
+ * Starts a puzzle as the host, and waits for the grid.
+ *
+ * The type is clicked before the size, because choosing a type resets the size to that type's
+ * default — a 4×4 nonogram does not exist, so the picker cannot carry a sudoku's size across.
+ */
+export async function startPuzzle(page, side = '4×4', type = 'Sudoku') {
+    await page.locator('pt-puzzle-picker .option', { hasText: type }).click();
     await page.locator('pt-puzzle-picker .option', { hasText: side }).click();
     // Named, not positional: Puzzle Select also carries a Leave room button.
     await page.locator('pt-puzzle-select button', { hasText: 'Start' }).click();
     await page.locator('pt-keypad').waitFor({ timeout: 30_000 });
     await expect(page.locator('pt-cell').first()).toBeVisible();
+}
+
+/** The board element on screen, whichever type it is. */
+export function boardOf(page) {
+    return page.locator('pt-sudoku-board, pt-kenken-board, pt-nonogram-board');
 }
 
 /** The roster as the page currently holds it — the component's own property, not its DOM. */
@@ -48,12 +59,10 @@ export function playersOf(page) {
 
 /** The first cell index this puzzle lets a player type into. */
 export async function firstEditableCell(page) {
-    return page
-        .locator('pt-sudoku-board')
-        .evaluate(
-            (board) => board.doc.cells.findIndex((cell) => cell.given == null && !cell.block),
-            null,
-        );
+    return boardOf(page).evaluate(
+        (board) => board.doc.cells.findIndex((cell) => cell.given == null && !cell.block),
+        null,
+    );
 }
 
 /** Selects a cell by index and presses a key on the grid. */
@@ -64,7 +73,7 @@ export async function typeInCell(page, index, key) {
 
 /** The box of one cell, relative to the grid, for alignment assertions. */
 export async function cellBoxes(page) {
-    return page.locator('pt-sudoku-board').evaluate((board) => {
+    return boardOf(page).evaluate((board) => {
         const cells = [...board.shadowRoot.querySelectorAll('pt-cell')];
         return cells.map((cell) => {
             const box = cell.getBoundingClientRect();

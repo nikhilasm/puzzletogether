@@ -67,25 +67,68 @@ export const FOCUS_RATE_LIMIT = { capacity: 20, refillPerSecond: 15 };
  */
 export const ASSIST_RATE_LIMIT = { capacity: 3, refillPerSecond: 0.5 };
 
-/** Every puzzle type this build can serve. Phase 1 ships sudoku only. */
-export const PUZZLE_TYPES = ['sudoku'];
+/** Every puzzle type this build can serve. Crossword joins them in Phase 4. */
+export const PUZZLE_TYPES = ['sudoku', 'kenken', 'nonogram'];
+
+/**
+ * How each type is written when shown to a player.
+ *
+ * A map rather than capitalising the wire value, because "KenKen" has a capital in the middle and
+ * no rule derives it. The wire value stays lowercase everywhere else.
+ */
+export const PUZZLE_TYPE_NAMES = {
+    sudoku: 'Sudoku',
+    kenken: 'KenKen',
+    nonogram: 'Nonogram',
+};
 
 /** Difficulties every generated type must support. */
 export const DIFFICULTIES = ['easy', 'medium', 'hard'];
 
-/** Grid sides each puzzle type offers in Puzzle Select, smallest first. */
+/**
+ * Grid sides each puzzle type offers in Puzzle Select, smallest first.
+ *
+ * KenKen stops at 7 because uniqueness verification is its expensive step and climbs sharply with
+ * size — measured at ~170ms median for a 7×7 hard against ~1ms for a 5×5 (docs/TODO.md).
+ */
 export const SIZES_BY_TYPE = {
     sudoku: [4, 6, 9],
+    kenken: [4, 5, 6, 7],
+    nonogram: [5, 10, 15, 20],
 };
 
 /**
- * Smallest grid side on which a difficulty request means anything.
+ * Sizes that are offered but come with a caveat, per type.
+ *
+ * A 20×20 nonogram fits a 320px screen without overflowing, but only by shrinking its squares to
+ * about ten pixels with the clue gutters taking a third of the width. That is a fine puzzle on a
+ * laptop and a poor one on a phone — a difference the host cannot see when they are the one on the
+ * laptop, and the rest of the room is not. So it is offered with the trade-off stated rather than
+ * withheld or left to be discovered after everyone has started.
+ */
+export const SIZE_CAUTION = {
+    nonogram: {
+        above: 15,
+        message: 'the squares get very small on a phone — best played on a larger screen',
+    },
+};
+
+/**
+ * Smallest grid side, per type, on which a difficulty request means anything.
  *
  * A 4×4 or 6×6 sudoku falls to naked and hidden singles however hard you dig it — there is no room
- * for a technique beyond them — so every small grid measures `easy`. Rather than accept a request
- * it cannot honour, Puzzle Select disables the difficulty picker below this side.
+ * for a technique beyond them — so every small grid measures `easy`. Rather than accept a request it
+ * cannot honour, Puzzle Select disables the difficulty picker below this side.
+ *
+ * KenKen and nonogram have no such floor: their difficulty is carried by cage shapes and clue
+ * density, which mean something at every size they offer. The entry is still listed for each type so
+ * that adding a type forces an answer rather than defaulting to one.
  */
-export const DIFFICULTY_MIN_SIDE = 9;
+export const DIFFICULTY_MIN_SIDE = {
+    sudoku: 9,
+    kenken: 4,
+    nonogram: 5,
+};
 
 /** How many of a player's own ops stay undoable. Deep enough to fix a bad run, not a whole solve. */
 export const UNDO_DEPTH = 50;

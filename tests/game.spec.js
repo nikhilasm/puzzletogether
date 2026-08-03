@@ -54,6 +54,12 @@ test.describe('shape and focus', () => {
         }
 
         expect(await radius('pt-sudoku-board .frame')).toBe('0px');
+        // ...and it is opaque, so the page's graph-paper texture is the surface the puzzle sits on
+        // rather than a second, unaligned grid showing through the real one.
+        const frame = await page
+            .locator('pt-sudoku-board .frame')
+            .evaluate((el) => getComputedStyle(el).backgroundColor);
+        expect(frame).not.toBe('rgba(0, 0, 0, 0)');
         expect(await radius('pt-cell')).toBe('0px');
         // The one round thing: a switch track is a track, not a box.
         expect(await radius('pt-switch .track')).toBe('999px');

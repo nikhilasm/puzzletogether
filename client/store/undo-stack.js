@@ -21,6 +21,9 @@ import { UNDO_DEPTH } from '../../shared/constants.js';
  * @property {number} cell - Cell index this edit touched.
  * @property {CellSnapshot} before - What the cell held before the edit.
  * @property {CellSnapshot} after - What the edit left it holding.
+ * @property {string} [group] - Ties this entry to the others made by the same action, so that one
+ *   nonogram drag across twenty cells is one press of Undo rather than twenty. Absent for the
+ *   single-cell edits every other puzzle type makes.
  */
 
 /**
@@ -92,6 +95,28 @@ export class UndoStack {
      */
     pop() {
         return this.#entries.pop() ?? null;
+    }
+
+    /**
+     * Removes and returns everything the most recent action wrote — one entry for an ordinary edit,
+     * the whole run for a drag.
+     *
+     * The depth limit can cut a group in half, leaving a drag that undoes the last few cells it
+     * painted and not the first few. That is the honest outcome: the older entries are genuinely
+     * gone, and the alternative is either lying about what can be undone or letting one long drag
+     * evict the entire history.
+     *
+     * @returns {UndoEntry[]} The entries, newest first; empty when there is nothing left to undo.
+     */
+    popGroup() {
+        const last = this.#entries.pop();
+        if (!last) return [];
+
+        const group = [last];
+        while (last.group != null && this.#entries.at(-1)?.group === last.group) {
+            group.push(this.#entries.pop());
+        }
+        return group;
     }
 
     /**

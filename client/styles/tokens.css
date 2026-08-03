@@ -60,10 +60,36 @@
     --border: 1.5px solid var(--rule);
     --stroke-icon: 1.5;
     --shadow-modal: 0 8px 32px rgb(31 29 26 / 0.18);
-    --grid-hairline: 1px solid color-mix(in srgb, var(--graphite) 30%, transparent);
-    --grid-heavy: 2.5px solid var(--ink);
-    /* The same weight as a bare length: region rules are drawn as an overlay, not as a border. */
+    /*
+     * The subdivision line, and an opaque twin of it.
+     *
+     * Region rules are painted *over* the hairlines rather than replacing them, so a translucent
+     * heavy rule would show the hairline through its middle as a darker core. Any board that wants a
+     * heavy rule in the hairline's colour uses the solid mix instead — the same colour to the eye,
+     * with nothing to accumulate underneath it.
+     */
+    --grid-rule: color-mix(in srgb, var(--graphite) 30%, transparent);
+    --grid-rule-solid: color-mix(in srgb, var(--graphite) 30%, var(--paper));
+    --grid-hairline: 1px solid var(--grid-rule);
+
+    /*
+     * The frame around the whole grid. Its width is also the offset every gutter aligns itself by,
+     * so it is deliberately *not* the same token as the rules inside — a board that wants heavier
+     * internal rules must not silently move its own clue columns half a pixel.
+     */
+    --grid-frame-width: 2.5px;
+    --grid-heavy: var(--grid-frame-width) solid var(--ink);
+
+    /*
+     * The rules *inside* the grid, as a bare length and colour: they are painted as an overlay on
+     * top of the hairlines rather than as a border (see pt-cell).
+     *
+     * A board overrides these when its heavy lines divide nothing. A nonogram's bands are there to
+     * be counted against rather than to carry a rule about what may go where, and drawn in --ink
+     * they read as part of the picture being filled in.
+     */
     --grid-heavy-width: 2.5px;
+    --grid-heavy-color: var(--ink);
     --presence-dot: 9px;
 
     /* Texture */

@@ -246,6 +246,10 @@ flowchart TB
 
 **Shared leaves hold no state.** `<pt-switch>` and `<pt-puzzle-picker>` appear in more than one place, so neither owns what it shows: the switch is told whether it is on and reports the flip, which is why the Notes switch and the store can never disagree about the input mode. `client/styles/controls.js` and `client/ui/icons.js` are the styling counterpart — `css` fragments and templates composed into each shadow root, since a shadow root inherits properties but not rules.
 
+**The game screen does not know what a puzzle type is.** `client/boards/registry.js` maps a `doc.type` to the board element that renders it and to the *kind of input* it takes — `digits`, `brushes`, or the `native` keyboard a crossword will want. `<pt-game>` branches on the input kind and never on the type name, which is what keeps a new type from adding a conditional to a screen that has nothing to do with it. Sudoku and kenken share `digits` while having nothing else in common; there are far fewer ways to put something in a cell than there are puzzles.
+
+**A store slice that nothing selects does not exist.** `StoreController` re-renders only when its host's selected slices change, so state added for a new feature has to be added to the selector as well. The nonogram brush was not, and the whole screen lagged one interaction behind — the store held the new brush and nothing re-read it until some unrelated update came along. Cheap to fix, easy to repeat.
+
 ---
 
 ## 7. What would change for multiple instances
