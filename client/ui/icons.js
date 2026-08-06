@@ -151,3 +151,30 @@ export const moonIcon = html`
         <path d="M20.5 14.6A8.6 8.6 0 0 1 9.4 3.5a8.6 8.6 0 1 0 11.1 11.1Z" />
     </svg>
 `;
+
+/**
+ * Two arrows turning back on each other: a crossword's Across/Down flip.
+ *
+ * One horizontal and one vertical on purpose, rather than the usual pair of parallel arrows — the
+ * axes *are* the meaning here, so the icon says which two things are being swapped between.
+ */
+export const swapIcon = html`
+    <svg viewBox="0 0 24 24" class="icon" aria-hidden="true">
+        <path d="M4 9h13" />
+        <path d="m13.5 5.5 3.5 3.5-3.5 3.5" />
+        <path d="M20 15H7" />
+        <path d="m10.5 11.5-3.5 3.5 3.5 3.5" />
+    </svg>
+`;
+
+/** Ruled lines with their bullets — the clue list. */
+export const listIcon = html`
+    <svg viewBox="0 0 24 24" class="icon" aria-hidden="true">
+        <path d="M4 6.5h.01" />
+        <path d="M4 12h.01" />
+        <path d="M4 17.5h.01" />
+        <path d="M9 6.5h11" />
+        <path d="M9 12h11" />
+        <path d="M9 17.5h11" />
+    </svg>
+`;

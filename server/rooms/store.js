@@ -69,6 +69,10 @@ export function createRoom() {
         startedAt: null,
         assists: 0,
         focus: new Map(),
+        // Which banked puzzles this room has already been handed. A generator never repeats, so this
+        // stays empty for three of the four types; a bank of thirty runs out, and being given back
+        // the puzzle you just solved reads as the button being broken (design-spec.md §7).
+        served: new Set(),
         timers: new Set(),
     };
 

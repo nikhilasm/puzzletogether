@@ -5,6 +5,8 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
     test: {
         environment: 'node',
-        include: ['{shared,server,client}/**/*.test.js'],
+        // `scripts/` joins the list in Phase 4: the crossword importer is the first thing in there
+        // with logic worth testing, and its refusals are the whole point of it (design-spec.md §8).
+        include: ['{shared,server,client,scripts}/**/*.test.js'],
     },
 });

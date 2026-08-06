@@ -63,10 +63,12 @@ A modest 1.25 ratio. The wordmark is the only genuinely large text on the page �
 | `--text-xl` | 1.5rem | Puzzle header, modal title |
 | `--text-lg` | 1.25rem | Room code, timer |
 | `--text-base` | 1rem | Body, buttons, player names |
-| `--text-sm` | 0.8rem | Cage/clue labels, footer |
+| `--text-sm` | 0.8rem | Clue labels in cells that have no notes under them, footer |
 | `--text-xs` | 0.64rem | Smallest UI text |
 
 Grid content is derived from cell size, not the scale: the value at `55%` of cell height, pencil marks at `26%`. Marks scale with the cell for the same reason values do — a note in a 4×4's large cell and a note in a 9×9's small one should look like the same mark, not the same number of pixels.
+
+**A cage clue sharing its cell with notes is sized by its row of the mark grid**, not by `--text-sm` — `86%` of the track it sits in, with the marks at `78%` of theirs. A clue and the note "1" both belong in the top-left corner, so the clue is given a row and the notes start below it. Sizing it from the scale made it the one thing in a cell that did not shrink with the grid, so on a 7×7 it grew relative to the notes around it precisely where there was least room.
 
 **`--text-wordmark` is the one responsive token.** At 2.75rem the wordmark overran a 320px viewport by 15px, and it is the only text in the system wide enough to do that. Clamping it keeps the full size from about 500px up and shrinks it below, rather than being overridden inside a component — where the next person to change the wordmark would not find it.
 

@@ -4,8 +4,11 @@
  * Nonogram is the type that tests the abstraction hardest, and the two places it does not reuse are
  * both real differences rather than accidents:
  *
- * - **A cell is tri-state**, not a digit. The wire values are single characters (`#` and `x`) so the
- *   schema's one-character rule keeps holding for every type without being widened.
+ * - **A cell is tri-state**, not a digit. The wire values are single characters (`#` and `x`), and
+ *   `validateOp` below is what holds them to that. It used to be the schema's job: every cell value
+ *   was one character until crossword's rebus squares widened the bound to 8 (ADR-0007). Nothing
+ *   changed here, because this module matched against an array of allowed values rather than
+ *   searching a string, and an array `includes` cannot match a substring the way sudoku's did.
  * - **Completion counts fills only.** A cross is the player's note that a cell is empty, not an
  *   answer, so `isComplete` ignores them entirely and a grid solves whether or not the player marked
  *   the blanks. That is why this module cannot use the shared value-grid helpers.

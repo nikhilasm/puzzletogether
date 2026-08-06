@@ -21,8 +21,12 @@ import { checkIcon, iconStyle, leaveIcon, puzzlesIcon, revealIcon } from '../ui/
 import './pt-confirm.js';
 import './pt-congrats-modal.js';
 import '../ui/pt-brush-bar.js';
+import '../ui/pt-clue-bar.js';
+import '../ui/pt-clue-list.js';
 import '../ui/pt-keypad.js';
+import '../ui/pt-letter-pad.js';
 import '../ui/pt-mode-toggle.js';
+import '../ui/pt-switch.js';
 import '../ui/pt-timer.js';
 
 /** How many of each value the grid already holds, so the keypad can dim what is used up. */
@@ -39,6 +43,9 @@ export class PtGame extends LitElement {
     static properties = {
         confirmingReveal: { state: true },
         busy: { state: true },
+        /** The crossword entry under this player's cursor, reported by the board. */
+        entry: { state: true },
+        showingClues: { state: true },
     };
 
     static styles = [
@@ -185,12 +192,39 @@ export class PtGame extends LitElement {
         state.assists,
         state.notice,
         state.canUndo,
+        state.rebus,
+        state.catalog,
     ]);
 
     constructor() {
         super();
         this.confirmingReveal = false;
         this.busy = false;
+        this.entry = null;
+        this.showingClues = false;
+    }
+
+    /**
+     * The board element, for the few things only it knows: where the cursor goes next, and which
+     * way it is pointing.
+     *
+     * Reached by query rather than by ref because the tag varies per puzzle type — `boardFor` hands
+     * back a `literal`, so there is one element in that slot and its name is not known here.
+     */
+    get #board() {
+        return this.renderRoot.querySelector('.board')?.firstElementChild ?? null;
+    }
+
+    /**
+     * Moves the cursor along after a value lands, if this puzzle type advances at all.
+     *
+     * Called from both input paths rather than from inside the board, so that the physical keyboard
+     * and the on-screen pad cannot drift apart — which is the whole point of the one-input-path rule
+     * (design-spec.md §11). Sudoku and kenken return null here and nothing moves.
+     */
+    #advance(cell) {
+        const next = this.#board?.advanceAfterInput?.(cell);
+        if (next != null) roomStore.setSelection(next);
     }
 
     /** Moves the local selection, which is also what broadcasts presence. */
@@ -198,14 +232,43 @@ export class PtGame extends LitElement {
         roomStore.setSelection(event.detail.cell);
     }
 
-    /** A digit from the grid's own keyboard handling. */
+    /**
+     * A value from the grid's own keyboard handling.
+     *
+     * The branch is on how this puzzle takes input, never on which puzzle it is: a letter goes in
+     * whole (and may extend a rebus square), a digit goes through the Notes/Solve fork.
+     */
     #onCellInput(event) {
-        roomStore.inputDigit(event.detail.cell, event.detail.value);
+        const { cell, value, shiftKey } = event.detail;
+        if (!this.#takesLetters) {
+            roomStore.inputDigit(cell, value);
+            this.#advance(cell);
+            return;
+        }
+
+        const append = this.#store.state.rebus || shiftKey === true;
+        roomStore.inputLetter(cell, value, append);
+        // A square being built into a word keeps the cursor. Advancing after each letter would
+        // scatter the word one letter per square, which is the opposite of what was asked for.
+        if (!append) this.#advance(cell);
     }
 
-    /** Backspace or Delete on the grid. */
+    /**
+     * Backspace or Delete on the grid.
+     *
+     * In a crossword this peels one letter off, so a rebus square being assembled can be corrected
+     * a letter at a time; the Erase key still clears the square outright. Everywhere else a cell
+     * holds one value and the two are the same action.
+     */
     #onCellClear(event) {
-        roomStore.clearCell(event.detail.cell);
+        if (this.#takesLetters) roomStore.backspaceLetter(event.detail.cell);
+        else roomStore.clearCell(event.detail.cell);
+    }
+
+    /** Whether this puzzle's squares hold letters, which is the only branch its input needs. */
+    get #takesLetters() {
+        const doc = this.#store.state.doc;
+        return doc != null && boardFor(doc.type).input === 'letters';
     }
 
     /**
@@ -294,10 +357,14 @@ export class PtGame extends LitElement {
                 @pt-cell-clear=${this.#onCellClear}
                 @pt-cells-paint=${this.#onPaint}
                 @pt-undo=${() => roomStore.undo()}
+                @pt-entry-change=${(event) => {
+                    this.entry = event.detail.entry;
+                }}
             >
                 ${this.#renderBoard(board, doc, state, isPlaying)}
             </div>
 
+            ${this.#renderClues(board, state, isPlaying)}
             ${this.#renderInput(board, doc, state, isPlaying)}
 
             <p class="notice" role="status" aria-live="polite">${state.notice?.text ?? ''}</p>
@@ -337,32 +404,115 @@ export class PtGame extends LitElement {
      * underneath is common to all of them.
      */
     #renderInput(board, doc, state, isPlaying) {
-        const setting =
-            board.input === 'brushes'
-                ? html`<pt-brush-bar
-                      .brush=${state.brush}
-                      .disabled=${!isPlaying}
-                      @pt-brush-change=${(event) => roomStore.setBrush(event.detail.brush)}
-                  ></pt-brush-bar>`
-                : html`<pt-mode-toggle
-                      .mode=${state.inputMode}
-                      .disabled=${!isPlaying}
-                      @pt-mode-change=${(event) => roomStore.setInputMode(event.detail.mode)}
-                  ></pt-mode-toggle>`;
+        return html`
+            <div class="mode-bar">${this.#renderSetting(board, state, isPlaying)}</div>
+            ${
+                board.input === 'letters'
+                    ? html`<pt-letter-pad
+                          .canUndo=${state.canUndo}
+                          .disabled=${!isPlaying}
+                          @pt-letter=${this.#onLetter}
+                          @pt-letter-erase=${this.#onKeypadErase}
+                          @pt-letter-undo=${() => roomStore.undo()}
+                      ></pt-letter-pad>`
+                    : html`<pt-keypad
+                          .alphabet=${(board.input === 'digits' && doc.meta.alphabet) || ''}
+                          .counts=${digitCounts(doc, state.view)}
+                          .capacity=${doc.size.rows}
+                          .canUndo=${state.canUndo}
+                          .disabled=${!isPlaying}
+                          @pt-keypad-digit=${this.#onKeypadDigit}
+                          @pt-keypad-erase=${this.#onKeypadErase}
+                          @pt-keypad-undo=${() => roomStore.undo()}
+                      ></pt-keypad>`
+            }
+        `;
+    }
+
+    /**
+     * The one setting above the keys that changes what a keypress means.
+     *
+     * Every type has exactly one, which is not a coincidence worth hiding: Notes for the digit
+     * puzzles, a brush for nonogram, Rebus for crossword. The slot is the same, so the shape of the
+     * screen never changes between types even though its contents do (design-spec.md §4).
+     */
+    #renderSetting(board, state, isPlaying) {
+        if (board.input === 'brushes') {
+            return html`<pt-brush-bar
+                .brush=${state.brush}
+                .disabled=${!isPlaying}
+                @pt-brush-change=${(event) => roomStore.setBrush(event.detail.brush)}
+            ></pt-brush-bar>`;
+        }
+        if (board.input === 'letters') {
+            return html`<pt-switch
+                .checked=${state.rebus}
+                .disabled=${!isPlaying}
+                label="Rebus"
+                @pt-switch-change=${(event) => roomStore.setRebus(event.detail.checked)}
+            ></pt-switch>`;
+        }
+        return html`<pt-mode-toggle
+            .mode=${state.inputMode}
+            .disabled=${!isPlaying}
+            @pt-mode-change=${(event) => roomStore.setInputMode(event.detail.mode)}
+        ></pt-mode-toggle>`;
+    }
+
+    /** A letter from the on-screen pad, routed through the same store call as the keyboard. */
+    #onLetter(event) {
+        const cell = this.#targetCell();
+        if (cell == null) return;
+
+        const append = this.#store.state.rebus;
+        roomStore.inputLetter(cell, event.detail.value, append);
+        if (!append) this.#advance(cell);
+    }
+
+    /** The clue bar and the dialog behind it, for the one type that has clues. */
+    #renderClues(board, state, isPlaying) {
+        if (board.input !== 'letters') return nothing;
 
         return html`
-            <div class="mode-bar">${setting}</div>
-            <pt-keypad
-                .alphabet=${(board.input === 'digits' && doc.meta.alphabet) || ''}
-                .counts=${digitCounts(doc, state.view)}
-                .capacity=${doc.size.rows}
-                .canUndo=${state.canUndo}
+            <pt-clue-bar
+                .entry=${this.entry}
                 .disabled=${!isPlaying}
-                @pt-keypad-digit=${this.#onKeypadDigit}
-                @pt-keypad-erase=${this.#onKeypadErase}
-                @pt-keypad-undo=${() => roomStore.undo()}
-            ></pt-keypad>
+                @pt-clue-flip=${() => this.#board?.toggleDirection()}
+                @pt-clue-list-open=${() => {
+                    this.showingClues = true;
+                }}
+            ></pt-clue-bar>
+            <pt-clue-list
+                .open=${this.showingClues}
+                .entries=${state.doc?.meta?.entries ?? []}
+                .current=${this.entry}
+                .filled=${state.view.cells}
+                @pt-clues-close=${() => {
+                    this.showingClues = false;
+                }}
+                @pt-clue-pick=${this.#onCluePick}
+            ></pt-clue-list>
         `;
+    }
+
+    /**
+     * Picking a clue moves the cursor to that entry and closes the list.
+     *
+     * It lands on the entry's first *empty* square rather than its first square, because arriving on
+     * a letter somebody has already filled in makes the next keystroke overwrite their work — which
+     * in a room solving together is somebody else's.
+     */
+    #onCluePick(event) {
+        const entry = event.detail.entry;
+        this.showingClues = false;
+        const board = this.#board;
+        if (!board) return;
+
+        const cells = entry.cells;
+        const view = this.#store.state.view;
+        const doc = this.#store.state.doc;
+        const open = cells.find((cell) => effectiveValue(doc, view, cell) == null);
+        board.goTo(open ?? cells[0], entry.dir);
     }
 
     /**
@@ -469,6 +619,7 @@ export class PtGame extends LitElement {
                 .solved=${state.solved}
                 .isHost=${roomStore.isHost}
                 .settings=${state.room?.settings ?? null}
+                .catalog=${state.catalog}
                 .busy=${this.busy}
                 @pt-dismiss=${() => roomStore.dismissSolved()}
                 @pt-start-another=${this.#onStartAnother}

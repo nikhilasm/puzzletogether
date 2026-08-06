@@ -7,13 +7,19 @@
  * design-spec.md §7 says a new type must not have.
  *
  * `input` is a small closed vocabulary, not a type name. It groups puzzles by the question "how does
- * a player put something in a cell?", which has far fewer answers than there are puzzle types: sudoku
- * and kenken share `digits` despite having nothing else in common, and crossword will be `native`
- * because it takes the phone's own keyboard.
+ * a player put something in a cell?", which has far fewer answers than there are puzzle types:
+ * sudoku and kenken share `digits` despite having nothing else in common.
+ *
+ * Crossword is `letters` rather than the `native` this file guessed at in Phase 1. Handing a
+ * crossword to the phone's own keyboard means fighting autocapitalize and predictive text, ceding an
+ * unknowable share of the viewport on a 15×15, and maintaining the offscreen-`<input>` trick per
+ * platform — so it gets a pad of ours, in the slot the digits and brushes already use
+ * (design-spec.md §4).
  */
 
 import { literal } from 'lit/static-html.js';
 
+import './pt-crossword-board.js';
 import './pt-kenken-board.js';
 import './pt-nonogram-board.js';
 import './pt-sudoku-board.js';
@@ -23,6 +29,7 @@ export const BOARDS = {
     sudoku: { tag: literal`pt-sudoku-board`, input: 'digits' },
     kenken: { tag: literal`pt-kenken-board`, input: 'digits' },
     nonogram: { tag: literal`pt-nonogram-board`, input: 'brushes' },
+    crossword: { tag: literal`pt-crossword-board`, input: 'letters' },
 };
 
 /**

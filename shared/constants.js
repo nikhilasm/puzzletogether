@@ -67,8 +67,20 @@ export const FOCUS_RATE_LIMIT = { capacity: 20, refillPerSecond: 15 };
  */
 export const ASSIST_RATE_LIMIT = { capacity: 3, refillPerSecond: 0.5 };
 
-/** Every puzzle type this build can serve. Crossword joins them in Phase 4. */
-export const PUZZLE_TYPES = ['sudoku', 'kenken', 'nonogram'];
+/**
+ * Longest value a single cell may hold on the wire.
+ *
+ * Was one character through Phase 3, and three types are still built on that — they enforce it
+ * themselves, in their own `validateOp`. This bound is about what may cross the wire, not about what
+ * a puzzle means: a crossword rebus square holds a whole word, and 8 characters comfortably covers
+ * every rebus in ordinary use while keeping the payload bounded. → ADR-0007
+ *
+ * **A puzzle type must bound its own values.** Nothing here will do it for you any more.
+ */
+export const MAX_CELL_VALUE_LENGTH = 8;
+
+/** Every puzzle type this build can serve. */
+export const PUZZLE_TYPES = ['sudoku', 'kenken', 'nonogram', 'crossword'];
 
 /**
  * How each type is written when shown to a player.
@@ -80,16 +92,22 @@ export const PUZZLE_TYPE_NAMES = {
     sudoku: 'Sudoku',
     kenken: 'KenKen',
     nonogram: 'Nonogram',
+    crossword: 'Crossword',
 };
 
 /** Difficulties every generated type must support. */
 export const DIFFICULTIES = ['easy', 'medium', 'hard'];
 
 /**
- * Grid sides each puzzle type offers in Puzzle Select, smallest first.
+ * Grid sides each **generated** type offers in Puzzle Select, smallest first.
  *
  * KenKen stops at 7 because uniqueness verification is its expensive step and climbs sharply with
  * size — measured at ~170ms median for a 7×7 hard against ~1ms for a 5×5 (docs/TODO.md).
+ *
+ * **Crossword is absent on purpose.** A generator can produce any size it offers, so a constant can
+ * state them; a bank offers whatever files it was given, which nothing here can know. Crossword's
+ * sizes reach Puzzle Select through the provider's catalog, and they are `{ rows, cols }` pairs
+ * rather than sides — a real crossword is 15×15 or 5×5 and also 20×21 (design-spec.md §7).
  */
 export const SIZES_BY_TYPE = {
     sudoku: [4, 6, 9],
@@ -128,6 +146,10 @@ export const DIFFICULTY_MIN_SIDE = {
     sudoku: 9,
     kenken: 4,
     nonogram: 5,
+    // Crossword's difficulty is neither measured nor a generation parameter — it is declared in the
+    // bank manifest, because difficulty in a crossword is how obscure the clues are and that is a
+    // property of the writing. Size has nothing to do with it, so there is no floor to set.
+    crossword: 0,
 };
 
 /** How many of a player's own ops stay undoable. Deep enough to fix a bad run, not a whole solve. */

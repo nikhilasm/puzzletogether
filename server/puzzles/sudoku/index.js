@@ -73,7 +73,13 @@ export default {
 
     /**
      * Whether an op is legal against this document — the cell exists, is editable, and any value
-     * is in the puzzle's alphabet.
+     * is one character of the puzzle's alphabet.
+     *
+     * **The length check is not redundant.** `schema.js` bounds a cell value at 8 characters rather
+     * than 1 since crossword's rebus squares arrived (ADR-0007), so this is the only thing keeping a
+     * sudoku cell to a digit. It was written as a bare `alphabet.includes(value)`, which on a string
+     * is a *substring* test — `'123456789'.includes('12')` is true — and was correct only because
+     * nothing two characters long could ever reach it.
      *
      * @param {import('../../../shared/protocol.js').PuzzleDoc} doc - The puzzle document.
      * @param {import('../../../shared/protocol.js').Op} op - A schema-validated op.
@@ -83,7 +89,7 @@ export default {
         if (op.t === OP_TYPE.FILL) return false;
         if (!isEditable(doc, op.cell)) return false;
         if (op.t === OP_TYPE.SET) {
-            return op.value != null && doc.meta.alphabet.includes(op.value);
+            return op.value?.length === 1 && doc.meta.alphabet.includes(op.value);
         }
         if (op.t === OP_TYPE.MARKS) {
             return (op.marks ?? []).every((mark) => mark >= 1 && mark <= doc.size.rows);

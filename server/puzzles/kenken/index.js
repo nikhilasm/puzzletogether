@@ -79,7 +79,11 @@ export default {
 
     /**
      * Whether an op is legal against this document — the cell exists, is editable, and any value is
-     * in the puzzle's alphabet.
+     * one character of the puzzle's alphabet.
+     *
+     * The length check carries real weight: since ADR-0007 the schema admits values up to 8
+     * characters, so this method is the only thing keeping a kenken cell to a single digit. See the
+     * same note in the sudoku module for why `alphabet.includes(value)` alone was not enough.
      *
      * @param {import('../../../shared/protocol.js').PuzzleDoc} doc - The puzzle document.
      * @param {import('../../../shared/protocol.js').Op} op - A schema-validated op.
@@ -89,7 +93,7 @@ export default {
         if (op.t === OP_TYPE.FILL) return false;
         if (!isEditable(doc, op.cell)) return false;
         if (op.t === OP_TYPE.SET) {
-            return op.value != null && doc.meta.alphabet.includes(op.value);
+            return op.value?.length === 1 && doc.meta.alphabet.includes(op.value);
         }
         if (op.t === OP_TYPE.MARKS) {
             return (op.marks ?? []).every((mark) => mark >= 1 && mark <= doc.size.rows);

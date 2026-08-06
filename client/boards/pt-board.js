@@ -159,6 +159,17 @@ export class PtBoard extends LitElement {
     }
 
     /**
+     * Whether a cell's label takes the mark grid's first row to itself, pushing the notes down a
+     * row. For types whose cells carry a clue as well as notes, which the two would otherwise
+     * contest — the clue is drawn in the top-left corner, and so is the note "1".
+     *
+     * @returns {boolean} True to reserve a row for the label.
+     */
+    get reservesLabelRow() {
+        return false;
+    }
+
+    /**
      * Tracks the grid's rendered width so everything in the board can size itself from it.
      *
      * Measured on the grid but **published on the host**, because the gutters are not inside the
@@ -226,6 +237,77 @@ export class PtBoard extends LitElement {
     }
 
     /**
+     * How a cell's label should be *said*, when that differs from how it is drawn.
+     *
+     * A label is written to be read in a corner a few pixels across, which is not the same job as
+     * being read aloud: a kenken clue leans on operator symbols a screen reader may drop or name
+     * oddly, and a crossword's bare number needs saying what it numbers. The base returns the label
+     * untouched, so a type whose label already reads as a sentence supplies nothing.
+     *
+     * Only the subclass knows what the label *means*, so it composes the whole phrase — this element
+     * has no business knowing that kenken's labels describe cages.
+     *
+     * @param {string} label - The label as drawn in the cell.
+     * @param {number} _idx - The cell the label is drawn in, for types whose label describes the
+     *   square's place in the puzzle rather than its contents — a crossword number means "entries
+     *   start here", which the label alone cannot say. KenKen ignores it.
+     * @returns {string} What a screen reader should say in its place.
+     */
+    spokenLabel(label, _idx) {
+        return label;
+    }
+
+    /**
+     * Whether the square is annotated rather than special — a ring drawn on it, carrying no rule.
+     *
+     * Crossword's circled squares are the case: a themed puzzle usually hides a bonus answer in
+     * them, so they must be visible, but they behave exactly like every other square.
+     *
+     * @param {number} _idx - Cell index.
+     * @returns {boolean} True to draw the ring.
+     */
+    isCircled(_idx) {
+        return false;
+    }
+
+    /**
+     * Where an arrow key lands, given where it started and which way it pointed.
+     *
+     * The default is the adjacent square, stopping at the edges — which was hard-coded here until
+     * Phase 4, because for three puzzle types moving the cursor is not a puzzle-specific act. A
+     * crossword disagrees twice over: it has squares an arrow must skip, and pressing across the
+     * direction you are working means "turn", not "move one".
+     *
+     * A subclass may change its own state here, which is how the direction flip happens.
+     *
+     * @param {number} from - Cell the selection is leaving.
+     * @param {number} deltaRow - -1, 0, or 1.
+     * @param {number} deltaCol - -1, 0, or 1.
+     * @returns {number|null} The cell to select, or null to stay put.
+     */
+    nextSelection(from, deltaRow, deltaCol) {
+        const size = this.doc.size;
+        const { row, col } = toCoords(from, size);
+        const nextRow = Math.min(size.rows - 1, Math.max(0, row + deltaRow));
+        const nextCol = Math.min(size.cols - 1, Math.max(0, col + deltaCol));
+        return nextRow * size.cols + nextCol;
+    }
+
+    /**
+     * Where the cursor goes once a value has been written into a square, or nowhere.
+     *
+     * Nowhere is the right answer for every type that fills a grid in no particular order: a sudoku
+     * player picks the square they have worked out, and moving them off it afterwards would be the
+     * board second-guessing them. A crossword is read along an entry, so it advances.
+     *
+     * @param {number} _idx - The cell just written to.
+     * @returns {number|null} The next cell, or null to leave the selection alone.
+     */
+    advanceAfterInput(_idx) {
+        return null;
+    }
+
+    /**
      * Whether a cell is part of what the player is currently reaching for, as opposed to what they
      * have already written.
      *
@@ -258,14 +340,10 @@ export class PtBoard extends LitElement {
         return nothing;
     }
 
-    /** Moves the selection by a row/column delta, stopping at the grid edges. */
+    /** Moves the selection by a row/column delta, by whatever rule this puzzle navigates on. */
     #moveSelection(deltaRow, deltaCol) {
-        const size = this.doc.size;
-        const current = this.selection ?? 0;
-        const { row, col } = toCoords(current, size);
-        const nextRow = Math.min(size.rows - 1, Math.max(0, row + deltaRow));
-        const nextCol = Math.min(size.cols - 1, Math.max(0, col + deltaCol));
-        this.#select(nextRow * size.cols + nextCol);
+        const next = this.nextSelection(this.selection ?? 0, deltaRow, deltaCol);
+        if (next != null) this.#select(next);
     }
 
     /** Announces a selection change; the store owns selection, this element only requests it. */
@@ -313,7 +391,11 @@ export class PtBoard extends LitElement {
         event.preventDefault();
         this.dispatchEvent(
             new CustomEvent('pt-cell-input', {
-                detail: { cell: this.selection, value },
+                // `shiftKey` travels because it is a fact about the keystroke rather than about any
+                // one puzzle: crossword reads it as "extend this square into a word", which is the
+                // physical-keyboard equivalent of its Rebus switch (ADR-0007). Types that do not
+                // care simply ignore it.
+                detail: { cell: this.selection, value, shiftKey: event.shiftKey },
                 bubbles: true,
                 composed: true,
             }),
@@ -331,6 +413,12 @@ export class PtBoard extends LitElement {
     #onPointerDown(event) {
         const cell = event.target.closest('pt-cell');
         if (!cell) return;
+        // A blocked square is never selected. It holds no value, takes no marks, and cannot be
+        // checked, so landing the cursor there could only ever be a dead end — and in a crossword,
+        // where a third of the grid is black, an easy one to hit. No other type has block cells, so
+        // this costs them nothing.
+        if (this.doc.cells[cell.index]?.block) return;
+
         this.renderRoot.querySelector('.grid')?.focus({ preventScroll: true });
         this.#select(cell.index);
     }
@@ -409,29 +497,44 @@ export class PtBoard extends LitElement {
                 .markRows=${this.markRows}
                 .glyphs=${this.valueGlyphs}
                 .check=${check}
+                ?label-row=${this.reservesLabelRow}
                 ?given=${docCell.given != null}
                 ?block=${docCell.block}
                 ?selected=${this.selection === idx}
                 ?highlighted=${this.isHighlighted(idx)}
+                ?circled=${this.isCircled(idx)}
                 ?heavy-right=${this.isHeavyRight(idx)}
                 ?heavy-bottom=${this.isHeavyBottom(idx)}
                 aria-selected=${this.selection === idx}
                 aria-readonly=${docCell.given != null}
-                aria-label=${this.#cellLabel(row, col, value, marks, check)}
+                aria-label=${this.#cellLabel(idx, docCell, row, col, value, marks, check)}
             ></pt-cell>
         `;
     }
 
     /**
-     * The cell's spoken description. Marks and check feedback are named rather than left to colour
-     * and position, since neither survives a screen reader (design-spec.md §11).
+     * The cell's spoken description. Everything a sighted player reads off the square is named here
+     * rather than left to colour, position, or shape, since none of the three survives a screen
+     * reader (design-spec.md §11).
      *
      * A value drawn as a mark is spoken as what the mark means: `#` is a character nobody wants read
      * out, and a screen reader user is owed the same information the shape carries.
+     *
+     * **The label is part of that**, and used not to be. A kenken cage clue was drawn and never
+     * said, so a whole puzzle's constraints were missing for anyone not looking at it — and a
+     * crossword's label is its entry number, the only thing tying a square to the clue that solves
+     * it. It comes first because it describes the square rather than what is written in it.
+     *
+     * A blocked square stops after being named. It has no value, can hold no marks, and cannot be
+     * checked, so "empty" would invite an edit that is not possible.
      */
-    #cellLabel(row, col, value, marks, check) {
+    #cellLabel(idx, docCell, row, col, value, marks, check) {
         const spoken = { block: 'filled', cross: 'crossed out' };
-        const parts = [`row ${row + 1} column ${col + 1}`];
+        const position = `row ${row + 1} column ${col + 1}`;
+        if (docCell.block) return `${position}, blocked`;
+
+        const parts = [position];
+        if (docCell.label != null) parts.push(this.spokenLabel(docCell.label, idx));
 
         if (value != null) parts.push(spoken[this.valueGlyphs?.[value]] ?? value);
         else if (marks.length > 0) parts.push(`notes ${marks.join(' ')}`);

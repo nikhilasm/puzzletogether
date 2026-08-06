@@ -2,8 +2,9 @@
  * The kenken grid: cage borders and digit input.
  *
  * Everything else — cell DOM, selection, presence, op emission — comes from `<pt-board>`. The cage
- * labels need no code at all: `DocCell.label` already renders in a cell's top-left corner, which is
- * where a cage clue goes, so the server writes the label and this file never mentions it.
+ * labels need no rendering code: `DocCell.label` already draws in a cell's top-left corner, which is
+ * where a cage clue goes, so the server writes the label and this file only says where it sits
+ * relative to the notes.
  *
  * The heavy rules are the same hook sudoku uses, asking a different question. Sudoku asks "is this
  * the edge of a region", which it computes from the region shape; kenken asks "is my neighbour in a
@@ -12,6 +13,15 @@
  */
 
 import { PtBoard } from './pt-board.js';
+
+/**
+ * Cage operators as words.
+ *
+ * The drawn symbols are typographic rather than ASCII — `−` is a true minus sign, not a hyphen —
+ * and how a screen reader handles them is a verbosity setting rather than a promise: at the usual
+ * one, punctuation is skipped, so `12+` and `12` say the same thing while meaning nothing alike.
+ */
+const SPOKEN_OP = { '+': 'plus', '−': 'minus', '×': 'times', '÷': 'divided by' };
 
 export class PtKenkenBoard extends PtBoard {
     /** Marks lay out in a square-ish block, as they do for sudoku: 2 columns up to 4×4, 3 above. */
@@ -22,6 +32,34 @@ export class PtKenkenBoard extends PtBoard {
     /** Enough rows to hold the whole alphabet at that width. */
     get markRows() {
         return Math.ceil((this.doc?.meta.alphabet.length ?? 4) / this.markColumns);
+    }
+
+    /**
+     * The cage clue gets a row of the mark grid to itself.
+     *
+     * Kenken is the one type so far whose cells carry both a clue and notes, and both are drawn in
+     * the top-left corner — the clue because that is where a kenken clue goes, the note "1" because
+     * a mark's position is what says which digit it is. The marks paint after the label, so a cell
+     * with a full set of notes hid its own clue. Giving the clue a row costs the notes one row of
+     * height and settles it for good.
+     */
+    get reservesLabelRow() {
+        return true;
+    }
+
+    /**
+     * The cage clue said as arithmetic: `12+` becomes "cage 12 plus".
+     *
+     * Named as a cage, because otherwise the clue and the digit written in the cell arrive as two
+     * bare numbers in a row and nothing says which is which. A single-cell cage is drawn as its
+     * target alone and is spoken the same way — there is no operator to name.
+     *
+     * @param {string} label - The cage clue as drawn.
+     * @returns {string} The clue as a screen reader should say it.
+     */
+    spokenLabel(label) {
+        const op = SPOKEN_OP[label.at(-1)];
+        return op ? `cage ${label.slice(0, -1)} ${op}` : `cage ${label}`;
     }
 
     /**

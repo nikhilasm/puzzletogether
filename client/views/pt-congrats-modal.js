@@ -23,6 +23,8 @@ export class PtCongratsModal extends LitElement {
         solved: { type: Object },
         isHost: { type: Boolean },
         settings: { type: Object },
+        /** What the server can serve, so "start another" offers exactly what Puzzle Select does. */
+        catalog: { type: Object },
         busy: { state: true },
         spec: { state: true },
     };
@@ -172,6 +174,7 @@ export class PtCongratsModal extends LitElement {
             <hr class="divider" />
             <pt-puzzle-picker
                 .spec=${this.spec ?? this.#defaultSpec}
+                .catalog=${this.catalog}
                 .disabled=${this.busy}
                 @pt-spec-change=${(event) => {
                     this.spec = event.detail.spec;

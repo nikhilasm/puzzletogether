@@ -248,6 +248,8 @@ without changing its second.
 
 **`tests/` is linted, unlike `client/` and `server/`** — not a widening of the rule above but the same reasoning applied: everything else in the repo is checked by a test, and the tests are the one thing nothing else checks. They get browser globals, since the callbacks passed to `page.evaluate()` run in the page.
 
+**`scripts/` is linted too** (added in Phase 4), on a third application of the same reasoning rather than a fourth rule: it is the only code that *writes content into the repo*. `import-crossword.js` produces the bank files the server serves, and it is run by hand and rarely — which is precisely the situation where a typo waits months to be discovered rather than failing on the next test run. It gets Node globals and no browser ones, since nothing in it ever reaches a page. Its tests run under Vitest with everything else.
+
 **Prettier covers code, not prose** (decided in Phase 2, `.prettierignore`). It reflows Markdown
 paragraphs and re-lays-out tables, which costs more in readability than it buys in consistency —
 `docs/` is read far more often than it is diffed. §1's 4-space rule still applies to Markdown;

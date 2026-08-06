@@ -11,7 +11,7 @@ import { ASSIST_RATE_LIMIT, FOCUS_RATE_LIMIT, OP_RATE_LIMIT } from '../../shared
 import { CLIENT_EVENT, ERROR, ROOM_STATE, SERVER_EVENT, fail, ok } from '../../shared/protocol.js';
 import { validate } from '../../shared/schema.js';
 import { config } from '../config.js';
-import { getPuzzle, getPuzzleModule, prewarm } from '../puzzles/provider.js';
+import { catalog, getPuzzle, getPuzzleModule, prewarm } from '../puzzles/provider.js';
 import {
     addPlayer,
     dropPlayer,
@@ -45,6 +45,10 @@ function joinPayload(room, player, token) {
         playerToken: token,
         room: toRoomView(room),
         snapshot: toSnapshot(room),
+        // What this build can serve. Fixed for the life of the process — it is the generators plus
+        // whatever the bank was loaded with — so it rides the one payload a client gets exactly
+        // once, rather than every `room:state` that cannot have changed it (design-spec.md §10).
+        catalog: catalog(),
     };
 }
 
@@ -244,8 +248,20 @@ export function registerHandlers(io, socket) {
                 difficulty: payload.difficulty,
                 size: payload.size,
             };
-            const { doc, solution } = await getPuzzle(spec);
             const room = seat.room;
+
+            let doc;
+            let solution;
+            try {
+                // `served` keeps a finite bank from handing back the puzzle the room just solved.
+                ({ doc, solution } = await getPuzzle({ ...spec, exclude: room.served }));
+            } catch (error) {
+                // A generator refusing a size is a bug; a bank not holding one is a fact about the
+                // content, and the host is owed the difference rather than "something went wrong".
+                ack(fail(ERROR.WRONG_STATE, error.message));
+                return;
+            }
+            room.served.add(doc.id);
 
             room.settings = { ...room.settings, ...spec };
             room.doc = doc;

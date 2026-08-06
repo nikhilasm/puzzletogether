@@ -11,7 +11,11 @@
 import { io } from 'socket.io-client';
 
 import { applyOp, applyOps, emptyBoard } from '../../shared/board-reducer.js';
-import { FOCUS_THROTTLE_MS, NOTICE_TIMEOUT_MS } from '../../shared/constants.js';
+import {
+    FOCUS_THROTTLE_MS,
+    MAX_CELL_VALUE_LENGTH,
+    NOTICE_TIMEOUT_MS,
+} from '../../shared/constants.js';
 import {
     CHECK_STATE,
     CLIENT_EVENT,
@@ -72,6 +76,12 @@ function initialState() {
         // Which mark a nonogram tap lays down. Filling is what a solver does most, so it is the one
         // you start on; the other two are what you switch to.
         brush: 'fill',
+        // Whether a crossword keystroke appends to the square instead of replacing it (ADR-0007).
+        // Off by default because a rebus square is the exception in any grid that has one at all.
+        rebus: false,
+        // What this build can serve, from the join ack. Null until seated — Puzzle Select is only
+        // ever reached from inside a room, so it never renders without one.
+        catalog: null,
         checkResults: {},
         assists: 0,
         canUndo: false,
@@ -264,6 +274,66 @@ export class RoomStore {
     setBrush(brush) {
         if (!['fill', 'cross', 'erase'].includes(brush)) return;
         this.#set({ brush });
+    }
+
+    /**
+     * Switches a crossword between one letter per square and a whole word in one.
+     *
+     * The same shape of setting as Notes and the brush — client-side, per player, and it changes
+     * what a keypress *means* rather than changing the grid. Every puzzle type now has exactly one
+     * of these above its keys (design-spec.md §4).
+     *
+     * @param {boolean} rebus - True to append letters rather than replace them.
+     * @returns {void}
+     */
+    setRebus(rebus) {
+        this.#set({ rebus: rebus === true });
+    }
+
+    /**
+     * Writes a letter into a crossword square, appending when the square is being built into a word.
+     *
+     * Every keystroke sends the **whole** value the square now holds, never an "append" — which is
+     * what keeps a rebus off the op vocabulary entirely (ADR-0007). Per-cell last-writer-wins, undo
+     * pre-images, and gap-recovery snapshots all keep working on a value that is simply longer.
+     *
+     * Appending stops at the cell-value bound rather than silently dropping the keystroke past it,
+     * because a limit the player cannot see is one they will keep pressing against.
+     *
+     * @param {number} cell - Cell index.
+     * @param {string} letter - The letter pressed, already filtered by the board.
+     * @param {boolean} [append] - True to extend the square's value instead of replacing it.
+     * @returns {void}
+     */
+    inputLetter(cell, letter, append = false) {
+        const current = snapshotCell(this.#state.view.cells[cell]);
+        const existing = append ? (current?.value ?? '') : '';
+
+        if (existing.length >= MAX_CELL_VALUE_LENGTH) {
+            this.notify(`a square holds at most ${MAX_CELL_VALUE_LENGTH} letters`);
+            return;
+        }
+
+        this.#sendOp(setOp(this.#makeOpId(), cell, existing + letter), current);
+    }
+
+    /**
+     * Removes the last letter of a square being built into a rebus, or clears it outright.
+     *
+     * While assembling a word, taking back the last letter is the correction the player means;
+     * clearing the lot is not. One letter left is the same as an empty square, so that clears.
+     *
+     * @param {number} cell - Cell index.
+     * @returns {void}
+     */
+    backspaceLetter(cell) {
+        const current = snapshotCell(this.#state.view.cells[cell]);
+        const value = current?.value ?? '';
+        if (value.length <= 1) {
+            this.clearCell(cell);
+            return;
+        }
+        this.#sendOp(setOp(this.#makeOpId(), cell, value.slice(0, -1)), current);
     }
 
     /**
@@ -511,6 +581,9 @@ export class RoomStore {
             code: data.code,
             playerId: data.playerId,
             room: data.room,
+            // Fixed for the life of the server process, so it arrives once with the seat rather
+            // than on every room update that cannot have changed it.
+            catalog: data.catalog ?? null,
         });
         this.#acceptSnapshot(data.snapshot, false);
     }

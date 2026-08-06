@@ -82,6 +82,84 @@ test.describe('kenken', () => {
         expect(result.wrong).toEqual([]);
     });
 
+    /**
+     * A cage clue and the note "1" both belong in the cell's top-left corner, and the marks paint
+     * after the label — so a cell with a full set of notes used to hide the clue it was solving.
+     * The clue now has a row of the mark grid to itself.
+     */
+    test('keeps the cage clue clear of the notes under it', async ({ page }) => {
+        const idx = await boardOf(page).evaluate((board) =>
+            board.doc.cells.findIndex((cell) => cell.label != null),
+        );
+        expect(idx).toBeGreaterThanOrEqual(0);
+
+        await page.locator('pt-mode-toggle pt-switch button').click();
+        await page.locator(`pt-cell >> nth=${idx}`).click();
+        for (let digit = 0; digit < 6; digit += 1) {
+            await page.locator('pt-keypad .digits button').nth(digit).click();
+        }
+
+        const geometry = await page.locator(`pt-cell >> nth=${idx}`).evaluate((cell) => {
+            const box = (el) => el.getBoundingClientRect();
+            const marks = [...cell.shadowRoot.querySelectorAll('.marks span')];
+            return {
+                count: marks.length,
+                label: box(cell.shadowRoot.querySelector('.label')),
+                tops: marks.map((el) => box(el).top),
+                centres: marks.map((el) => Math.round(box(el).left + box(el).width / 2)),
+                cell: box(cell),
+            };
+        });
+
+        expect(geometry.count, 'all six notes are written').toBe(6);
+        for (const top of geometry.tops) {
+            expect(top, 'a note starts below the clue').toBeGreaterThanOrEqual(
+                geometry.label.bottom - 0.5,
+            );
+        }
+
+        // The clue is sized by the track it sits in rather than by the page's type scale: with six
+        // digits it shares a three-row grid, so it cannot be taller than a third of the cell.
+        expect(geometry.label.height).toBeLessThan(geometry.cell.height / 3);
+
+        // And the grid still lays out from the host's custom properties: 3 columns, 2 rows of notes.
+        expect(new Set(geometry.centres).size).toBe(3);
+        expect(new Set(geometry.tops.map(Math.round)).size).toBe(2);
+    });
+
+    /**
+     * The clue was drawn and never said, so the whole puzzle's constraints were missing for anyone
+     * not looking at the screen. It is spoken as arithmetic rather than as its symbols: at the usual
+     * verbosity a screen reader skips punctuation, which would say "12" for a clue meaning `12+`.
+     */
+    test('says the cage clue, as arithmetic rather than as symbols', async ({ page }) => {
+        const clued = await boardOf(page).evaluate((board) =>
+            board.doc.cells
+                .map((cell, idx) => (cell.label == null ? null : { idx, label: cell.label }))
+                .filter(Boolean),
+        );
+        expect(clued.length).toBeGreaterThan(4);
+
+        const spoken = { '+': 'plus', '−': 'minus', '×': 'times', '÷': 'divided by' };
+        for (const { idx, label } of clued) {
+            const op = spoken[label.at(-1)];
+            const said = op ? `cage ${label.slice(0, -1)} ${op}` : `cage ${label}`;
+            await expect(page.locator(`pt-cell >> nth=${idx}`)).toHaveAttribute(
+                'aria-label',
+                `row ${Math.floor(idx / 6) + 1} column ${(idx % 6) + 1}, ${said}, empty`,
+            );
+        }
+
+        // A cell with no cage clue says only where it is and what is in it.
+        const plain = await boardOf(page).evaluate((board) =>
+            board.doc.cells.findIndex((cell) => cell.label == null),
+        );
+        await expect(page.locator(`pt-cell >> nth=${plain}`)).toHaveAttribute(
+            'aria-label',
+            /^row \d+ column \d+, empty$/,
+        );
+    });
+
     test('takes digits on the keypad, like a sudoku', async ({ page }) => {
         await expect(page.locator('pt-keypad .digits button')).toHaveCount(6);
         await expect(page.locator('pt-mode-toggle pt-switch button')).toHaveText('Notes');

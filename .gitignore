@@ -6,3 +6,16 @@ playwright-report/
 .env
 *.log
 .claude/
+
+# Source .puz files are inputs to the importer, not part of the repo. They are somebody else's
+# copyrighted work, downloadable for free but not therefore redistributable — and committing one
+# is the act of redistributing it. The converted bank under data/crosswords/ is tracked; what it
+# was converted from is not. See ADR-0004.
+data/*.puz
+data/*.ipuz
+
+# Puzzles imported from those files, for building against. The tracked bank is data/crosswords/,
+# which holds only puzzles whose licence is known; this is the overlay the server also reads, so a
+# 15x15 is playable while the shipping question stays open. Ignored wholesale rather than per file:
+# the point is that nothing here can reach git history by accident.
+data/crosswords-local/

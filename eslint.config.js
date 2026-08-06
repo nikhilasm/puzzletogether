@@ -11,6 +11,11 @@ import globals from 'globals';
  *
  * `tests/` is the exception to that reasoning rather than a widening of it: it is the only code in
  * the repo nothing else checks. Everything else has a test; the tests have lint.
+ *
+ * `scripts/` joined in Phase 4 for a third reason again: it is the only code that *writes content
+ * into the repo*. `import-crossword.js` produces the bank files the server then serves, run by hand
+ * and rarely, which is exactly the situation where a typo waits months to be discovered. It is pure
+ * Node — no browser globals — which is the one way its config differs from the others.
  */
 export default [
     {
@@ -30,6 +35,23 @@ export default [
         },
         rules: {
             'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+            'prefer-const': 'error',
+        },
+    },
+    {
+        files: ['scripts/**/*.js'],
+        languageOptions: {
+            ecmaVersion: 2023,
+            sourceType: 'module',
+            globals: { ...globals.node },
+        },
+        rules: {
+            'no-unused-vars': [
+                'error',
+                // `const { solution, ...rest } = file` is how a test drops one key to prove the
+                // reader refuses what is left. The binding is unused by design.
+                { argsIgnorePattern: '^_', ignoreRestSiblings: true },
+            ],
             'prefer-const': 'error',
         },
     },

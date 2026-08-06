@@ -2,22 +2,44 @@
  * The provider seam: the only entry point the rest of the server uses to obtain a puzzle.
  *
  * Whether a puzzle was generated in a worker or read off disk is invisible past this line
- * (ADR-0004). Phase 1 has only `GeneratorProvider`; `BankProvider` for crossword drops in here in
- * Phase 4 with no call-site change.
+ * (ADR-0004). Phase 4 put that claim to the test by adding the second kind, and it held: `bank.js`
+ * joined the map below and nothing that asks for a puzzle changed.
+ *
+ * What the second kind *did* add is `catalog()`. A generator can make any size it offers, so a
+ * constant could state them; a bank offers whatever files it was given, which no constant can know.
  */
 
+import { SIZES_BY_TYPE, DIFFICULTIES, PUZZLE_TYPES } from '../../shared/constants.js';
+
+import { bankCatalog, loadBank, takeFromBank } from './bank.js';
+import crossword from './crossword/index.js';
 import kenken from './kenken/index.js';
 import nonogram from './nonogram/index.js';
 import { GeneratorPool } from './pool.js';
 import sudoku from './sudoku/index.js';
 
 /** Puzzle modules by type. A fifth type is one import and one entry. */
-const MODULES = { sudoku, kenken, nonogram };
+const MODULES = { sudoku, kenken, nonogram, crossword };
 
-/** Which provider serves each type. `BankProvider` joins this map for crossword in Phase 4. */
-const PROVIDER_BY_TYPE = { sudoku: 'generator', kenken: 'generator', nonogram: 'generator' };
+/** Which producer serves each type — the whole of what `getPuzzle` has to decide. */
+const PROVIDER_BY_TYPE = {
+    sudoku: 'generator',
+    kenken: 'generator',
+    nonogram: 'generator',
+    crossword: 'bank',
+};
 
 const pool = new GeneratorPool();
+
+/**
+ * Reads the crossword bank into memory. Called once at boot, before the first room can ask.
+ *
+ * @param {string[]} dirs - Bank directories, in order.
+ * @returns {number} How many puzzles were loaded.
+ */
+export function loadBankFrom(dirs) {
+    return loadBank(dirs);
+}
 
 /**
  * Fetches a puzzle matching the requested specification.
@@ -26,15 +48,49 @@ const pool = new GeneratorPool();
  * @param {string} spec.type - Puzzle type, one of the supported modules.
  * @param {string} spec.difficulty - Requested difficulty.
  * @param {import('../../shared/protocol.js').GridSize} spec.size - Grid dimensions.
+ * @param {Iterable<string>} [spec.exclude] - Puzzle ids the asking room has already been served, so
+ *   a finite bank does not hand back the puzzle just solved. Generators ignore it — they do not
+ *   repeat.
  * @returns {Promise<{ doc: import('../../shared/protocol.js').PuzzleDoc, solution: string[] }>}
  *   The client-safe document and the solution, which the room keeps and never serialises.
  * @throws {RangeError} If no provider serves the requested type.
  */
-export function getPuzzle({ type, difficulty, size }) {
-    if (PROVIDER_BY_TYPE[type] !== 'generator') {
-        throw new RangeError(`no provider for puzzle type: ${type}`);
+export async function getPuzzle({ type, difficulty, size, exclude }) {
+    const provider = PROVIDER_BY_TYPE[type];
+    if (provider === 'generator') return pool.take({ type, difficulty, size });
+    if (provider === 'bank') return takeFromBank({ difficulty, size, exclude });
+    throw new RangeError(`no provider for puzzle type: ${type}`);
+}
+
+/**
+ * What this build can actually serve, per type, for Puzzle Select to offer.
+ *
+ * **A type with nothing behind it is left out entirely.** For crossword that is the ordinary state
+ * of a build with no licensed bank rather than an error state (ADR-0004), and a picker that offers a
+ * type which fails when chosen would be worse than one that offers three.
+ *
+ * @returns {Object<string, { sizes: { rows: number, cols: number }[], difficulties: string[] }>}
+ *   Available sizes and difficulties, keyed by puzzle type.
+ */
+export function catalog() {
+    const available = {};
+
+    for (const type of PUZZLE_TYPES) {
+        if (PROVIDER_BY_TYPE[type] === 'bank') {
+            const banked = bankCatalog();
+            if (banked) available[type] = banked;
+            continue;
+        }
+
+        const sides = SIZES_BY_TYPE[type] ?? [];
+        if (sides.length === 0) continue;
+        available[type] = {
+            sizes: sides.map((side) => ({ rows: side, cols: side })),
+            difficulties: [...DIFFICULTIES],
+        };
     }
-    return pool.take({ type, difficulty, size });
+
+    return available;
 }
 
 /**
@@ -51,10 +107,14 @@ export function getPuzzleModule(type) {
  * Warms the pool for a specification at boot, so the first puzzle of a process is as fast as the
  * rest.
  *
+ * A banked type is already warm — it is a map in memory — so this is a no-op for crossword rather
+ * than something every call site has to remember not to ask for.
+ *
  * @param {object} spec - Puzzle specification, as for `getPuzzle`.
  * @returns {void}
  */
 export function prewarm(spec) {
+    if (PROVIDER_BY_TYPE[spec.type] !== 'generator') return;
     pool.prewarm(spec);
 }
 

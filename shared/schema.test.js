@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { PLAYER_COLOR_COUNT } from './constants.js';
+import { MAX_CELL_VALUE_LENGTH, PLAYER_COLOR_COUNT } from './constants.js';
 import { CLIENT_EVENT, OP_TYPE } from './protocol.js';
 import { validate } from './schema.js';
 
@@ -44,8 +44,31 @@ describe('validate', () => {
         expect(validate(CLIENT_EVENT.GAME_OP, { op }).ok).toBe(false);
     });
 
-    it('rejects a multi-character cell value', () => {
-        const op = { opId: 'x', t: OP_TYPE.SET, cell: 0, value: '55' };
+    /**
+     * A multi-character value is a crossword rebus square, and the schema stopped refusing them in
+     * Phase 4 (ADR-0007). What it still does is *bound* them — this file's job is the wire, and the
+     * question of whether a given puzzle may hold `HAND` in a cell belongs to that type's
+     * `validateOp`, which is where sudoku and kenken are tested to still say no.
+     */
+    it('accepts a multi-character cell value, which is a rebus square', () => {
+        const op = { opId: 'x', t: OP_TYPE.SET, cell: 0, value: 'HAND' };
+        expect(validate(CLIENT_EVENT.GAME_OP, { op }).ok).toBe(true);
+    });
+
+    it('accepts a cell value of exactly the maximum length', () => {
+        const value = 'A'.repeat(MAX_CELL_VALUE_LENGTH);
+        const op = { opId: 'x', t: OP_TYPE.SET, cell: 0, value };
+        expect(validate(CLIENT_EVENT.GAME_OP, { op }).ok).toBe(true);
+    });
+
+    it('rejects a cell value past the maximum length', () => {
+        const value = 'A'.repeat(MAX_CELL_VALUE_LENGTH + 1);
+        const op = { opId: 'x', t: OP_TYPE.SET, cell: 0, value };
+        expect(validate(CLIENT_EVENT.GAME_OP, { op }).ok).toBe(false);
+    });
+
+    it('rejects an empty cell value — null is how a cell is emptied, not the empty string', () => {
+        const op = { opId: 'x', t: OP_TYPE.SET, cell: 0, value: '' };
         expect(validate(CLIENT_EVENT.GAME_OP, { op }).ok).toBe(false);
     });
 
@@ -75,8 +98,19 @@ describe('validate', () => {
     });
 
     it('rejects a start request for an unsupported puzzle type', () => {
-        const payload = { type: 'crossword', difficulty: 'easy', size: { rows: 9, cols: 9 } };
+        const payload = { type: 'wordsearch', difficulty: 'easy', size: { rows: 9, cols: 9 } };
         expect(validate(CLIENT_EVENT.GAME_START, payload).ok).toBe(false);
+    });
+
+    it('accepts crossword, which the build now serves', () => {
+        const payload = { type: 'crossword', difficulty: 'easy', size: { rows: 15, cols: 15 } };
+        expect(validate(CLIENT_EVENT.GAME_START, payload).ok).toBe(true);
+    });
+
+    /** Real crosswords are not square. 20×21 is an ordinary Sunday-size grid. */
+    it('accepts a grid that is not square', () => {
+        const payload = { type: 'crossword', difficulty: 'hard', size: { rows: 21, cols: 20 } };
+        expect(validate(CLIENT_EVENT.GAME_START, payload).ok).toBe(true);
     });
 
     it('rejects a grid larger than the client can render', () => {

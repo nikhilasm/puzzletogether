@@ -7,6 +7,7 @@
 
 import {
     DIFFICULTIES,
+    MAX_CELL_VALUE_LENGTH,
     MAX_NAME_LENGTH,
     PLAYER_COLOR_COUNT,
     PUZZLE_TYPES,
@@ -73,13 +74,22 @@ function integerArray({ maxLength = MAX_CELLS, min = 0, max = MAX_CELLS, optiona
     };
 }
 
-/** Builds a validator for a cell value: a single character, or null to clear the cell. */
+/**
+ * Builds a validator for a cell value: 1–`MAX_CELL_VALUE_LENGTH` characters, or null to clear.
+ *
+ * This bounds the **wire**, not the puzzle. Through Phase 3 it was exactly one character, and that
+ * doubled as the rule keeping every type's cells to a single digit or mark — until a crossword rebus
+ * square needed to hold a whole word (ADR-0007). What may go in a given cell is a question for that
+ * type's `validateOp`, which is where sudoku, kenken, and nonogram now each say "exactly one" for
+ * themselves. Nothing in this file will say it for them.
+ */
 function cellValue({ optional = false } = {}) {
     return (value, key) => {
         if (value === null) return null;
         if (value === undefined) return optional ? null : `${key} is required`;
-        if (typeof value !== 'string' || value.length !== 1) {
-            return `${key} must be a single character or null`;
+        if (typeof value !== 'string') return `${key} must be a string or null`;
+        if (value.length < 1 || value.length > MAX_CELL_VALUE_LENGTH) {
+            return `${key} must be 1-${MAX_CELL_VALUE_LENGTH} characters or null`;
         }
         return null;
     };

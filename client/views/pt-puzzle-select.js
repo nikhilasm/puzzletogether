@@ -62,7 +62,7 @@ export class PtPuzzleSelect extends LitElement {
         `,
     ];
 
-    #store = new StoreController(this, roomStore, (state) => state.room);
+    #store = new StoreController(this, roomStore, (state) => [state.room, state.catalog]);
 
     constructor() {
         super();
@@ -125,6 +125,7 @@ export class PtPuzzleSelect extends LitElement {
         return html`
             <pt-puzzle-picker
                 .spec=${this.#spec}
+                .catalog=${this.#store.state.catalog}
                 .disabled=${this.busy}
                 @pt-spec-change=${(event) => {
                     this.spec = event.detail.spec;

@@ -1,0 +1,56 @@
+{
+    "puzzles": [
+        {
+            "id": "mini-0001",
+            "file": "mini-0001.json",
+            "size": {
+                "rows": 5,
+                "cols": 5
+            },
+            "difficulty": "easy",
+            "title": "Warm-Up",
+            "author": "PuzzleTogether",
+            "source": "CC0 1.0 — dedicated to the public domain",
+            "license": "CC0-1.0"
+        },
+        {
+            "id": "mini-0002",
+            "file": "mini-0002.json",
+            "size": {
+                "rows": 5,
+                "cols": 5
+            },
+            "difficulty": "easy",
+            "title": "Well Earned",
+            "author": "PuzzleTogether",
+            "source": "CC0 1.0 — dedicated to the public domain",
+            "license": "CC0-1.0"
+        },
+        {
+            "id": "mini-0003",
+            "file": "mini-0003.json",
+            "size": {
+                "rows": 5,
+                "cols": 5
+            },
+            "difficulty": "easy",
+            "title": "Saturday Morning",
+            "author": "PuzzleTogether",
+            "source": "CC0 1.0 — dedicated to the public domain",
+            "license": "CC0-1.0"
+        },
+        {
+            "id": "mini-0004",
+            "file": "mini-0004.json",
+            "size": {
+                "rows": 5,
+                "cols": 5
+            },
+            "difficulty": "easy",
+            "title": "Take the Controls",
+            "author": "PuzzleTogether",
+            "source": "CC0 1.0 — dedicated to the public domain",
+            "license": "CC0-1.0"
+        }
+    ]
+}

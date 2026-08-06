@@ -41,13 +41,17 @@ export async function startPuzzle(page, side = '4×4', type = 'Sudoku') {
     await page.locator('pt-puzzle-picker .option', { hasText: side }).click();
     // Named, not positional: Puzzle Select also carries a Leave room button.
     await page.locator('pt-puzzle-select button', { hasText: 'Start' }).click();
-    await page.locator('pt-keypad').waitFor({ timeout: 30_000 });
+    // Crossword takes the letter pad where the others take the keypad, so wait on whichever the
+    // type actually renders rather than assuming the digits.
+    await page
+        .locator(type === 'Crossword' ? 'pt-letter-pad' : 'pt-keypad')
+        .waitFor({ timeout: 30_000 });
     await expect(page.locator('pt-cell').first()).toBeVisible();
 }
 
 /** The board element on screen, whichever type it is. */
 export function boardOf(page) {
-    return page.locator('pt-sudoku-board, pt-kenken-board, pt-nonogram-board');
+    return page.locator('pt-sudoku-board, pt-kenken-board, pt-nonogram-board, pt-crossword-board');
 }
 
 /** The roster as the page currently holds it — the component's own property, not its DOM. */

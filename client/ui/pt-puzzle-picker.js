@@ -31,6 +31,14 @@ export class PtPuzzlePicker extends LitElement {
     static properties = {
         spec: { type: Object },
         disabled: { type: Boolean },
+        /**
+         * What the server can actually serve, per type, from the join ack.
+         *
+         * A generator can make any size it offers, which a constant could state; a bank offers
+         * whatever files it was given, which none can. So availability comes from the server and
+         * `SIZES_BY_TYPE` is only the fallback for a client that somehow has no catalog yet.
+         */
+        catalog: { type: Object },
     };
 
     static styles = [
@@ -108,14 +116,43 @@ export class PtPuzzlePicker extends LitElement {
         super();
         this.spec = null;
         this.disabled = false;
+        this.catalog = null;
+    }
+
+    /**
+     * The sizes a type offers, as `{ rows, cols }` pairs.
+     *
+     * Pairs rather than square sides because a real crossword is 15×15 and 5×5 and also 20×21, and
+     * a list of sides cannot say the third one.
+     */
+    #sizesFor(type) {
+        const fromCatalog = this.catalog?.[type]?.sizes;
+        if (fromCatalog) return fromCatalog;
+        return (SIZES_BY_TYPE[type] ?? []).map((side) => ({ rows: side, cols: side }));
+    }
+
+    /**
+     * The types on offer: those the server has something behind.
+     *
+     * **A type with nothing behind it is left out entirely.** For crossword that is the ordinary
+     * state of a build with no licensed bank rather than an error, and offering a button that fails
+     * when pressed would be worse than offering three (design-spec.md §7).
+     */
+    get #types() {
+        return PUZZLE_TYPES.filter((type) => this.#sizesFor(type).length > 0);
+    }
+
+    /** The difficulties a type offers, which for a bank is what its files happen to carry. */
+    #difficultiesFor(type) {
+        return this.catalog?.[type]?.difficulties ?? DIFFICULTIES;
     }
 
     /** The working selection, falling back to the first of everything before one is supplied. */
     get #current() {
-        const type = this.spec?.type ?? PUZZLE_TYPES[0];
+        const type = this.spec?.type ?? this.#types[0] ?? PUZZLE_TYPES[0];
         return {
             type,
-            difficulty: this.spec?.difficulty ?? DIFFICULTIES[0],
+            difficulty: this.spec?.difficulty ?? this.#difficultiesFor(type)[0],
             size: this.spec?.size ?? this.#defaultSize(type),
         };
     }
@@ -128,10 +165,11 @@ export class PtPuzzlePicker extends LitElement {
      */
     #defaultSize(type) {
         const caution = SIZE_CAUTION[type] ?? null;
-        const sides = SIZES_BY_TYPE[type] ?? [];
-        const comfortable = caution ? sides.filter((side) => side <= caution.above) : sides;
-        const side = (comfortable.length > 0 ? comfortable : sides).at(-1);
-        return { rows: side, cols: side };
+        const sizes = this.#sizesFor(type);
+        const comfortable = caution
+            ? sizes.filter((size) => Math.max(size.rows, size.cols) <= caution.above)
+            : sizes;
+        return (comfortable.length > 0 ? comfortable : sizes).at(-1) ?? { rows: 9, cols: 9 };
     }
 
     /** Applies one field of the spec and announces the whole thing. */
@@ -145,7 +183,8 @@ export class PtPuzzlePicker extends LitElement {
 
     render() {
         const current = this.#current;
-        const sides = SIZES_BY_TYPE[current.type] ?? [];
+        const sizes = this.#sizesFor(current.type);
+        const difficulties = this.#difficultiesFor(current.type);
         // Difficulty can be unanswerable below a certain size — a small sudoku always falls to
         // singles, however hard it is dug — so the picker says so instead of quietly ignoring the
         // request. The floor is per type: kenken and nonogram mean something at every size they
@@ -156,29 +195,31 @@ export class PtPuzzlePicker extends LitElement {
         // A size can be playable and still be a poor idea on a phone. The option stays available —
         // the host may well be on a laptop — but says so, on the button and again once it is picked.
         const caution = SIZE_CAUTION[current.type] ?? null;
-        const isCautioned = (side) => caution != null && side > caution.above;
+        const isCautioned = (size) =>
+            caution != null && Math.max(size.rows, size.cols) > caution.above;
+        const chosen = (size) => current.size.rows === size.rows && current.size.cols === size.cols;
 
         return html`
-            ${PUZZLE_TYPES.length > 1 ? this.#renderTypes(current) : nothing}
+            ${this.#types.length > 1 ? this.#renderTypes(current) : nothing}
             <fieldset>
                 <legend>Size</legend>
                 <div class="options">
-                    ${sides.map((side) =>
+                    ${sizes.map((size) =>
                         this.#renderOption({
-                            label: `${side}×${side}`,
-                            isChosen: current.size.rows === side,
+                            label: `${size.cols}×${size.rows}`,
+                            isChosen: chosen(size),
                             // The triangle alone says only that *something* is wrong, so the caution
                             // rides in the button's name too (brand.md §4).
-                            icon: isCautioned(side) ? warningIcon : null,
-                            ariaLabel: isCautioned(side)
-                                ? `${side}×${side}, ${caution.message}`
+                            icon: isCautioned(size) ? warningIcon : null,
+                            ariaLabel: isCautioned(size)
+                                ? `${size.cols}×${size.rows}, ${caution.message}`
                                 : null,
-                            onPick: () => this.#choose({ size: { rows: side, cols: side } }),
+                            onPick: () => this.#choose({ size: { ...size } }),
                         }),
                     )}
                 </div>
                 ${
-                    isCautioned(current.size.rows)
+                    isCautioned(current.size)
                         ? html`<p class="note caution">${warningIcon} ${caution.message}</p>`
                         : nothing
                 }
@@ -186,7 +227,7 @@ export class PtPuzzlePicker extends LitElement {
             <fieldset>
                 <legend>Difficulty</legend>
                 <div class="options">
-                    ${DIFFICULTIES.map((difficulty) =>
+                    ${difficulties.map((difficulty) =>
                         this.#renderOption({
                             label: titleCase(difficulty),
                             isChosen: canRate && current.difficulty === difficulty,
@@ -210,14 +251,24 @@ export class PtPuzzlePicker extends LitElement {
             <fieldset>
                 <legend>Puzzle</legend>
                 <div class="options">
-                    ${PUZZLE_TYPES.map((type) =>
+                    ${this.#types.map((type) =>
                         this.#renderOption({
                             label: PUZZLE_TYPE_NAMES[type] ?? titleCase(type),
                             isChosen: current.type === type,
                             // A size from the old type may not exist on the new one, so switching
                             // type resets the size to that type's largest rather than carrying an
-                            // impossible request over — a 9×9 nonogram is not on offer.
-                            onPick: () => this.#choose({ type, size: this.#defaultSize(type) }),
+                            // impossible request over — a 9×9 nonogram is not on offer. Difficulty
+                            // moves for the same reason: a bank offers only what its files carry.
+                            onPick: () =>
+                                this.#choose({
+                                    type,
+                                    size: this.#defaultSize(type),
+                                    difficulty: this.#difficultiesFor(type).includes(
+                                        current.difficulty,
+                                    )
+                                        ? current.difficulty
+                                        : this.#difficultiesFor(type)[0],
+                                }),
                         }),
                     )}
                 </div>

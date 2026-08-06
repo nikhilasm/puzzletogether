@@ -1,0 +1,246 @@
+{
+    "doc": {
+        "id": "mini-0003",
+        "type": "crossword",
+        "version": 1,
+        "size": {
+            "rows": 5,
+            "cols": 5
+        },
+        "difficulty": "easy",
+        "title": "Saturday Morning",
+        "author": "PuzzleTogether",
+        "source": "bank",
+        "seed": null,
+        "cells": [
+            {
+                "block": true,
+                "given": null,
+                "label": null
+            },
+            {
+                "block": false,
+                "given": null,
+                "label": "1"
+            },
+            {
+                "block": false,
+                "given": null,
+                "label": "2"
+            },
+            {
+                "block": false,
+                "given": null,
+                "label": "3"
+            },
+            {
+                "block": true,
+                "given": null,
+                "label": null
+            },
+            {
+                "block": false,
+                "given": null,
+                "label": "4"
+            },
+            {
+                "block": false,
+                "given": null,
+                "label": null
+            },
+            {
+                "block": false,
+                "given": null,
+                "label": null
+            },
+            {
+                "block": false,
+                "given": null,
+                "label": null
+            },
+            {
+                "block": false,
+                "given": null,
+                "label": "5"
+            },
+            {
+                "block": false,
+                "given": null,
+                "label": "6"
+            },
+            {
+                "block": false,
+                "given": null,
+                "label": null
+            },
+            {
+                "block": false,
+                "given": null,
+                "label": null
+            },
+            {
+                "block": false,
+                "given": null,
+                "label": null
+            },
+            {
+                "block": false,
+                "given": null,
+                "label": null
+            },
+            {
+                "block": false,
+                "given": null,
+                "label": "7"
+            },
+            {
+                "block": false,
+                "given": null,
+                "label": null
+            },
+            {
+                "block": false,
+                "given": null,
+                "label": null
+            },
+            {
+                "block": false,
+                "given": null,
+                "label": null
+            },
+            {
+                "block": false,
+                "given": null,
+                "label": null
+            },
+            {
+                "block": true,
+                "given": null,
+                "label": null
+            },
+            {
+                "block": false,
+                "given": null,
+                "label": "8"
+            },
+            {
+                "block": false,
+                "given": null,
+                "label": null
+            },
+            {
+                "block": false,
+                "given": null,
+                "label": null
+            },
+            {
+                "block": true,
+                "given": null,
+                "label": null
+            }
+        ],
+        "meta": {
+            "entries": [
+                {
+                    "num": 1,
+                    "dir": "A",
+                    "cells": [1, 2, 3],
+                    "len": 3,
+                    "clue": "Fish in fish and chips"
+                },
+                {
+                    "num": 1,
+                    "dir": "D",
+                    "cells": [1, 6, 11, 16, 21],
+                    "len": 5,
+                    "clue": "Might be able to"
+                },
+                {
+                    "num": 2,
+                    "dir": "D",
+                    "cells": [2, 7, 12, 17, 22],
+                    "len": 5,
+                    "clue": "Whom the deed names"
+                },
+                {
+                    "num": 3,
+                    "dir": "D",
+                    "cells": [3, 8, 13, 18, 23],
+                    "len": 5,
+                    "clue": "What neglect leads to"
+                },
+                {
+                    "num": 4,
+                    "dir": "A",
+                    "cells": [5, 6, 7, 8, 9],
+                    "len": 5,
+                    "clue": "Source of a Saturday morning racket"
+                },
+                {
+                    "num": 4,
+                    "dir": "D",
+                    "cells": [5, 10, 15],
+                    "len": 3,
+                    "clue": "Bucket's partner"
+                },
+                {
+                    "num": 5,
+                    "dir": "D",
+                    "cells": [9, 14, 19],
+                    "len": 3,
+                    "clue": "Stop sign colour"
+                },
+                {
+                    "num": 6,
+                    "dir": "A",
+                    "cells": [10, 11, 12, 13, 14],
+                    "len": 5,
+                    "clue": "Sixteen make a pound"
+                },
+                {
+                    "num": 7,
+                    "dir": "A",
+                    "cells": [15, 16, 17, 18, 19],
+                    "len": 5,
+                    "clue": "Beg"
+                },
+                {
+                    "num": 8,
+                    "dir": "A",
+                    "cells": [21, 22, 23],
+                    "len": 3,
+                    "clue": "Like a desert"
+                }
+            ],
+            "alphabet": "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+            "circled": []
+        }
+    },
+    "solution": [
+        null,
+        "C",
+        "O",
+        "D",
+        null,
+        "M",
+        "O",
+        "W",
+        "E",
+        "R",
+        "O",
+        "U",
+        "N",
+        "C",
+        "E",
+        "P",
+        "L",
+        "E",
+        "A",
+        "D",
+        null,
+        "D",
+        "R",
+        "Y",
+        null
+    ]
+}

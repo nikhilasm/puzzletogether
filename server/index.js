@@ -16,7 +16,7 @@ import { DEFAULT_SETTINGS } from '../shared/constants.js';
 
 import { config } from './config.js';
 import { registerConnectionHandler } from './net/handlers.js';
-import { closeProvider, prewarm } from './puzzles/provider.js';
+import { closeProvider, loadBankFrom, prewarm } from './puzzles/provider.js';
 import { startRoomGc } from './rooms/lifecycle.js';
 
 const app = express();
@@ -52,9 +52,20 @@ const stopGc = startRoomGc({
 
 prewarm(DEFAULT_SETTINGS);
 
+// Read before the first socket can connect: the catalog rides the join ack, so a client must never
+// be able to arrive while the server still does not know what it can serve.
+const banked = loadBankFrom(config.bankDirs);
+
 httpServer.listen(config.port, () => {
     const mode = config.isDev ? 'development' : 'production';
     console.info(`PuzzleTogether server listening on :${config.port} (${mode})`);
+    // Zero is a normal state, not a failure — a build with no licensed bank simply offers three
+    // puzzle types (ADR-0004). Said out loud so it is never a silent surprise.
+    console.info(
+        banked > 0
+            ? `crossword bank: ${banked} puzzle${banked === 1 ? '' : 's'}`
+            : 'crossword bank: empty — the type is not offered',
+    );
 });
 
 // Releases the generator worker and the GC interval so `node --watch` and Docker stop cleanly.

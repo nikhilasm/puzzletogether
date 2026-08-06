@@ -17,11 +17,13 @@ export class PtCell extends LitElement {
         markCols: { type: Number },
         markRows: { type: Number },
         glyphs: { type: Object },
+        labelRow: { type: Boolean, reflect: true, attribute: 'label-row' },
         check: { type: String, reflect: true },
         given: { type: Boolean, reflect: true },
         block: { type: Boolean, reflect: true },
         selected: { type: Boolean, reflect: true },
         highlighted: { type: Boolean, reflect: true },
+        circled: { type: Boolean, reflect: true },
         heavyRight: { type: Boolean, reflect: true, attribute: 'heavy-right' },
         heavyBottom: { type: Boolean, reflect: true, attribute: 'heavy-bottom' },
     };
@@ -102,10 +104,47 @@ export class PtCell extends LitElement {
             background: color-mix(in srgb, var(--accent) 30%, transparent);
         }
 
+        /*
+         * The value sizes itself to fit the square, which for one character is just the old fixed
+         * proportion and for a crossword rebus square is the whole point (ADR-0007).
+         *
+         * Read outward: min() shrinks the text as it lengthens, so HAND fits the same box H did;
+         * max() puts a floor under that, because past about five characters shrinking to fit stops
+         * being legibility and starts being a dare. Beyond the floor the text is clipped rather than
+         * wrapped — the whole string is still in the cell's aria-label, and a square that grew a
+         * second line would break the grid's geometry for every cell in its row.
+         */
         .value {
-            font-size: calc(var(--cell-size, 40px) * 0.55);
+            position: relative;
+            z-index: 1;
+            overflow: hidden;
+            max-width: 100%;
+            font-size: max(
+                calc(var(--cell-size, 40px) * 0.27),
+                min(
+                    calc(var(--cell-size, 40px) * 0.55),
+                    calc(var(--cell-size, 40px) * 1.35 / var(--value-len, 1))
+                )
+            );
             font-variant-numeric: tabular-nums;
+            white-space: nowrap;
             color: var(--ink);
+        }
+
+        /*
+         * A circled square: an annotation, not a rule.
+         *
+         * Themed crosswords hide a bonus answer in these, so they have to be visible, but they play
+         * exactly like every other square — which is why this is a thin --graphite ring rather than
+         * anything in --ink or --accent. Both of those already mean something here: --ink is a value
+         * the player entered, and --accent is where the cursor is.
+         */
+        .ring {
+            position: absolute;
+            inset: 8%;
+            border: 1px solid var(--graphite);
+            border-radius: var(--radius-round);
+            pointer-events: none;
         }
 
         /*
@@ -186,12 +225,38 @@ export class PtCell extends LitElement {
         }
 
         /*
+         * A label with a row of the mark grid to itself.
+         *
+         * A cage clue and the note "1" both want the cell's top-left corner — the clue because that
+         * is where a clue goes, the note because a mark's position *is* its digit — and the marks
+         * paint last, so a full set of notes simply covered the clue. Stacking them was never going
+         * to work at cell sizes this small, so the board can instead reserve the grid's first row:
+         * the clue takes it, the notes start one row lower, and the two can no longer meet whatever
+         * is written in the cell.
+         *
+         * The clue is then sized by the track it occupies rather than by the page's type scale. It
+         * was the only thing in a cell that did not scale with --cell-size, which meant it grew
+         * relative to everything around it exactly where the room was tightest: at a 7×7 on a phone
+         * the notes were down to 11px and the clue was still 12.8px.
+         */
+        :host([label-row]) .label {
+            top: 6%;
+            left: 6%;
+            font-size: calc((var(--cell-size, 40px) * 0.88) / var(--mark-rows, 4) * 0.86);
+            line-height: 1;
+        }
+
+        /*
          * Marks sit in fixed positions so a digit is always in the same corner of every cell, which
          * is what makes a grid of notes scannable. Size derives from the cell, like the value does.
          *
          * Both axes are declared. With only the columns named, the rows were implicit and sized to
          * whatever happened to be in them, so adding or removing a mark re-laid out the others —
          * exactly the shifting the fixed positions exist to prevent.
+         *
+         * --mark-rows counts the grid's rows, which is one more than the rows of *marks* when a
+         * label has been given one. It is published on the host rather than set here, because the
+         * label is positioned by the same track height and is not inside this container.
          */
         .marks {
             position: absolute;
@@ -206,6 +271,15 @@ export class PtCell extends LitElement {
             color: var(--pencil);
             line-height: 1;
             pointer-events: none;
+        }
+
+        /*
+         * With a row given away, the marks are sized by their track rather than by the cell, so a
+         * full set still fits in the rows that are left. Without this a 7×7's three rows of notes
+         * kept their 26% and overflowed into each other.
+         */
+        :host([label-row]) .marks {
+            font-size: calc((var(--cell-size, 40px) * 0.88) / var(--mark-rows, 4) * 0.78);
         }
 
         @keyframes pop {
@@ -227,13 +301,37 @@ export class PtCell extends LitElement {
         this.markCols = 3;
         this.markRows = 3;
         this.glyphs = null;
+        this.labelRow = false;
         this.check = null;
         this.given = false;
         this.block = false;
         this.selected = false;
         this.highlighted = false;
+        this.circled = false;
         this.heavyRight = false;
         this.heavyBottom = false;
+    }
+
+    /** Rows in the mark grid, counting the one the label has been given. */
+    get #gridRows() {
+        return this.markRows + (this.labelRow ? 1 : 0);
+    }
+
+    /**
+     * Publishes the mark grid's shape on the host, where the label can read it too.
+     *
+     * The label is placed by the same track height as the marks it shares the grid with, and it is
+     * not inside `.marks` — that container only exists when the cell has notes, while a cage clue is
+     * drawn whether it does or not. A custom property on the host is the one place both rules reach.
+     *
+     * Guarded, because this is the element whose per-update cost decides whether a 25×25 stays
+     * smooth: the grid's shape is fixed by the puzzle, so it is written once and then never again.
+     */
+    willUpdate(changed) {
+        if (!changed.has('markCols') && !changed.has('markRows') && !changed.has('labelRow'))
+            return;
+        this.style.setProperty('--mark-cols', `${this.markCols}`);
+        this.style.setProperty('--mark-rows', `${this.#gridRows}`);
     }
 
     /** Pops the value when it changes, so a mark lands rather than fades (brand.md §5). */
@@ -249,6 +347,7 @@ export class PtCell extends LitElement {
 
     render() {
         return html`
+            ${this.circled ? html`<span class="ring" aria-hidden="true"></span>` : nothing}
             ${this.label ? html`<span class="label">${this.label}</span>` : nothing}
             ${this.value != null ? this.#renderValue() : nothing}
             ${this.value == null && this.marks?.length ? this.#renderMarks() : nothing}
@@ -266,20 +365,24 @@ export class PtCell extends LitElement {
         if (glyph === 'block') return html`<span class="value block"></span>`;
         if (glyph === 'cross') return html`<span class="value cross">×</span>`;
 
-        return html`<span class="value ${this.given ? 'given' : 'entered'}">${this.value}</span>`;
+        // The length drives the size-to-fit rule above. Written as a custom property rather than a
+        // computed font-size so the arithmetic stays in the stylesheet with the rest of the geometry.
+        return html`<span
+            class="value ${this.given ? 'given' : 'entered'}"
+            style="--value-len: ${this.value.length}"
+            >${this.value}</span
+        >`;
     }
 
     /** The pencil marks, each placed at the position its digit always occupies. */
     #renderMarks() {
+        const offset = this.labelRow ? 1 : 0;
+
         return html`
-            <span
-                class="marks"
-                style="--mark-cols: ${this.markCols}; --mark-rows: ${this.markRows};"
-                aria-hidden="true"
-            >
+            <span class="marks" aria-hidden="true">
                 ${this.marks.map((mark) => {
                     const slot = mark - 1;
-                    const row = Math.floor(slot / this.markCols) + 1;
+                    const row = Math.floor(slot / this.markCols) + 1 + offset;
                     const col = (slot % this.markCols) + 1;
                     return html`<span style="grid-row: ${row}; grid-column: ${col};"
                         >${mark}</span

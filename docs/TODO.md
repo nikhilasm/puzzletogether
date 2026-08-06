@@ -4,9 +4,9 @@
 >
 > Phases and their done-when criteria come from [design-spec.md §13](design-spec.md#13-phases).
 
-**Current phase**: 3 — nonogram + kenken
+**Current phase**: 4 — crossword + bank
 **Branch**: `feature-puzzletogether`
-**Last updated**: 2026-08-03
+**Last updated**: 2026-08-05
 
 Legend: `[ ]` pending · `[x]` done · `[~]` in progress · `[!]` blocked · `[-]` deferred, with a reason
 
@@ -254,6 +254,16 @@ wiring, control order, both themes, 320px):
       `--grid-heavy-width` so a board can thicken its inner rules without moving its own clue gutters
 - [x] Nonogram crosses sized to the square (0.92 of a cell) rather than to the type scale
 - [x] Keypad slot becomes a `Fill · Cross · Erase` tri-toggle; Notes and the digits drop out, Undo stays
+- [x] KenKen cage clues take a row of the mark grid to themselves (`reservesLabelRow`), so a full set
+      of notes no longer paints over the clue it is working out; the clue is sized by that row rather
+      than by `--text-sm`, the one thing in a cell that had not scaled with the grid
+- [x] **The cage clue is spoken.** `DocCell.label` was drawn and never put in the cell's `aria-label`,
+      so a kenken's entire set of constraints was missing for anyone not looking at the screen —
+      against what [design-spec.md §11](design-spec.md#11-client-architecture) has claimed since
+      Phase 0. Said as arithmetic (`cage 12 plus`) via a new `spokenLabel` hook, because a screen
+      reader at normal verbosity skips punctuation and announces `12+` as "12". A blocked square now
+      says "blocked" rather than "empty" — unreachable until crossword, and cheaper to write here
+      than to remember there
 
 **Seams**
 - [x] `client/boards/registry.js` — board element and input style per type, so `<pt-game>` branches on
@@ -271,7 +281,7 @@ wiring, control order, both themes, 320px):
 - [x] `tests/puzzle-types.spec.js` — 14 browser checks per engine
 
 **Verify**
-- [x] Full gate green: 181 unit tests, lint, typecheck, Prettier, build, **114 browser checks** in
+- [x] Full gate green: 181 unit tests, lint, typecheck, Prettier, build, **128 browser checks** in
       Chromium and Firefox
 - [x] 20×20 nonogram at 320px — no horizontal scroll, square frame, 44px brush targets. It fits, but
       the squares end up around ten pixels with the gutters taking a third of the width, which is
@@ -318,14 +328,182 @@ wiring, control order, both themes, 320px):
 
 *Done when: a 15×15 puzzle is co-op solvable with synchronized clue-list state.*
 
-- [ ] **BLOCKER: resolve crossword content licensing** — see [ADR-0004](adr/0004-hybrid-puzzle-supply.md)
-- [ ] Bank format + `data/crosswords/index.json` manifest
-- [ ] `BankProvider` + boot-time validation of every bank file
-- [ ] `scripts/import-crossword.js` — `.puz` / `.ipuz` converter
-- [ ] Hand-authored seed minis
-- [ ] `<pt-crossword-board>` — black squares, numbering, entry highlighting
-- [ ] Clue list UI with synchronized current-entry state
-- [ ] Direction toggle, auto-advance, Tab/Enter navigation
+- [~] **Crossword content licensing** — see [ADR-0004](adr/0004-hybrid-puzzle-supply.md). **No longer a
+      blocker on building**, still open on shipping. Decided 2026-08-03: the importer is developed
+      against four freely-distributed `.puz` files in `data/`, which proves the pipeline without
+      settling what may be served. They are `.gitignore`d — freely downloadable is not freely
+      redistributable, and committing one is the act of redistributing it. `data/crosswords/`, the
+      tracked bank the app serves, is seeded only with puzzles whose licence is known
+
+**Design settled 2026-08-03**, before any code — [design-spec.md §4 *Crossword*](design-spec.md#crossword), [§7](design-spec.md#7-the-puzzle-abstraction), [§8](design-spec.md#8-generation), [ADR-0007](adr/0007-rebus-widens-the-cell-value.md)
+
+- [x] **Clue layout: a current-clue bar under the grid, full lists behind a button.** Two scrolling
+      lists plus a 15×15 do not fit a phone, and on the desktop column they would take the grid's
+      width to show something read once per entry. The bar is always on screen and is itself the
+      direction toggle; the dialog is where you go to look for a way in. The cost — scanning becomes
+      a tap — is accepted, and a desktop side panel is the additive fallback if play disagrees
+- [x] **Letters come from our own keyboard, not the phone's.** `<pt-letter-pad>` takes the slot the
+      digits and brushes already use, so crossword joins the one-input-path rule instead of escaping
+      it. A native keyboard means fighting autocapitalize and predictive text, an unknowable amount
+      of viewport on a 15×15, and the offscreen-`<input>` hack per platform. Revises §4, which had
+      said crossword would fall back to the native keyboard
+- [x] **Rebus is supported, not deferred**, so the cell-value bound moves from 1 character to 8 —
+      the first change to `shared/` a puzzle type has forced since Phase 1, recorded with its
+      consequences in [ADR-0007](adr/0007-rebus-widens-the-cell-value.md). Typing replaces a square;
+      **Rebus** on (or <kbd>Shift</kbd> held) appends. No new op type: a rebus keystroke is a `set`
+      carrying the whole accumulated string, so LWW, undo pre-images, and snapshots are untouched
+- [x] **Clue list follows your own cursor only.** Adding direction to `game:focus` would let it show
+      precisely which entry each player is on; deliberately not built, because it is a `shared/`
+      change bought for a nicety. Others stay visible as presence dots. Revisit after real play
+- [x] **Decided: crossword entry lookup is client-side**, in `client/boards/crossword-entries.js`,
+      not in `shared/puzzle-doc.js` where [design-spec.md §5](design-spec.md#5-repo-layout) has
+      listed it since Phase 0. `shared/` is what *both sides* need, and the server does not need it:
+      a crossword's `validateOp` / `isComplete` / `checkCells` are the value-grid code sudoku and
+      kenken already share, and none of them asks what an entry is. Entries serve highlighting,
+      auto-advance, and clue-list sync — all rendering. Keeping them out of `shared/` is also what
+      keeps Phase 3's "a new type touches nothing shared" result from decaying by technicality
+
+**Shared** — the one place this phase does touch it
+
+- [x] `MAX_CELL_VALUE_LENGTH = 8` in `constants.js`; `schema.js`'s `cellValue()` accepts 1–8
+- [x] **Fix the substring bug the widening makes reachable**: sudoku and kenken gate values with
+      `doc.meta.alphabet.includes(op.value)`, which matches *substrings*, so `'12'` passes. Harmless
+      only because the length-1 schema rejects it first. Becomes a character-set test — do this in
+      the same commit as the bound, never after
+- [x] `PUZZLE_TYPES` / `PUZZLE_TYPE_NAMES` / `DIFFICULTY_MIN_SIDE` gain `crossword`
+
+**Bank and importer**
+
+- [x] Bank file format: the finished doc plus its solution — the loader validates, it does not compile
+- [x] `numberGrid()` — entry numbering from the grid, run by the importer to *produce* the file and
+      by the loader to *check* it. One function, both directions; a stored entry list nothing
+      verifies is only a second place to be wrong
+- [x] `data/crosswords/index.json` manifest: id, size, difficulty, tags, source, **license**
+- [x] `BankProvider` + boot-time validation of every bank file, including the numbering re-derivation
+- [x] `scripts/import-crossword.js` — `.puz` reader: header, solution grid, clues, extensions
+- [x] Carry `GRBS`/`RTBL` rebus and `GEXT` circles; ignore `LTIM`/`RUSR` (a timer and a stranger's
+      partial solve — somebody's session, not the puzzle)
+- [x] Refuse, by name and reason: scrambled solutions, grids past 25×25, rebus past 8 characters,
+      and any file whose derived numbering disagrees with its own clue count
+- [x] `--license` is a **required** argument — no guessing from the copyright string. This is
+      [ADR-0004](adr/0004-hybrid-puzzle-supply.md)'s build/ship split made mechanical
+- [x] `.ipuz` reader (the same doc out, a different file in)
+- [x] Hand-authored seed minis — the puzzles whose licence is unambiguous
+
+**Server**
+
+- [x] `server/puzzles/crossword/index.js` — the four-method module. `isComplete` / `checkCells` are
+      the shared value-grid pair; `validateOp` bounds values to 1–8 characters of the alphabet
+- [x] `checkCellsByValue` skips block squares — they hold nothing and would grade as `empty`
+- [x] `provider.catalog()` — what is genuinely available per type, computed at boot, sent on the
+      `room:create` / `room:join` ack. A type with nothing behind it is **not offered at all**,
+      which is the normal state of a build with no licensed bank rather than an error state
+- [x] The catalog carries `{ rows, cols }` pairs for crossword — real crosswords are 15×15 and 5×5
+      and also 20×21, and `SIZES_BY_TYPE` holds square sides
+- [x] A room does not serve the same banked puzzle twice running
+
+**Client — board**
+
+- [x] `<pt-crossword-board>` — black squares, entry numbers, entry highlighting via `isHighlighted`
+- [x] `client/boards/crossword-entries.js` — cell → entry index, built once per doc
+- [x] `<pt-board>`: `nextSelection(from, dRow, dCol)`, `advanceAfterInput(idx)`, `isCircled(idx)`;
+      `spokenLabel` gains the cell index
+- [x] `<pt-board>`: **a blocked square is never selected**, by click or by arrow. Not a hook and not
+      crossword's — the base element answering a question the doc schema has allowed since Phase 0
+- [x] `<pt-cell>`: value sizes to fit 2–5 characters and then holds, with the whole string in the
+      `aria-label`; `?circled` draws a `--graphite` ring
+- [x] Navigation, literally per §4: type-advance stops at the end of an entry, click-selected flips,
+      Tab/Shift+Tab move entry, arrows across the direction move *and* flip
+
+**Client — clues and input**
+
+- [x] `<pt-clue-bar>` — number, direction, clue text, and the direction toggle, under the grid
+- [x] `<pt-clue-list>` — Across and Down in a dialog; current entry marked, picking one jumps and closes
+- [x] `<pt-letter-pad>` — QWERTY in the keypad slot; registry `input: 'letters'`
+- [x] **Rebus** switch in the mode-bar slot, beside where Notes and the brush bar live; <kbd>Shift</kbd>
+      is the physical-keyboard equivalent
+- [x] <kbd>Backspace</kbd> in Rebus mode removes the last character; Erase still clears the square
+- [x] Puzzle Select reads the catalog rather than `SIZES_BY_TYPE` for crossword. **The 15×15
+      small-screen caution was planned and then not written** — measuring it said it was not needed
+      (below), so `SIZE_CAUTION` has no crossword entry
+
+**Tests**
+
+- [x] `server/puzzles/crossword/crossword.test.js` — numbering against known grids, block handling in
+      `checkCells`, value bounds including rebus
+- [x] `scripts/import-crossword.test.js` — every refusal fires, on `.puz` files **built byte by byte
+      in the test** rather than read off disk. The four real samples are `.gitignore`d, so a test
+      depending on them would pass here and fail on every other machine
+- [x] `shared/schema.test.js` — the new bound, and that a 2-character value is still refused by
+      sudoku and kenken
+- [x] `server/puzzles/bank.test.js` — the tracked seed minis all validate and re-derive their own
+      numbering, plus a fixture broken one specific way per refusal
+- [x] `tests/crossword.spec.js` — direction toggle, auto-advance, entry highlight, clue dialog,
+      letter pad, rebus entry, two clients on one grid
+
+**Verify**
+
+- [x] 320px: a 15×15 grid, clue bar, and letter pad with **no horizontal overflow** — 19px squares,
+      25×44 letter keys
+- [x] Two players type into one crossword and see each other's letters
+- [x] A rebus square holds a word, shrinks to fit, and peels back one letter at a time
+- [x] Full gate: **231 unit tests**, lint, typecheck, Prettier, build, **162 browser checks** in
+      Chromium and Firefox
+- [ ] **A 15×15 solved end to end in two browsers.** Not done, and not automatable yet: the only
+      15×15 available is in the gitignored local bank, so the permanent suite would fail on a fresh
+      clone. Everything it depends on is tested against the 5×5 minis; what is unverified is a full
+      78-entry solve. Closes when a licensed 15×15 can be tracked
+- [x] No socket frame carries solution letters before completion — **automated for the first time**
+      rather than done by eye in devtools, and verified to fail against a deliberately leaked
+      snapshot. A frame is reduced to its capitals before searching, because a leak would travel as
+      `["C","L","O","S","E"]` one cell at a time; the first version searched for contiguous words
+      and passed happily against a real leak
+
+> **The one `shared/` change was the one that was planned, and it opened a hole that had to be
+> closed in the same commit.** `schema.js`'s cell-value bound moved from 1 character to 8 so rebus
+> squares could exist ([ADR-0007](adr/0007-rebus-widens-the-cell-value.md)). Nothing else in
+> `shared/` changed shape: no op, no event, no reducer. But the widening made a latent bug reachable
+> — sudoku and kenken gated values with `doc.meta.alphabet.includes(value)`, which on a string is a
+> *substring* test, so `'12'` would have passed the moment anything two characters long could get
+> that far. Both now test length as well. Nonogram was never exposed, because it matched against an
+> array of allowed values rather than searching a string.
+
+> **The four-method module interface is really two interfaces.** `create` produces a puzzle; the
+> other three rule on one. Three types needed both because they generate their own puzzles, so the
+> distinction never had to be drawn — and crossword generates nothing, so its module has no `create`
+> at all. `provider.js` knows which producer a type has, which is exactly the seam it was built to
+> be. The rules turned out to be almost entirely borrowed: `isComplete` and `checkCells` are the
+> value-grid pair, unchanged, because a letter is not different from a digit in any way they can
+> see. **`value-grid.js` needed no change either** — `editableIndices` already excluded block
+> squares, so the planned "skip blocks in `checkCells`" was work that did not exist.
+
+> **Three bugs the build caught, two of them by checks written for exactly that.**
+> 1. The `.puz` reader stopped one string short of the notes, so the extension scan began inside
+>    somebody's prose and found nothing — reporting every sample as having no rebus and no circles
+>    rather than failing. Caught by noticing the counts were zero when three files were known to
+>    carry them.
+> 2. Fixing that made the reader count the notes as a clue, and the importer refused all four files
+>    with "the grid implies 78 entries but the file carries 79". That is `numberGrid` doing the job
+>    it exists for, on its author, within a minute of being written.
+> 3. The solution-secrecy test passed against a deliberately leaked snapshot, because it searched
+>    for contiguous words and a leak is one cell at a time. A test that cannot fail is worse than no
+>    test; it now strips frames to their capitals, and was re-verified against the same leak.
+
+> **ESLint and Vitest both widened to `scripts/`, 2026-08-05.** The scope rule since Phase 1 has
+> been "`shared/` because it is the contract, `tests/` because nothing else checks them"; `scripts/`
+> earns it on a third reason again — it is the only code that *writes content into the repo*. The
+> importer produces the bank files the server serves, is run by hand and rarely, and is therefore
+> exactly where a typo waits months to be found. It is pure Node, which is the one way its lint
+> config differs from the others. [code-style.md §10](code-style.md#10-enforcement) is updated.
+
+> **A backtick inside a CSS comment ends the `css` template literal.** Third phase running. Cost one
+> build failure in `<pt-cell>`; there is now a scanner in the scratchpad, which is not the same as
+> having one in the repo — worth making a lint rule in Phase 5.
+
+> **The 15×15 small-screen caution was designed and then not written.** Measuring said it was not
+> needed: 19px squares at 320px with no horizontal overflow, which is what every crossword app on a
+> phone ships, and nothing like the 20×20 nonogram whose gutters eat a third of the width. Writing
+> the caution anyway would have warned about a size that is fine.
 
 ---
 
@@ -337,7 +515,6 @@ wiring, control order, both themes, 320px):
 - [ ] Board reducer tests — LWW ordering, sequential-ops-equals-snapshot
 - [ ] Protocol schema tests — malformed payloads rejected, no handler crashes
 - [ ] Room lifecycle tests — reconnect, host election, streak rules, GC
-- [ ] Bank loader test — every file validates
 - [ ] GitHub Actions CI: `npm ci && npm run lint && npm run typecheck && npm test && npm run test:ui && npm run build`
       (`npx playwright install --with-deps chromium firefox` first)
 - [ ] Dockerfile + `.env.example`
@@ -352,7 +529,7 @@ Carried from [design-spec.md §14](design-spec.md#14-risks-and-open-questions). 
 
 | # | Question | Needed by | Status |
 |---|---|---|---|
-| 1 | Crossword content licensing — what can legally ship? | Phase 4 | **Open** |
+| 1 | Crossword content licensing — what can legally ship? | Phase 4 | **Split, 2026-08-03.** Building is unblocked: the importer is developed against freely-distributed `.puz` files, kept out of the repo. What may legally *ship* is still open, and hand-authored minis remain the safe seed. |
 | 2 | Does Fraunces `WONK` survive contact with real screens? | Phase 1 | **Resolved — keep.** Reads as hand-cut rather than generic-serif at 2.75rem; it is the most distinctive thing on the page. |
 | 3 | Does the paper texture read as subtle or as noise? | Phase 1 | **Resolved — keep at 3%.** Invisible until looked for, on both the landing and game screens. |
 | 4 | Can 8 player colors all clear AA on cream, or drop to 6? | Phase 1 | **Resolved — 8 survive, but per theme.** One shared set cannot clear 4.5:1 on both backgrounds; `--player-N` is now defined in each theme block. |
@@ -361,3 +538,6 @@ Carried from [design-spec.md §14](design-spec.md#14-risks-and-open-questions). 
 | 7 | KenKen uniqueness cost above 7×7 | Phase 3 | **Resolved — 7×7 stands.** Measured across 15 puzzles per size and difficulty: ~1ms at 5×5 hard, ~11ms at 6×6 hard, **~170ms median / 870ms worst at 7×7 hard**; easy and medium are single-digit ms everywhere. Well inside a background pool refill, so no player waits on it. Above 7×7 was not measured and is not offered. |
 | 8 | Sudoku difficulty targeting misses the requested band ~1% of the time | Phase 2 | **Resolved for the sizes that matter.** 4×4 and 6×6 always measure `easy` — there is no room for a technique beyond singles — so Puzzle Select disables the difficulty picker below 9×9 and says why (`DIFFICULTY_MIN_SIDE`). At 9×9 the ~1% miss stands, and the label remains the measured rating. |
 | 9 | Undo is per-player and forward-only — does it surprise people? | Phase 3 playtest | Open, and now with more surface. A cell somebody else has touched since is left alone with a notice; whether that reads as "safe" or "broken" still needs real players. Phase 3 added the **partial** case: one drag is one undo, so if a single square of a twenty-square stroke has moved on, the other nineteen are restored and the notice says the rest were left. All-or-nothing was the alternative and seemed clearly worse; unverified with players. |
+| 10 | Do clue lists work behind a button, or do solvers want them beside the grid? | Phase 4 playtest | Open, and the biggest untested bet in the phase. Chosen because two lists plus a 15×15 do not fit a phone and the grid is meant to be the loudest thing on screen; the current-clue bar is what should make it bearable. Fallback is a desktop side panel above ~900px, which is additive. |
+| 11 | Is our own letter pad better than the phone's keyboard? | Phase 4, early | Open. The wager is that a pad we control beats the offscreen-`<input>` hack every web crossword maintains per platform. Needs a real thumb, not an emulator, and needs checking before the rest of the phase is built on it. |
+| 12 | Is 8 the right rebus ceiling, and will review hold the per-type value bound? | Phase 4 → 5 | Open. 8 comfortably holds every rebus in ordinary use, but it is a judgement. The larger question is [ADR-0007](adr/0007-rebus-widens-the-cell-value.md)'s stated cost: `schema.js` no longer stops a type from accepting a long value, so a fifth type that forgets gets a bug rather than an error. |

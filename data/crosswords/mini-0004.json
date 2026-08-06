@@ -1,0 +1,246 @@
+{
+    "doc": {
+        "id": "mini-0004",
+        "type": "crossword",
+        "version": 1,
+        "size": {
+            "rows": 5,
+            "cols": 5
+        },
+        "difficulty": "easy",
+        "title": "Take the Controls",
+        "author": "PuzzleTogether",
+        "source": "bank",
+        "seed": null,
+        "cells": [
+            {
+                "block": true,
+                "given": null,
+                "label": null
+            },
+            {
+                "block": false,
+                "given": null,
+                "label": "1"
+            },
+            {
+                "block": false,
+                "given": null,
+                "label": "2"
+            },
+            {
+                "block": false,
+                "given": null,
+                "label": "3"
+            },
+            {
+                "block": true,
+                "given": null,
+                "label": null
+            },
+            {
+                "block": false,
+                "given": null,
+                "label": "4"
+            },
+            {
+                "block": false,
+                "given": null,
+                "label": null
+            },
+            {
+                "block": false,
+                "given": null,
+                "label": null
+            },
+            {
+                "block": false,
+                "given": null,
+                "label": null
+            },
+            {
+                "block": false,
+                "given": null,
+                "label": "5"
+            },
+            {
+                "block": false,
+                "given": null,
+                "label": "6"
+            },
+            {
+                "block": false,
+                "given": null,
+                "label": null
+            },
+            {
+                "block": false,
+                "given": null,
+                "label": null
+            },
+            {
+                "block": false,
+                "given": null,
+                "label": null
+            },
+            {
+                "block": false,
+                "given": null,
+                "label": null
+            },
+            {
+                "block": false,
+                "given": null,
+                "label": "7"
+            },
+            {
+                "block": false,
+                "given": null,
+                "label": null
+            },
+            {
+                "block": false,
+                "given": null,
+                "label": null
+            },
+            {
+                "block": false,
+                "given": null,
+                "label": null
+            },
+            {
+                "block": false,
+                "given": null,
+                "label": null
+            },
+            {
+                "block": true,
+                "given": null,
+                "label": null
+            },
+            {
+                "block": false,
+                "given": null,
+                "label": "8"
+            },
+            {
+                "block": false,
+                "given": null,
+                "label": null
+            },
+            {
+                "block": false,
+                "given": null,
+                "label": null
+            },
+            {
+                "block": true,
+                "given": null,
+                "label": null
+            }
+        ],
+        "meta": {
+            "entries": [
+                {
+                    "num": 1,
+                    "dir": "A",
+                    "cells": [1, 2, 3],
+                    "len": 3,
+                    "clue": "Summer cooler — or a devoted follower"
+                },
+                {
+                    "num": 1,
+                    "dir": "D",
+                    "cells": [1, 6, 11, 16, 21],
+                    "len": 5,
+                    "clue": "Last"
+                },
+                {
+                    "num": 2,
+                    "dir": "D",
+                    "cells": [2, 7, 12, 17, 22],
+                    "len": 5,
+                    "clue": "Much the same"
+                },
+                {
+                    "num": 3,
+                    "dir": "D",
+                    "cells": [3, 8, 13, 18, 23],
+                    "len": 5,
+                    "clue": "Jotted down, or well regarded"
+                },
+                {
+                    "num": 4,
+                    "dir": "A",
+                    "cells": [5, 6, 7, 8, 9],
+                    "len": 5,
+                    "clue": "One in the cockpit"
+                },
+                {
+                    "num": 4,
+                    "dir": "D",
+                    "cells": [5, 10, 15],
+                    "len": 3,
+                    "clue": "Place"
+                },
+                {
+                    "num": 5,
+                    "dir": "D",
+                    "cells": [9, 14, 19],
+                    "len": 3,
+                    "clue": "Count on your fingers"
+                },
+                {
+                    "num": 6,
+                    "dir": "A",
+                    "cells": [10, 11, 12, 13, 14],
+                    "len": 5,
+                    "clue": "Come together"
+                },
+                {
+                    "num": 7,
+                    "dir": "A",
+                    "cells": [15, 16, 17, 18, 19],
+                    "len": 5,
+                    "clue": "No longer available"
+                },
+                {
+                    "num": 8,
+                    "dir": "A",
+                    "cells": [21, 22, 23],
+                    "len": 3,
+                    "clue": "Guided"
+                }
+            ],
+            "alphabet": "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+            "circled": []
+        }
+    },
+    "solution": [
+        null,
+        "F",
+        "A",
+        "N",
+        null,
+        "P",
+        "I",
+        "L",
+        "O",
+        "T",
+        "U",
+        "N",
+        "I",
+        "T",
+        "E",
+        "T",
+        "A",
+        "K",
+        "E",
+        "N",
+        null,
+        "L",
+        "E",
+        "D",
+        null
+    ]
+}

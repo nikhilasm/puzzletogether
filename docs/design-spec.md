@@ -1,6 +1,6 @@
 # PuzzleTogether — Design Spec
 
-> **Status**: approved · **Branch**: `feature-puzzletogether` · **Last updated**: 2026-08-03
+> **Status**: approved · **Branch**: `feature-puzzletogether` · **Last updated**: 2026-08-05
 >
 > Companion documents: [brand.md](brand.md) · [architecture.md](architecture.md) · [code-style.md](code-style.md) · [adr/](adr/) · [TODO.md](TODO.md)
 
@@ -40,7 +40,8 @@ docs/
    ├─ 0003-lit-and-vanilla-js-over-typescript.md
    ├─ 0004-hybrid-puzzle-supply.md
    ├─ 0005-reconnect-tokens-for-identity.md
-   └─ 0006-jsdoc-checkjs-for-type-safety.md
+   ├─ 0006-jsdoc-checkjs-for-type-safety.md
+   └─ 0007-rebus-widens-the-cell-value.md
 ```
 
 Each ADR uses the standard short form — Context / Decision / Consequences / Alternatives rejected — and captures *why*, since every one of these has a plausible-looking alternative that was deliberately declined.
@@ -132,7 +133,7 @@ Two **tabs** — `Create` and `Join` — over a single form. Create asks for a n
 
 ### On-screen keypad
 
-Number-based puzzles (sudoku, kenken) show a persistent keypad below the grid, NYT-sudoku style: digits `1..n` sized to the puzzle's alphabet, plus delete. It routes through the same op path as physical keyboard input and respects the Notes/Solve mode. It stays visible on desktop, not just touch — it doubles as an affordance showing which digits remain available. Crossword falls back to the native keyboard.
+Number-based puzzles (sudoku, kenken) show a persistent keypad below the grid, NYT-sudoku style: digits `1..n` sized to the puzzle's alphabet, plus delete. It routes through the same op path as physical keyboard input and respects the Notes/Solve mode. It stays visible on desktop, not just touch — it doubles as an affordance showing which digits remain available. **Crossword takes the same slot with a letter pad of its own** — revised in Phase 4 from "falls back to the native keyboard", for the reasons in the crossword section below.
 
 **Undo sits in this row too**, beside Erase, rather than with Check and Reveal. The mock has no Undo control, and Ctrl+Z is not a thing a phone has — so it needed a button, and putting it with Erase keeps every way of changing a cell in one place. Ctrl+Z still works when the grid has keyboard focus.
 
@@ -150,6 +151,36 @@ The block reads **Notes switch → digits → Erase / Undo**, so everything that
 
 **Nonogram draws a heavier rule every five squares.** It divides nothing — a nonogram has no regions — but matching a clue of 7 to a run of squares is guesswork on an unmarked 20×20 and immediate on a grid banded in fives. The bands are the **hairline's colour at three times its weight**, not `--ink`: in the fill colour they read as filled squares that happen to be thin, competing with the picture they exist to help measure. The outer frame keeps its `--ink` edge in every type.
 
+### Crossword
+
+Crossword is the first type whose puzzle is not entirely visible in the grid. A sudoku shows you everything it knows; a crossword keeps half of itself in a list. Every decision below follows from that one difference.
+
+**The current clue sits in a bar directly under the grid, and the bar is the direction toggle.** It is the single thing a solver needs at every moment, so it is the single thing always on screen — number, direction, and clue text, with a ⇄ affordance. Tapping it flips between the Across and Down entry through the cursor, which is the same action as tapping the already-selected square, offered where the player is already looking.
+
+**The full Across and Down lists open over the grid, behind one `All clues` button.** Two scrolling lists and a 15×15 grid do not fit a phone together, and on the desktop column they would take the grid's width to show a list the solver reads once per entry. So the lists are a place you go, not a thing you sit beside: they open as a dialog, the current entry is marked, picking any clue jumps the cursor to its first square and closes. The trade is real and is accepted deliberately — scanning for a way in becomes a deliberate act rather than a glance, which is the cost of keeping the grid the loudest thing on screen (§3). The bar is what makes it affordable, since the clue you are *on* never requires the dialog.
+
+**Letters come from the app's own keyboard, not the phone's.** §4 originally said crossword would fall back to the native keyboard; Phase 4 revises that. A native keyboard arrives with autocapitalize, autocorrect, and predictive text, all of which fight a grid that wants exactly one letter at a time; it takes an amount of the viewport the page cannot query reliably or influence at all, and on a 15×15 that is the difference between seeing the grid and not; and reaching it at all needs an offscreen `<input>` holding focus, which is the fragile hack every crossword app on the web has had to maintain per platform. `<pt-letter-pad>` is a QWERTY pad in the slot the digits and brushes already occupy, so crossword joins the existing rule rather than escaping it: **one input path, whatever the source.** A physical keyboard still types straight into the grid, as it does for every other type.
+
+**A square holds one letter unless the player says otherwise.** Typing replaces the square's contents and moves on. With **Rebus** on, typing appends instead, and the square holds a whole word — the device a themed crossword is often built around ([ADR-0007](adr/0007-rebus-widens-the-cell-value.md)). The control is a switch in the same slot the Notes switch occupies for sudoku and the brush bar for nonogram, which is not a coincidence worth hiding: **every type has one setting above its keys that changes what a keypress means**, and this is crossword's. Holding <kbd>Shift</kbd> does the same thing for one keystroke on a physical keyboard, where a modifier is at hand and a switch is not.
+
+The value grows to fit the square down to a floor: a rebus of two to five characters is set to fit the width, and past that the size holds and the text clips, with the whole string still in the square's `aria-label`. Shrinking without a floor would make a long entry unreadable in the name of showing all of it. **Erase clears the square, and <kbd>Backspace</kbd> in Rebus mode removes the last character** — while building a word, taking back the last letter is the correction the player means, and clearing the lot is not.
+
+**Navigation is what a crossword solver already expects, and it is worth being literal about it**, because guessing here is immediately annoying:
+
+- Typing advances to the next square in the current entry, and **stops at the end of the entry** rather than wrapping into the next one. Filling the last square is a moment to look up, not to be moved somewhere unannounced.
+- Clicking a square selects it; clicking the **selected** square flips direction.
+- <kbd>Tab</kbd> / <kbd>Shift+Tab</kbd> move to the next and previous entry in the current direction.
+- Arrow keys along the current direction move the cursor. Arrow keys **across** it move the cursor *and* flip the direction, which is the one rule people rely on without being able to state.
+- Blocked squares are never selected, by click or by arrow — they hold nothing and cannot be typed into.
+
+**Black squares are `--ink` and carry no number, no cursor, and no presence dot.** They already render this way; what Phase 4 adds is that they stop being reachable. **Circled squares** — `GEXT` in the source files, and where a themed puzzle usually hides its bonus answer — draw as a thin ring inset in the square, in `--graphite` so they read as an annotation on the grid rather than as a value in it.
+
+**The clue list is synchronized with your own cursor, not with the room's.** It follows your position and direction and scrolls the current clue into view; where everyone else is working stays where it already is, on the grid as presence dots. Adding direction to `game:focus` would let the list say precisely which entry each player is on, and it is deliberately not built: it is a protocol change in the phase whose premise is that a new type needs none, bought for a nicety. Recorded as a candidate for later, once real play says whether the dots are enough.
+
+**15×15 needs no caveat on small screens, which the design expected it to.** The plan was to mark it in Puzzle Select the way the 20×20 nonogram is marked; measuring it said otherwise. At 320px a 15×15 comes out at 19px squares with no horizontal overflow, which is what every crossword app on a phone ships and is nothing like the 20×20 nonogram's ten-pixel squares with a third of the width lost to clue gutters. A crossword also has no gutters to lose it to and never draws nine pencil marks in a square. So the caution is not written, and `SIZE_CAUTION` has no crossword entry.
+
+The letter pad is where the small screen actually bites: ten keys across 320px is 25px each, whatever the layout. That is the same width a native phone keyboard gives them, which is the argument for borrowing its arrangement rather than inventing one — the height stays at the app's 44px target, since that axis is still free.
+
 ### Completion modal
 
 On server-verified completion, **every player** gets a dismissable congrats modal showing the **solve time** and the **room's solve streak**. The host additionally sees controls to start a new puzzle (type / difficulty / size, defaulting to the one just finished). Dismissing leaves the completed grid on screen; non-hosts wait there until the host starts the next puzzle or returns the room to select.
@@ -165,6 +196,7 @@ puzzletogether/
 ├─ package.json  vite.config.js  jsconfig.json    # checkJs: true
 ├─ eslint.config.js  .prettierrc  playwright.config.js
 ├─ tests/                      # Playwright: the app in a real browser, two clients (§12)
+├─ scripts/import-crossword.js # .puz/.ipuz → a bank file; run by hand, never at boot
 ├─ Dockerfile  .env.example  .github/workflows/ci.yml
 ├─ docs/                       # see §1
 ├─ data/crosswords/
@@ -174,7 +206,7 @@ puzzletogether/
 │  ├─ protocol.js              # event constants, PROTOCOL_VERSION, JSDoc typedefs
 │  ├─ schema.js                # ~120-line runtime payload validator
 │  ├─ constants.js             # player palette, limits, timings
-│  ├─ puzzle-doc.js            # idx↔(r,c), entry lookup, cell helpers
+│  ├─ puzzle-doc.js            # idx↔(r,c), cell helpers — nothing type-specific
 │  └─ board-reducer.js         # applyOp() — shared by server and client
 ├─ server/
 │  ├─ index.js  config.js
@@ -193,7 +225,9 @@ puzzletogether/
    ├─ store/{room-store.js,store-controller.js,ops.js,undo-stack.js}
    ├─ views/{pt-app,pt-landing,pt-puzzle-select,pt-game,pt-congrats-modal,pt-confirm}.js
    ├─ ui/{pt-player-chips,pt-timer,pt-keypad,pt-mode-toggle,pt-brush-bar,pt-switch,pt-puzzle-picker,icons}.js
+   │  └─ {pt-letter-pad,pt-clue-bar,pt-clue-list}.js   # Phase 4: crossword's input slot and clues
    └─ boards/{registry,pt-board,pt-cell,pt-presence-layer,pt-sudoku-board,pt-kenken-board,pt-nonogram-board}.js
+      └─ {pt-crossword-board,crossword-entries}.js     # Phase 4: entry lookup beside its consumer
 ```
 
 **Dev**: Vite on 5173 with `server.proxy` sending `/socket.io` and `/api` to Express on 3000; `npm run dev` runs both via `concurrently`.
@@ -256,27 +290,45 @@ One document schema covers all four types. Everything type-specific lives under 
 | sudoku | `{ regionRows: 3, regionCols: 3, alphabet: '123456789' }` | digit or null, plus `marks[]` |
 | kenken | `{ cages: [{ id, cells: [idx], op: '+|-|*|/|=', target }], alphabet: '1234' }` | digit or null, plus `marks[]` |
 | nonogram | `{ rowClues: [[3,1],…], colClues: [[2],…], values: { fill: '#', cross: 'x' } }` | tri-state `'#' \| 'x' \| null`, no `marks[]` |
-| crossword | `{ entries: [{ num, dir: 'A'\|'D', cells: [idx], clue, len }] }` | letter or null (rebus deferred) |
+| crossword | `{ entries: [{ num, dir: 'A'\|'D', cells: [idx], clue, len }], alphabet: 'A…Z', circled: [idx] }` | letter, rebus word, or null |
 
-**Nonogram's two values are single characters, and it names them in its own `meta`.** Single characters because `schema.js` bounds every cell value at one, and that rule holds for four types precisely because no type has been allowed to widen it. Named in `meta` rather than agreed as a shared constant because the board is then reading *what this puzzle uses* rather than knowing what nonograms use — the same reason sudoku's alphabet travels in the document.
+**Nonogram's two values are single characters, and it names them in its own `meta`.** Named in `meta` rather than agreed as a shared constant because the board is then reading *what this puzzle uses* rather than knowing what nonograms use — the same reason sudoku's alphabet travels in the document.
+
+**A cell value is 1–8 characters on the wire, and each type narrows that itself.** Through Phase 3 the bound was exactly one character, and §7 argued that the rule held for four types precisely because none had been allowed to widen it. Phase 4 widened it, for rebus squares, and the reasoning is in [ADR-0007](adr/0007-rebus-widens-the-cell-value.md): `schema.js` exists to bound what crosses the wire, not to describe puzzles, and what may go in a cell is what `validateOp` is for. Sudoku, kenken, and nonogram accept exactly one character each, as they always did — the difference is that they now say so themselves.
+
+**So a new type must bound its own values, and nothing will remind it.** This is the one piece of discipline Phase 4 moved out of the schema and into review. It is also where the widening turned up a bug that had been invisible behind the old rule: sudoku and kenken tested membership with `doc.meta.alphabet.includes(value)`, which on a string matches *substrings*, so `'12'` would have passed the moment a two-character value could reach it. Fixed to a character-set test in the same change. The general lesson is worth keeping: a check that has never been wrong may only be a check that has never been reached.
 
 **Nonogram has no pencil marks**: the cross *is* the note, so it lives in the cell's value and `marks[]` stays empty. This is also why nonogram is the one type whose `isComplete` cannot be the shared value-grid comparison — a grid is solved by its **filled** squares alone, whether the player marked the blanks, marked them wrongly, or left them alone.
 
-**KenKen labels its cages through `DocCell.label`**, which already draws in a cell's top-left corner. The server writes `12+` or `3÷` onto each cage's first cell and the board never mentions labels at all.
+**KenKen labels its cages through `DocCell.label`**, which already draws in a cell's top-left corner. The server writes `12+` or `3÷` onto each cage's first cell and the board never renders a label itself.
+
+**A clue and a note both want that corner, so the clue is given a row of the mark grid.** A mark's position *is* which digit it is, so note "1" is always top-left, and marks paint after the label — a cell with a full set of notes hid the clue it was there to solve. The board declares `reservesLabelRow`, the cell adds a row to the mark grid and starts the notes one row down, and the clue is then sized by that track instead of by `--text-sm`. It was the only thing in a cell not derived from cell size, which meant it grew relative to its neighbours exactly where space was tightest. The cost is one row of note height, which is real at 7×7 on a phone and invisible at 4×4.
+
+**A label is drawn and it is also said, and those are two different jobs.** `<pt-board>` puts `DocCell.label` into the cell's `aria-label` — it did not until Phase 3 closed, so a kenken puzzle's entire set of constraints was missing for anyone not looking at the screen. Saying it is not simply reading it: a clue is written to fit a corner a few pixels across, and at a screen reader's usual verbosity punctuation is skipped, so `12+` and `12` are announced identically while meaning nothing alike. The `spokenLabel` hook lets the subclass supply the phrase — kenken says "cage 12 plus" — because only the subclass knows what its label *means*, and the base element has no business knowing that kenken's labels describe cages. **A blocked square says "blocked" and stops**: it holds no value, takes no marks, and cannot be checked, so "empty" would invite an edit that is not possible.
 
 **Server module interface** — each `server/puzzles/<type>/index.js` default-exports:
 
 ```js
 {
   type,
-  create({ difficulty, size, rng }) → { doc, solution },
+  create({ difficulty, size, rng }) → { doc, solution },   // generated types only
   validateOp(doc, op) → boolean,
   isComplete(doc, board, solution) → boolean,
   checkCells(doc, board, solution, idxs) → { [idx]: 'correct'|'wrong'|'empty' },
 }
 ```
 
+**Phase 4 found that this is two interfaces wearing one name.** `create` *produces* a puzzle; the other three *rule on* one. Three types needed both because they make their own puzzles, so the distinction never had to be drawn — and crossword, whose clues are written by a person, has nothing to generate. Its module supplies the rules only, and `provider.js` is what knows which of the two producers a type has, which is exactly the seam it was built to be. A fifth generated type still writes all four; a second banked type writes three.
+
+The rules themselves turned out to be almost entirely borrowed: a crossword cell holds one value compared against one solution value, which is the sentence `value-grid.js` already said for sudoku and kenken. A letter is not different from a digit in any way those functions can see. The only method genuinely crossword's own is `validateOp` — what may be written into a square.
+
 **Provider seam** — `server/puzzles/provider.js` exposes `getPuzzle({ type, difficulty, size })`, backed by `GeneratorProvider` (sudoku/kenken/nonogram) and `BankProvider` (crossword). Identical interface, so a future DB provider drops in with no call-site change. → [ADR-0004](adr/0004-hybrid-puzzle-supply.md)
+
+**A generator can make anything it offers; a bank holds what it holds — so the provider also publishes a catalog.** Puzzle Select has read its options from `SIZES_BY_TYPE` in `shared/constants.js` since Phase 2, which is exactly right for a type whose content is produced on demand and cannot be right for one whose content is a directory of files. `provider.catalog()` returns what is genuinely available per type, computed once at boot, and the server sends it with room state so the picker offers what exists rather than what a constant hopes exists.
+
+Two things follow, and both matter more than the mechanism. **A type with nothing behind it is not offered at all**: a build whose crossword bank is empty shows three puzzle types, not four with one that fails when picked — which is the state any build without a licensed bank is in, so it is the normal case rather than an error case (§14). And **crossword sizes are not square sides**. `SIZES_BY_TYPE` holds a side length per type because every generated grid is square; real crosswords are 15×15 and 5×5 and also 20×21, so the catalog carries `{ rows, cols }` pairs and Puzzle Select labels them as it finds them.
+
+**A room does not serve the same banked puzzle twice running.** A generator never repeats by construction; a bank of thirty will, immediately and visibly, and "start another" landing on the puzzle just solved would read as the button being broken. The room remembers the ids it has been served.
 
 **Client**: `<pt-board>` owns grid geometry, cell DOM, selection, the presence layer, and op emission. Subclasses supply only cell rendering, the keyboard/keypad map, input filtering, and decorations (cage borders, clue gutters, entry highlighting). A fifth type = one server module + one Lit subclass, touching nothing shared.
 
@@ -287,11 +339,24 @@ The subclass hooks, settled in Phase 3 when two new types actually pulled on the
 | `isHeavyRight` / `isHeavyBottom` | where the heavy rules go | sudoku regions, kenken cages, nonogram's counting bands |
 | `valueForKey` | what a keystroke writes here | all |
 | `markColumns` / `markRows` | how pencil marks lay out | sudoku, kenken |
+| `reservesLabelRow` | whether the cell's label takes a mark row to itself | kenken cage clues |
+| `spokenLabel(label, idx)` | how that label is said, when it is not how it is drawn | kenken cage clues; crossword numbers |
 | `valueGlyphs` | whether a value is drawn as a character or as a mark | nonogram |
 | `renderTopGutter` / `renderSideGutter` | what is drawn alongside the grid, aligned to its tracks | nonogram |
 | `isHighlighted` | which cells the gesture in progress covers, as distinct from the selection | nonogram drags; crossword entries |
+| `nextSelection(from, dRow, dCol)` | where an arrow key lands, when it is not simply the next square | crossword: skips blocks, flips direction across the entry |
+| `advanceAfterInput(idx)` | where the cursor goes once a value is written, or nowhere | crossword auto-advance |
+| `isCircled` | whether the square is annotated rather than special | crossword themed squares |
 
-**The board element for a type, and the kind of input it takes, are declared in `client/boards/registry.js`.** The game screen branches on the *input style* — `digits`, `brushes`, and `native` for the crossword to come — never on the type name. Sudoku and kenken share `digits` despite having nothing else in common, which is the point: there are far fewer ways to put something in a cell than there are puzzles.
+**Crossword pulls on navigation the way nonogram pulled on rendering, and the three new hooks are that.** `nextSelection` and `advanceAfterInput` exist because a crossword is the first type where moving the cursor is a puzzle-specific act: everywhere else an arrow key means the adjacent square and typing means stay put, and both were hard-coded in `<pt-board>` because no type had ever disagreed. `isCircled` is a cell decoration of the same shape as the heavy-rule hooks. `spokenLabel` gains the cell index, because a crossword number describes the entries that *start* at a square, which the label alone cannot say — kenken ignores the second argument.
+
+One change to `<pt-board>` is not a hook and not crossword's: **a blocked square is never selected**, by click or by arrow. It holds no value, takes no marks, and cannot be checked, so selecting one could only ever be a dead end. No existing type has block cells, so this costs them nothing — it is the base element finally being asked a question the doc schema has allowed since Phase 0.
+
+**Crossword entry lookup lives in the client, not in `shared/`** — a Phase 0 assumption reversed on the way into Phase 4. §5 listed it under `shared/puzzle-doc.js` from the start, on the reasoning that "which entry is this cell in, and in which direction" is a document question like `toCoords` is. It is not, on the test `shared/` actually applies: **`shared/` is what both sides need**, and the server does not need this. A crossword's server module writes letters into a value grid and compares them to a solution — `validateOp`, `isComplete`, and `checkCells` are the same value-grid code sudoku and kenken already share, and none of the three ever asks what an entry is. Entries are for highlighting the current one, auto-advancing along it, and keeping the clue list in step with the cursor: three rendering and navigation concerns, all of them the board's.
+
+So it goes in `client/boards/crossword-entries.js`, beside the subclass that consumes it, and `puzzle-doc.js` stays free of anything one type knows about. That also keeps Phase 3's result honest rather than honest-by-technicality — the claim is that a new type costs one server module and one client half, and quietly widening the file every type imports is exactly how that claim decays into nothing. Note that `entries[].cells` is stored explicitly in the document, so lookup is indexing rather than derivation; there is no algorithm here that two sides could implement differently, which is the usual reason to force something into `shared/`.
+
+**The board element for a type, and the kind of input it takes, are declared in `client/boards/registry.js`.** The game screen branches on the *input style* — `digits`, `brushes`, and `letters` for crossword — never on the type name. Sudoku and kenken share `digits` despite having nothing else in common, which is the point: there are far fewer ways to put something in a cell than there are puzzles.
 
 ---
 
@@ -312,6 +377,14 @@ A partition that is *not* unique is **tightened rather than redrawn**: the large
 **Latency strategy: pre-warmed pools in a worker thread.** `server/puzzles/pool.js` keeps N ready puzzles per (type, difficulty, size), refilled in the background via `node:worker_threads` so generation never blocks the event loop — which matters most when the host hits "new puzzle" from the congrats modal and expects it instantly. `getPuzzle` pops from the pool, falling back to synchronous generation only if dry.
 
 **Crossword bank.** `data/crosswords/index.json` manifest plus one JSON per puzzle, validated at boot. Seed with hand-authored minis, plus `scripts/import-crossword.js` to convert `.puz`/`.ipuz`. Auto-generated crossword clues are poor, which is exactly why this type is banked rather than generated.
+
+**A bank file holds the finished document and its solution — the loader validates, it does not compile.** Entry numbering is derived from the grid by one function, `numberGrid()`, and derived *at import time*, so what is tracked in the repo is explicit and reviewable rather than a source form that becomes a puzzle only when the server starts. The same function then runs at boot as a **check** rather than as a step: the loader re-derives the numbering and refuses a file whose stored `entries` disagree with its own grid. Writing it once and using it in both directions is what makes the redundancy worth having — a stored entry list that nothing verifies is just a second place to be wrong.
+
+**Crossword's difficulty is declared, which is a third answer to a question the platform has now answered three ways.** Sudoku's is measured, kenken's is a generation parameter (§8), and a banked crossword's is whatever the manifest says — usually a restatement of the source's day-of-week convention. There is nothing to measure: difficulty in a crossword is how obscure the clues are, which is a property of the writing. It is recorded here so the inconsistency is a decision rather than a discovery.
+
+**The importer refuses more than it converts, and that is the point.** From `.puz` it reads the header, the solution and player grids, the clue list, and the extension sections. It **carries** `GRBS`/`RTBL` rebus squares ([ADR-0007](adr/0007-rebus-widens-the-cell-value.md)) and `GEXT` circled squares, since between them they are where a themed puzzle keeps its theme. It **ignores** `LTIM` and `RUSR` — a saved timer and a stranger's partial solve, which are somebody's session and not part of the puzzle. It **refuses**, by name and with the reason, a scrambled puzzle (the solution is locked and cannot be read honestly), a grid outside the schema's 25×25 bound, a rebus longer than `MAX_CELL_VALUE_LENGTH`, and any file whose derived numbering does not match its own clue count.
+
+**It also refuses to write a bank file without an explicit licence.** `--license` is a required argument, not a field it guesses from the source's copyright string; the string is carried into the manifest as `source` alongside it. This is [ADR-0004](adr/0004-hybrid-puzzle-supply.md)'s split made mechanical: the pipeline can be developed against any file, and nothing reaches `data/crosswords/` without somebody having answered the question of what may be served. A prototype run states its licence as unknown and says so in the manifest, which is honest and keeps that puzzle identifiable later.
 
 ---
 
@@ -355,6 +428,10 @@ Server → client:
 
 **`game:newPuzzle` was folded into `game:start`** in Phase 2. Starting from `select` and starting again from `solved` differ in nothing but the state they leave, so the second event would have been a second thing to keep in step with the first for no gain. `room:settings` is still unimplemented — nothing so far needs it.
 
+**The puzzle catalog rides the `room:create` / `room:join` ack**, not `room:state`. It is fixed for the life of the process — it is what the generators offer plus what the bank was loaded with — so it belongs with `PROTOCOL_VERSION` in the one payload a client receives exactly once, rather than being re-sent with every state change that cannot have altered it. It is the whole protocol cost of the bank: a client that knows what a server can serve needs nothing else to draw Puzzle Select correctly.
+
+**Crossword adds nothing else to the protocol.** No new event, no new op type, no new field on `game:op` or `game:focus` — a letter is a `set` and a rebus is a longer `set` ([ADR-0007](adr/0007-rebus-widens-the-cell-value.md)). The one deliberate omission is direction on `game:focus`: it would let the clue list say precisely which entry each player is working, and it is not built, because the feature is a nicety and the change is to `shared/` (§4).
+
 **`room:kick` is host-only and takes a `playerId`.** The removed player is told before their seat is dropped — once it is gone there is nothing left to tell them about — via a `KICKED` error, which is the one error a client receives without having asked for anything. Their reconnect token dies with the seat, so it cannot be used to walk back in; the room code still can, because there are no accounts here and a kick is a nudge rather than a ban.
 
 **`player:color` carries a palette index and nothing else.** A seat only ever speaks for itself, so there is no target player in the payload — you cannot recolour anybody else, and the handler needs no authority check beyond "you hold a seat". The server refuses an index another player holds: a room's colours must stay unique, because presence dots are the one place identity is carried by hue with no name beside it. The answer comes back as a `room:players` broadcast rather than an ack payload, since the client cannot know what the rest of the room holds.
@@ -396,7 +473,8 @@ Two suites, split by what they can actually see.
 2. **Board reducer**: op ordering under LWW, and the key equivalence — sequential op application equals the snapshot.
 3. **Protocol schema validation**: malformed payloads rejected, never crashing a handler.
 4. **Room lifecycle**: reconnect-token restore, host election on disconnect, colour uniqueness, streak increment/reset rules, GC deleting rooms and clearing timers.
-5. **Bank loader**: every file in `data/crosswords/` validates against the schema.
+5. **Bank loader**: every file in `data/crosswords/` validates against the schema and re-derives its own numbering. This is the one place the suite tests *content* rather than code, and it is worth it — a hand-edited grid whose entries no longer describe it is not a crash but an unsolvable puzzle, found by a room mid-solve.
+6. **The importer's refusals**, on `.puz` files assembled byte by byte in the test. The real samples are `.gitignore`d, so a test reading them would pass on one machine and fail on every other.
 
 **Playwright** (`npm run test:ui`) for everything that needs a real engine: `tests/` drives the built app against a real server, with a second browser context wherever the assertion is about two players. It covers the landing tabs, the roster and colour picking, removing a player, the ways out of a room, the keypad and switches, and grid geometry. `playwright.config.js` builds and starts the server itself, so the command is the whole setup.
 
@@ -429,8 +507,10 @@ Phase 1 is a vertical slice deliberately, not scaffolding — the co-op sync mod
 
 `<pt-board>` gained `valueGlyphs` and the two gutter hooks. That is a real gap closing rather than an abstraction failing: §7 had *claimed* since Phase 0 that subclasses supply "cell rendering ... and decorations (cage borders, clue gutters)", and no hook for either existed, because sudoku never asked for one. Both hooks are general and cost the other types nothing — a puzzle either draws a gutter or it does not, and a type that supplies no glyph map gets characters. **KenKen needed no `<pt-board>` change at all**, which is the cleaner half of the result.
 
-**Phase 4 — crossword + bank.** Bank format, loader, validator, `.puz`/`.ipuz` importer, clue-list UI, direction toggle, entry highlighting.
+**Phase 4 — crossword + bank.** Bank format, loader, validator, `.puz`/`.ipuz` importer, the provider catalog, clue bar and clue-list dialog, the letter pad, direction toggle and auto-advance, entry highlighting, rebus squares.
 *Done when*: a 15×15 puzzle is co-op solvable with synchronized clue-list state.
+
+Unlike Phase 3, this one **knowingly touches `shared/`**: the cell-value bound moves from one character to eight so a rebus square can exist ([ADR-0007](adr/0007-rebus-widens-the-cell-value.md)). That is the phase's one deliberate exception, and it is a bound rather than a behaviour — no op, reducer, or event changes shape. Anything beyond it is the same failure Phase 3 was designed to detect.
 
 **Phase 5 — hardening.** Tests to meaningful coverage, CI green, Dockerfile, rate limits, load test with N simulated players in one room.
 
@@ -440,8 +520,11 @@ Docs are updated *within* each phase, not after — an ADR that no longer matche
 
 ## 14. Risks and open questions
 
-- **Crossword content licensing is the real blocker for Phase 4.** Which puzzles can legally ship? Hand-authored minis and public-domain sources are the safe start; needs a decision before Phase 4.
+- **Crossword content licensing is the real blocker for Phase 4 — for *shipping*, and no longer for *building*.** Which puzzles can legally ship is still open; hand-authored minis and public-domain sources remain the safe start. The importer and the bank are developed against freely-distributed `.puz` files, which answers "does the pipeline work" without answering "what may we serve". Those inputs stay out of the repo: free to download is not free to redistribute, and a commit is a redistribution. → [ADR-0004](adr/0004-hybrid-puzzle-supply.md)
 - ~~**KenKen uniqueness verification cost** grows sharply with grid size.~~ **Measured in Phase 3 and settled.** It does grow sharply — ~1ms at a 5×5 hard against ~170ms median and 870ms worst at a 7×7 hard — but 7×7 is comfortably inside a background pool refill, so the cap stays where §8 put it. The time budget and retry cap were built anyway, and bound the search for a *good* partition rather than the production of one.
+- **Putting the clue lists behind a button is the biggest untested bet in Phase 4.** It keeps the grid the loudest thing on screen and it is the only layout that fits a 15×15 and two lists on a phone, but experienced solvers scan the list for a way in, and making that a tap is a real cost. The current-clue bar is what should make it bearable. If play says otherwise, the fallback is a side panel above ~900px, which is additive and touches nothing else.
+- **The letter pad replaces the native keyboard, which is a wager against the platform.** Every crossword on the web that uses the OS keyboard maintains a per-platform hack to do it; we are betting that a pad we control is less work than that hack and better to use. It should be checked against a real thumb early, not at the end of the phase.
+- **A rebus is capped at 8 characters** and the discipline that keeps other types at one is now review's rather than the schema's ([ADR-0007](adr/0007-rebus-widens-the-cell-value.md)). A fifth type that forgets to bound its own values gets a bug, not an error.
 - **LWW may feel bad** if two players fight over one cell. Presence dots should make it rare; if playtesting disagrees, the fallback is a short soft-lock on focused cells — deliberately not built now.
 - **Shared-document undo is inherently surprising.** Per-player forward-only is the best available answer; expect tuning after real play.
 - **Lit per-cell update performance** on large grids is the main frontend unknown. Prove it in Phase 1.
