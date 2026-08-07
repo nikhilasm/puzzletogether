@@ -40,7 +40,8 @@ Legend: `[ ]` pending · `[x]` done · `[~]` in progress · `[!]` blocked · `[-
 **Teardown & scaffold**
 - [x] Delete `html/`, `css/`, `js/`, `js/server/answers.json`
 - [x] Drop `jquery`, `bootstrap`, `nodemon` from `package.json`
-- [x] Vite + Lit + Express + Socket.IO scaffold; dev proxy 5173 → 3000 (proxy target follows `PORT`)
+- [x] Vite + Lit + Express + Socket.IO scaffold; dev proxy 5173 → 3001 (proxy target follows `PORT`;
+      the default moved off 3000 in Phase 4 and both sides moved together)
 - [x] `jsconfig.json` with `checkJs: true`; `npm run typecheck` — **scoped to `shared/`**, see note below
 - [x] ESLint flat config + Prettier — **ESLint scoped to `shared/`**; Prettier repo-wide
 - [x] Brand tokens as `client/styles/tokens.css` (dark values staged, no toggle until Phase 2)
@@ -392,9 +393,12 @@ wiring, control order, both themes, 320px):
 
 **Server**
 
-- [x] `server/puzzles/crossword/index.js` — the four-method module. `isComplete` / `checkCells` are
-      the shared value-grid pair; `validateOp` bounds values to 1–8 characters of the alphabet
-- [x] `checkCellsByValue` skips block squares — they hold nothing and would grade as `empty`
+- [x] `server/puzzles/crossword/index.js` — **three** methods, not four: a banked type generates
+      nothing, so it has no `create` (see the note below). `isComplete` / `checkCells` are the shared
+      value-grid pair; `validateOp` bounds values to 1–8 characters of the alphabet
+- [-] ~~`checkCellsByValue` skips block squares~~ — **not needed, and not written.** `checkPuzzle`
+      already passes `editableIndices(doc)`, which excludes blocks, so the shared helper never sees
+      one. Planned work that turned out not to exist
 - [x] `provider.catalog()` — what is genuinely available per type, computed at boot, sent on the
       `room:create` / `room:join` ack. A type with nothing behind it is **not offered at all**,
       which is the normal state of a build with no licensed bank rather than an error state
@@ -449,10 +453,12 @@ wiring, control order, both themes, 320px):
 - [x] A rebus square holds a word, shrinks to fit, and peels back one letter at a time
 - [x] Full gate: **231 unit tests**, lint, typecheck, Prettier, build, **162 browser checks** in
       Chromium and Firefox
-- [ ] **A 15×15 solved end to end in two browsers.** Not done, and not automatable yet: the only
-      15×15 available is in the gitignored local bank, so the permanent suite would fail on a fresh
-      clone. Everything it depends on is tested against the 5×5 minis; what is unverified is a full
-      78-entry solve. Closes when a licensed 15×15 can be tracked
+- [x] **A 15×15 solved end to end by two people — a real playtest, 2026-08-05.** The phase's
+      done-when criterion, and the first time any of this has been in front of somebody who was not
+      building it. It is *not* in the automated suite and cannot be: the only 15×15 available sits in
+      the gitignored local bank, so the check would fail on a fresh clone. Everything it rests on is
+      covered against the 5×5 minis; the full-length solve is verified by play and says so. A
+      tracked, licensed 15×15 is what would let the suite hold it
 - [x] No socket frame carries solution letters before completion — **automated for the first time**
       rather than done by eye in devtools, and verified to fail against a deliberately leaked
       snapshot. A frame is reduced to its capitals before searching, because a leak would travel as
@@ -505,6 +511,121 @@ wiring, control order, both themes, 320px):
 > phone ships, and nothing like the 20×20 nonogram whose gutters eat a third of the width. Writing
 > the caution anyway would have warned about a size that is fine.
 
+### Revision pass on the built crossword
+
+*After the first real playtest — two people, one 15×15, 2026-08-05. Everything here is a change to
+something that already worked; the phase's original items above are left as they were rather than
+rewritten to look prescient.*
+
+**Settled by the playtest** (open questions 5, 9, 10, 11 in the table below)
+
+- [x] LWW, per-player undo, and the clue list behind a button all hold. **Three fallbacks that were
+      designed and reserved are now not needed and should not be built**: the soft-lock on focused
+      cells ([ADR-0001](adr/0001-shared-state-lww-per-cell.md)), the all-or-nothing undo, and the
+      desktop clue side panel
+
+**The letter pad is removed** → [ADR-0008](adr/0008-native-keyboard-for-crossword.md)
+
+- [x] Delete `<pt-letter-pad>`; crossword's registry entry returns to `input: 'native'`
+- [x] A hidden, focused `<input>` summons the OS keyboard and becomes the **single source of
+      crossword key events on every platform**, desktop included. The grid stops holding focus;
+      `:focus-within` keeps the ring where it belongs
+- [x] Read `beforeinput` / `input` and their `inputType`, never `keydown` — an Android IME reports
+      `keydown` as keycode 229 with `key: 'Unidentified'`, so a keydown reader works on a desktop,
+      appears to work in an emulator, and fails on a phone.
+      **One exception found while building it**: Backspace is taken from `keydown` where a named key
+      arrives, because the input is kept empty and an empty input raises no deletion event to read.
+      So "single source" is true of letters and not quite true of deletion
+- [x] `font-size: 16px` on the hidden input, or iOS zooms the page on focus
+- [x] The clue bar becomes a **pinned bar** above the keyboard, positioned from `visualViewport`:
+      clue · **Rebus** · **Undo** · **All clues**, one row, the last three as icons
+- [x] **Erase is dropped** — the keyboard's own ⌫ is the counterpart to pressing a letter, which is
+      the same reasoning §4 used to drop Erase from nonogram's brush bar. Consequence to accept:
+      clearing a four-letter rebus is four presses, since Backspace peels a letter at a time
+- [x] **Shift stops working as a rebus signal on mobile** (a phone's shift key just gives an
+      uppercase letter), so the Rebus toggle is the only mobile path. Shift survives on desktop,
+      read off the `keydown` preceding each `beforeinput` rather than tracked as held state
+- [x] Arrow keys, Tab, Space, and Backspace move to the input alongside the letters — the whole of
+      `<pt-crossword-board>`'s navigation, not only its text entry.
+      **Cost not foreseen in the ADR**: `<pt-board>` now listens for keys on the host rather than on
+      `.grid`, and gains `renderOverlay` and `focusTarget` hooks. That is a base-element change,
+      which Phase 3's rule says a new type should not need — recorded rather than hidden
+- [x] `tests/crossword.spec.js` — the letter-pad checks become native-input checks; the pad's own
+      browser checks go away with it
+
+**Puzzle Select shows the bank rather than describing it** → [ADR-0009](adr/0009-a-bank-is-browsed-not-described.md)
+
+- [x] `bankCatalog()` gains a `puzzles` array — `id`, `title`, `author`, `source`, `size`,
+      `difficulty` — and `game:start` gains an optional `puzzleId`, validated as shape only
+- [x] `<pt-puzzle-picker>` renders **two shapes, chosen by the provider rather than the puzzle
+      type**: a scrolling list of cards where the catalog carries puzzles, the size and difficulty
+      rows where it does not
+- [x] A named puzzle beats the room's `served` set — pressing a title means that title, even if the
+      room has played it. An id the bank no longer holds falls back to the description rather than
+      failing the start
+- [x] The picker announces the default it resolves to, so the list cannot show one card as chosen
+      while Start still carries "any 5×5"
+
+**The rest of the visual list**
+
+- [x] The clue button is a **next clue** button, walking the direction being worked (7D → 8D), not
+      the direction toggle. Turning around keeps the re-tap gesture, Space, and the perpendicular
+      arrow — and so has no button on a touch screen, which is now a recorded risk
+- [x] `7D`, not `7 Down`. The full words stay in the accessible name
+- [x] The cursor and its entry are pulled apart, 34%/30% → **62%/13%**. Four percentage points of
+      the same accent was a difference nobody could see
+- [x] Typing **steps over squares already filled**, so a half-filled entry can be typed into without
+      overwriting the crossings — most likely somebody else's, in a room solving together
+- [x] Backspace **clears and steps back**, and never leaves the entry. A rebus mid-assembly peels one
+      character and keeps the cursor
+- [x] The cell label is sized off `--cell-size` rather than `--text-sm`, floored at 7px and capped at
+      the old size. It was the last thing in a cell not derived from the cell
+
+### The input panel
+
+*After the second playtest — the same crossword, on an iPhone, 2026-08-06. It reversed the largest
+decision of the pass above, one day old.* → [ADR-0010](adr/0010-one-pinned-input-panel.md)
+
+> **What the playtest actually said.** The keyboard's letters were fine. Everything around them was
+> not: half of a solver's ordinary actions dismiss it — tapping a square, opening the clue list,
+> toggling Rebus, scrolling the grid — and the bar riding above it on `visualViewport` was "flaky at
+> best". That is not a bug to be fixed; it is what a fixed control strip against a viewport somebody
+> else animates costs, and ADR-0008 had named every piece of it as a cost accepted.
+
+- [x] Crossword returns to a pad of ours; registry `input: 'native'` → `'letters'`. The keys are
+      **QWERTY**, which is the part of the platform keyboard the earlier playtest was actually asking
+      for — muscle memory, not the platform's ownership of the screen
+- [x] `<pt-keypad>` becomes the **pinned input panel for every type**: `position: fixed` at the foot
+      of the viewport, with `clue` and `actions` slots above the keys and `env(safe-area-inset-bottom)`
+      for the iPhone home indicator
+- [x] Everything that acts on a square moves into it — Notes, brushes, **Rebus**, Erase, Undo, and
+      crossword's **All clues**. Everything that acts on the puzzle stays down the page. That was
+      already the rule; it is now a difference between two places rather than a hairline
+- [x] `<pt-clue-bar>` loses its fixed positioning, its `visualViewport` listener, and its three tool
+      buttons. It is the panel's top strip and shows the clue, which is still the next-clue button
+- [x] **The page reserves the panel's height in `<pt-app>`, after the footer** — not in `<pt-game>`.
+      Found by a browser test, not by reading: a spacer inside the game screen left the footer's
+      theme switch under the keys, unclickable at every scroll position
+- [x] Every control in the panel suppresses focus on `pointerdown`, or the grid blurs and physical
+      typing stops. The keypad and brush bar already did; **Notes and Rebus did not** and now do
+- [x] **All four of the base-element changes above are given back.** `renderOverlay`, `focusTarget`,
+      `describeCell`, and the host key listener are deleted; keys are read on `.grid` again, as
+      through Phase 3. The pressure on `<pt-board>` came from borrowing the platform's input, not
+      from crossword being a fourth type
+- [x] Gone with it: the hidden `<input>`, the `beforeinput`/`inputType` reader, the Android IME
+      workaround, the iOS 16px rule, the shadow-root `focusin` redirect, and `#shiftDown`
+- [x] `tests/game.spec.js` — the geometry checks are rewritten for a fixed panel: it stays at the
+      viewport foot across a scroll, and nothing (Leave room, the theme switch) is stranded under it.
+      `tests/crossword.spec.js` — the pad types without stealing focus, ⌫ walks back through the
+      entry, and the rows are QWERTY
+
+> **The backtick-in-a-CSS-comment trap, sixth occurrence — and the first the build did not catch.**
+> `` `<pt-game>` `` in a comment inside `<pt-app>`'s `css` block truncated the stylesheet, and the
+> remainder happened to parse as valid JavaScript. `npm run build` succeeded; every browser test then
+> failed at once on `pt is not defined`, with nothing pointing at the CSS. **The build is not the
+> check.** `node -e "import('./client/…/thing.js')"` on each changed component is — a module that
+> loads is a template that closed. Still worth a lint rule in Phase 5, now more than before.
+
 ---
 
 ## Phase 5 — Hardening
@@ -533,11 +654,13 @@ Carried from [design-spec.md §14](design-spec.md#14-risks-and-open-questions). 
 | 2 | Does Fraunces `WONK` survive contact with real screens? | Phase 1 | **Resolved — keep.** Reads as hand-cut rather than generic-serif at 2.75rem; it is the most distinctive thing on the page. |
 | 3 | Does the paper texture read as subtle or as noise? | Phase 1 | **Resolved — keep at 3%.** Invisible until looked for, on both the landing and game screens. |
 | 4 | Can 8 player colors all clear AA on cream, or drop to 6? | Phase 1 | **Resolved — 8 survive, but per theme.** One shared set cannot clear 4.5:1 on both backgrounds; `--player-N` is now defined in each theme block. |
-| 5 | Does per-cell LWW feel bad in practice? | Phase 2 playtest | Open — the machinery is now all there to judge it, but two scripted browsers are not a playtest. Soft-lock fallback stays in [ADR-0001](adr/0001-shared-state-lww-per-cell.md). |
+| 5 | Does per-cell LWW feel bad in practice? | Phase 2 playtest | **Resolved — no, 2026-08-05 playtest.** Two people on one 15×15: last-writer-wins reads as logical rather than as a loss. The soft-lock fallback in [ADR-0001](adr/0001-shared-state-lww-per-cell.md) is not needed and should not be built. |
 | 6 | Is Lit fast enough for a 25×25 grid? | Phase 1 | **Resolved — yes, comfortably.** 625 cells: 19ms first render, 2.9ms median / 5.3ms p95 single-cell update, 1.7ms presence update. |
 | 7 | KenKen uniqueness cost above 7×7 | Phase 3 | **Resolved — 7×7 stands.** Measured across 15 puzzles per size and difficulty: ~1ms at 5×5 hard, ~11ms at 6×6 hard, **~170ms median / 870ms worst at 7×7 hard**; easy and medium are single-digit ms everywhere. Well inside a background pool refill, so no player waits on it. Above 7×7 was not measured and is not offered. |
 | 8 | Sudoku difficulty targeting misses the requested band ~1% of the time | Phase 2 | **Resolved for the sizes that matter.** 4×4 and 6×6 always measure `easy` — there is no room for a technique beyond singles — so Puzzle Select disables the difficulty picker below 9×9 and says why (`DIFFICULTY_MIN_SIDE`). At 9×9 the ~1% miss stands, and the label remains the measured rating. |
-| 9 | Undo is per-player and forward-only — does it surprise people? | Phase 3 playtest | Open, and now with more surface. A cell somebody else has touched since is left alone with a notice; whether that reads as "safe" or "broken" still needs real players. Phase 3 added the **partial** case: one drag is one undo, so if a single square of a twenty-square stroke has moved on, the other nineteen are restored and the notice says the rest were left. All-or-nothing was the alternative and seemed clearly worse; unverified with players. |
-| 10 | Do clue lists work behind a button, or do solvers want them beside the grid? | Phase 4 playtest | Open, and the biggest untested bet in the phase. Chosen because two lists plus a 15×15 do not fit a phone and the grid is meant to be the loudest thing on screen; the current-clue bar is what should make it bearable. Fallback is a desktop side panel above ~900px, which is additive. |
-| 11 | Is our own letter pad better than the phone's keyboard? | Phase 4, early | Open. The wager is that a pad we control beats the offscreen-`<input>` hack every web crossword maintains per platform. Needs a real thumb, not an emulator, and needs checking before the rest of the phase is built on it. |
+| 9 | Undo is per-player and forward-only — does it surprise people? | Phase 3 playtest | **Resolved — no, 2026-08-05 playtest.** It behaves as people expect. The partial case (a drag whose squares have since moved on restores the rest and says so) did not come up in play and stays unverified in the specific, but the model itself is not the surprise it was suspected of being. |
+| 10 | Do clue lists work behind a button, or do solvers want them beside the grid? | Phase 4 playtest | **Resolved — behind a button is right, 2026-08-05 playtest.** It works as a launching point rather than only as a reference, which is the use the design was least sure of. The desktop side panel fallback is not needed. |
+| 11 | Is our own letter pad better than the phone's keyboard? | Phase 4, early | **Resolved, twice, and the second answer stands.** 2026-08-05: no — people want the layout their thumbs know, so the pad went. 2026-08-06, on an iPhone: the keyboard's letters were fine and the screen around them was unworkable, so **the pad came back in QWERTY and got pinned**. The two findings agree once separated — what solvers wanted was the *arrangement*, not the platform owning the bottom of the screen. → [ADR-0010](adr/0010-one-pinned-input-panel.md) |
 | 12 | Is 8 the right rebus ceiling, and will review hold the per-type value bound? | Phase 4 → 5 | Open. 8 comfortably holds every rebus in ordinary use, but it is a judgement. The larger question is [ADR-0007](adr/0007-rebus-widens-the-cell-value.md)'s stated cost: `schema.js` no longer stops a type from accepting a long value, so a fifth type that forgets gets a bug rather than an error. |
+| 13 | Turning the cursor around has no button on a touch screen — is re-tapping enough? | next playtest | Open, and unchanged by the 4b rework. The clue strip's one press went to *next clue*; flipping Across/Down is the re-tap gesture every crossword app teaches, plus Space and the perpendicular arrow on a keyboard. Discoverable to anyone who has used a crossword app and invisible to anyone who has not. |
+| 14 | Is ~16rem of a phone screen too much to give the input panel? | next playtest | Open. It is more than the platform keyboard and its one-row bar took, and it is the price of a layout that never moves — but unlike the keyboard's share it is a number we chose. A 15×15 still gets 19px squares at 320px. A collapse handle is the obvious lever and was deliberately not built ([ADR-0010](adr/0010-one-pinned-input-panel.md)); it is the first thing to revisit if this proves too much. |

@@ -31,11 +31,23 @@ export default defineConfig({
         { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
         { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
     ],
+    /*
+     * The server is always built and started fresh, never reused.
+     *
+     * `reuseExistingServer: !CI` is the usual setting and it is a trap here, because the command
+     * below *builds* — so reusing a server means testing whatever bundle was current when that
+     * server started. A leftover process from an earlier session once turned a green suite into 21
+     * identical failures against a day-old build, which is the worst kind of test result: confident,
+     * detailed, and about the wrong code.
+     *
+     * The cost is a rebuild and a restart per run, which is a few seconds. The benefit is that a
+     * port already in use now fails loudly instead of quietly answering with the wrong app.
+     */
     webServer: {
         command: 'npm run build && node server/index.js',
         url: BASE_URL,
         env: { PORT: String(PORT) },
-        reuseExistingServer: !process.env.CI,
+        reuseExistingServer: false,
         timeout: 120_000,
     },
 });

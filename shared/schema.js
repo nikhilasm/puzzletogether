@@ -151,10 +151,14 @@ export const SCHEMAS = {
     [CLIENT_EVENT.PLAYER_COLOR]: {
         colorIndex: integer({ max: PLAYER_COLOR_COUNT - 1 }),
     },
+    // `puzzleId` names one puzzle out of a bank's catalog, for the types whose content is a list
+    // rather than a description (ADR-0009). Optional because three of the four types are generated
+    // and have nothing to name; shape only, so whether the id exists is the provider's answer.
     [CLIENT_EVENT.GAME_START]: {
         type: oneOf(PUZZLE_TYPES),
         difficulty: oneOf(DIFFICULTIES),
         size: gridSize,
+        puzzleId: string({ max: 64, pattern: /^[\w.-]+$/, optional: true }),
     },
     [CLIENT_EVENT.GAME_OP]: {
         op: opShape,

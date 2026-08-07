@@ -37,6 +37,17 @@ export class PtModeToggle extends LitElement {
         this.disabled = false;
     }
 
+    /**
+     * Keeps the grid's keyboard focus where it is when the switch is tapped.
+     *
+     * The same rule every control in the input panel follows: this sits beside the keys now, and a
+     * setting that silently blurred the grid would mean the next thing typed at the puzzle went
+     * nowhere.
+     */
+    #onPointerDown(event) {
+        event.preventDefault();
+    }
+
     /** Announces the mode the player picked; the store decides whether it takes. */
     #onChange(event) {
         this.dispatchEvent(
@@ -54,6 +65,7 @@ export class PtModeToggle extends LitElement {
                 label="Notes"
                 .checked=${this.mode === INPUT_MODE.NOTES}
                 .disabled=${this.disabled}
+                @pointerdown=${this.#onPointerDown}
                 @pt-switch-change=${this.#onChange}
             >
                 <span slot="icon">${pencilIcon}</span>

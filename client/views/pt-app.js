@@ -35,6 +35,8 @@ export class PtApp extends LitElement {
         route: { state: true },
         theme: { state: true },
         announcement: { state: true },
+        /** How tall the game screen's pinned input panel is, or 0 when there is none. */
+        panelHeight: { state: true },
     };
 
     static styles = [
@@ -113,6 +115,22 @@ export class PtApp extends LitElement {
                 font-style: italic;
             }
 
+            /*
+             * Room at the very foot of the page for the game screen's pinned input panel.
+             *
+             * It belongs here rather than inside the game screen because the panel is fixed to the
+             * viewport and covers *everything* the page ends with — and the page does not end with
+             * the game screen, it ends with the footer and the theme switch in it. A spacer inside
+             * the game screen reserved room above the footer and left the switch underneath the
+             * keys, unclickable at every scroll position.
+             *
+             * The height is the panel's own measurement, arriving as an event from two shadow roots
+             * down; 0 whenever no panel is on screen, which is every screen but the game.
+             */
+            .panel-space {
+                flex: none;
+            }
+
             /* Off-screen but readable: roster changes are announced, never drawn twice. */
             .visually-hidden {
                 position: absolute;
@@ -157,6 +175,7 @@ export class PtApp extends LitElement {
         this.route = parseHash();
         this.theme = THEME.LIGHT;
         this.announcement = '';
+        this.panelHeight = 0;
     }
 
     /** Starts routing once the element is live, and reads back the theme already applied. */
@@ -203,7 +222,9 @@ export class PtApp extends LitElement {
                 </a>
             </h1>
             ${this.#renderRoom()}
-            <div class="screen">${this.#renderScreen()}</div>
+            <div class="screen" @pt-keypad-resize=${this.#onPanelResize}>
+                ${this.#renderScreen()}
+            </div>
             <p class="visually-hidden" role="status" aria-live="polite">${this.announcement}</p>
             <footer>
                 <pt-switch
@@ -216,7 +237,35 @@ export class PtApp extends LitElement {
                 <p>PuzzleTogether v${APP_VERSION}</p>
                 <p><a href=${GITHUB_URL} rel="noreferrer">View on GitHub</a></p>
             </footer>
+            <div
+                class="panel-space"
+                style="height: ${this.#showsPanel ? this.panelHeight : 0}px"
+                aria-hidden="true"
+            ></div>
         `;
+    }
+
+    /**
+     * Reserves as much of the page's foot as the input panel is covering.
+     *
+     * The panel measures itself and says so; nothing here knows what a keypad is, only that some
+     * screen has pinned something over the bottom of the page.
+     */
+    #onPanelResize(event) {
+        this.panelHeight = event.detail.height;
+    }
+
+    /**
+     * Whether a panel is on screen at all — which is to say, whether the game screen is.
+     *
+     * Asked rather than remembered, because a panel that leaves takes its last measurement with it:
+     * it is removed from the page before it could report a height of zero, and an element already
+     * detached cannot dispatch anything that would reach here. Without this, going back to Puzzle
+     * Select left a keypad's worth of empty page under the footer.
+     */
+    get #showsPanel() {
+        const room = this.#room.state.room;
+        return this.route.name === 'room' && room != null && room.state !== ROOM_STATE.SELECT;
     }
 
     /** Switches theme and remembers it; the attribute on `<html>` does the rest. */

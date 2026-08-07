@@ -1,8 +1,14 @@
 /**
- * The type / difficulty / size pickers, shared by Puzzle Select and the congrats modal.
+ * The puzzle pickers, shared by Puzzle Select and the congrats modal.
  *
  * One component in both places so "start another" offers exactly the choices Puzzle Select does,
  * defaulted to the puzzle just finished (design-spec.md §4).
+ *
+ * **It has two shapes, and which one it takes follows the provider rather than the puzzle type**
+ * (ADR-0009). A generated type is described — pick a size, pick a difficulty, and the generator makes
+ * something to match. A banked type is *browsed*: its content is a finite list of particular
+ * crosswords with titles and authors, and describing one would be asking the host to guess at a list
+ * they could simply be shown.
  *
  * Holds the working selection as its own state and reports it on every change; the screen around it
  * decides when to turn that into a `game:start`.
@@ -109,6 +115,84 @@ export class PtPuzzlePicker extends LitElement {
                 font-size: var(--text-sm);
                 font-style: italic;
             }
+
+            /*
+             * The browsable list a banked type gets instead of size and difficulty rows.
+             *
+             * It scrolls rather than growing, because a bank is meant to hold hundreds and a screen
+             * that grows with it stops being a screen. The height is in rem so it shows the same
+             * number of cards whatever the viewport — about four and a half, so the cut card says
+             * plainly that there is more below without needing a scrollbar to be visible.
+             */
+            .cards {
+                display: flex;
+                flex-direction: column;
+                gap: var(--space-2);
+                max-height: 21rem;
+                padding: var(--space-1);
+                overflow-y: auto;
+                text-align: left;
+            }
+
+            .card {
+                display: flex;
+                gap: var(--space-3);
+                align-items: baseline;
+                justify-content: space-between;
+                width: 100%;
+                padding: var(--space-3) var(--space-4);
+                border: var(--border);
+                border-radius: var(--radius-control);
+                background: var(--paper-raised);
+                color: var(--ink);
+                font-family: var(--font-ui);
+                font-size: var(--text-base);
+                text-align: left;
+                cursor: pointer;
+            }
+
+            .card:hover:not(:disabled) {
+                border-color: var(--accent);
+            }
+
+            /* Chosen is the same accent wash every other option in the app uses (brand.md §3). */
+            .card[aria-pressed='true'] {
+                border-color: var(--accent);
+                background: color-mix(in srgb, var(--accent) 16%, transparent);
+            }
+
+            .card .title {
+                font-weight: 700;
+            }
+
+            /*
+             * Author and source on one quiet line. They are how a solver tells two 15×15s apart, so
+             * they have to be there — but the title is what is being chosen, so they are --graphite
+             * and a step down rather than competing with it.
+             */
+            .card .meta {
+                display: block;
+                margin-top: var(--space-1);
+                color: var(--graphite);
+                font-size: var(--text-sm);
+                font-weight: 400;
+            }
+
+            /* Fixed width and tabular, so the sizes form a column the eye can run down. */
+            .card .size {
+                flex-shrink: 0;
+                color: var(--graphite);
+                font-size: var(--text-sm);
+                font-variant-numeric: tabular-nums;
+                white-space: nowrap;
+            }
+
+            .empty {
+                margin: 0;
+                color: var(--graphite);
+                font-size: var(--text-sm);
+                font-style: italic;
+            }
         `,
     ];
 
@@ -147,13 +231,62 @@ export class PtPuzzlePicker extends LitElement {
         return this.catalog?.[type]?.difficulties ?? DIFFICULTIES;
     }
 
+    /**
+     * The particular puzzles a type offers, when it has any.
+     *
+     * Only a banked type does. Its presence is the whole branch this component makes: a list means
+     * "choose one of these", its absence means "describe what you want" (ADR-0009).
+     */
+    #puzzlesFor(type) {
+        return this.catalog?.[type]?.puzzles ?? null;
+    }
+
     /** The working selection, falling back to the first of everything before one is supplied. */
     get #current() {
         const type = this.spec?.type ?? this.#types[0] ?? PUZZLE_TYPES[0];
+        const banked = this.#puzzlesFor(type);
+        // A banked type's whole selection comes off one card, so the fallback is the first card
+        // rather than three independent defaults that might not name any puzzle that exists.
+        if (banked) return this.#specFor(type, this.#chosenPuzzle(type) ?? banked[0]);
+
         return {
             type,
             difficulty: this.spec?.difficulty ?? this.#difficultiesFor(type)[0],
             size: this.spec?.size ?? this.#defaultSize(type),
+        };
+    }
+
+    /** A type's opening selection: its first card, or its default size at its first difficulty. */
+    #defaultSpec(type) {
+        const banked = this.#puzzlesFor(type);
+        if (banked) return this.#specFor(type, banked[0]);
+        return {
+            type,
+            difficulty: this.#difficultiesFor(type)[0],
+            size: this.#defaultSize(type),
+        };
+    }
+
+    /** The card currently chosen for a banked type, if the working spec names one that still exists. */
+    #chosenPuzzle(type) {
+        const id = this.spec?.type === type ? this.spec?.puzzleId : null;
+        return id ? (this.#puzzlesFor(type)?.find((puzzle) => puzzle.id === id) ?? null) : null;
+    }
+
+    /**
+     * The spec one card stands for.
+     *
+     * The size and difficulty travel alongside the id rather than being left for the server to look
+     * up, because they are what the *room* records — its settings, and what "start another" offers
+     * next — and that has to keep working whether the puzzle came from a bank or a generator.
+     */
+    #specFor(type, puzzle) {
+        if (!puzzle) return { type, difficulty: this.#difficultiesFor(type)[0], size: null };
+        return {
+            type,
+            difficulty: puzzle.difficulty,
+            size: { ...puzzle.size },
+            puzzleId: puzzle.id,
         };
     }
 
@@ -172,6 +305,35 @@ export class PtPuzzlePicker extends LitElement {
         return (comfortable.length > 0 ? comfortable : sizes).at(-1) ?? { rows: 9, cols: 9 };
     }
 
+    /**
+     * Publishes the resolved selection whenever it differs from the one handed in.
+     *
+     * The screens around this hold the spec and hand it back, and their opening value is the room's
+     * last settings — which for a banked type name a size and a difficulty but no *puzzle*. Left
+     * alone, the list would show a card as chosen while the Start button still carried "any 5×5",
+     * and pressing it could begin a different crossword than the one highlighted. So the default the
+     * list resolves to is announced rather than kept privately.
+     *
+     * It converges after one pass: what it emits is what `#current` reads back.
+     */
+    updated() {
+        const current = this.#current;
+        if (!current.size || this.#sameSpec(current, this.spec)) return;
+        this.#chooseWhole(current);
+    }
+
+    /** Whether two specs would start the same puzzle. */
+    #sameSpec(a, b) {
+        return (
+            b != null &&
+            a.type === b.type &&
+            a.difficulty === b.difficulty &&
+            (a.puzzleId ?? null) === (b.puzzleId ?? null) &&
+            a.size?.rows === b.size?.rows &&
+            a.size?.cols === b.size?.cols
+        );
+    }
+
     /** Applies one field of the spec and announces the whole thing. */
     #choose(patch) {
         const spec = { ...this.#current, ...patch };
@@ -181,8 +343,25 @@ export class PtPuzzlePicker extends LitElement {
         );
     }
 
+    /** Replaces the whole selection, which is what picking a card off a bank's list does. */
+    #chooseWhole(spec) {
+        this.spec = spec;
+        this.dispatchEvent(
+            new CustomEvent('pt-spec-change', { detail: { spec }, bubbles: true, composed: true }),
+        );
+    }
+
     render() {
         const current = this.#current;
+        const banked = this.#puzzlesFor(current.type);
+
+        if (banked) {
+            return html`
+                ${this.#types.length > 1 ? this.#renderTypes(current) : nothing}
+                ${this.#renderCards(banked, current)}
+            `;
+        }
+
         const sizes = this.#sizesFor(current.type);
         const difficulties = this.#difficultiesFor(current.type);
         // Difficulty can be unanswerable below a certain size — a small sudoku always falls to
@@ -245,6 +424,60 @@ export class PtPuzzlePicker extends LitElement {
         `;
     }
 
+    /**
+     * A banked type's puzzles, as a scrolling list of cards.
+     *
+     * Each card carries what tells one crossword from another before you have solved it: its title,
+     * who set it, where it came from, and how big it is. Nothing here is a *description* of a puzzle
+     * — the host is choosing a particular one, and the whole spec comes off the card they press.
+     */
+    #renderCards(puzzles, current) {
+        if (puzzles.length === 0) {
+            return html`<p class="empty">this build has no puzzles of that kind</p>`;
+        }
+
+        return html`
+            <fieldset>
+                <legend>Choose a puzzle</legend>
+                <div class="cards">
+                    ${puzzles.map((puzzle) => this.#renderCard(puzzle, current))}
+                </div>
+            </fieldset>
+        `;
+    }
+
+    /** One puzzle. `aria-pressed` carries the state the accent wash shows visually. */
+    #renderCard(puzzle, current) {
+        // Author and source are both optional — an imported file may carry neither — so the line is
+        // composed from whatever is actually there rather than printing "by null · null".
+        const credits = [puzzle.author ? `by ${puzzle.author}` : null, puzzle.source].filter(
+            Boolean,
+        );
+        const size = `${puzzle.size.cols}×${puzzle.size.rows}`;
+        const name = puzzle.title ?? puzzle.id;
+
+        return html`
+            <button
+                type="button"
+                class="card"
+                aria-pressed=${current.puzzleId === puzzle.id}
+                aria-label=${[name, ...credits, size].join(', ')}
+                ?disabled=${this.disabled}
+                @click=${() => this.#chooseWhole(this.#specFor(current.type, puzzle))}
+            >
+                <span>
+                    <span class="title">${name}</span>
+                    ${
+                        credits.length > 0
+                            ? html`<span class="meta">${credits.join(' · ')}</span>`
+                            : nothing
+                    }
+                </span>
+                <span class="size">${size}</span>
+            </button>
+        `;
+    }
+
     /** The puzzle-type row, which only earns its space once there is more than one type. */
     #renderTypes(current) {
         return html`
@@ -255,20 +488,12 @@ export class PtPuzzlePicker extends LitElement {
                         this.#renderOption({
                             label: PUZZLE_TYPE_NAMES[type] ?? titleCase(type),
                             isChosen: current.type === type,
-                            // A size from the old type may not exist on the new one, so switching
-                            // type resets the size to that type's largest rather than carrying an
-                            // impossible request over — a 9×9 nonogram is not on offer. Difficulty
-                            // moves for the same reason: a bank offers only what its files carry.
-                            onPick: () =>
-                                this.#choose({
-                                    type,
-                                    size: this.#defaultSize(type),
-                                    difficulty: this.#difficultiesFor(type).includes(
-                                        current.difficulty,
-                                    )
-                                        ? current.difficulty
-                                        : this.#difficultiesFor(type)[0],
-                                }),
+                            // Switching type starts that type's selection over rather than carrying
+                            // anything across, because almost nothing survives the trip: a 9×9
+                            // nonogram is not on offer, a bank has only the difficulties its files
+                            // happen to carry, and a puzzle id from one type names nothing in
+                            // another. `#current` supplies the new type's own default either way.
+                            onPick: () => this.#chooseWhole(this.#defaultSpec(type)),
                         }),
                     )}
                 </div>

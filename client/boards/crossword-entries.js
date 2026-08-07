@@ -79,23 +79,32 @@ export function hasDirection(index, cell, dir) {
 }
 
 /**
- * The next square to type into after this one, within the same entry.
+ * The next square to type into, **skipping squares that already hold a letter**.
  *
- * Returns null at the end of the entry rather than running on into the next. Filling the last square
- * of a word is a moment to look up and read a new clue, and being moved somewhere else unannounced
- * is how a player loses their place — the cursor should never end up somewhere they did not ask for
- * and cannot see the reason for.
+ * A solver typing a word into a half-filled entry is filling the gaps, not overwriting the
+ * crossings that got them there: with FR__T on screen, typing U-I should produce FRUIT rather than
+ * FUIT_. Jumping is what every crossword people have used does, and doing anything else makes the
+ * crossings — the whole point of the grid — actively hostile to type around.
+ *
+ * Falls back to the immediate next square when everything ahead is full, so the cursor still lands
+ * somewhere the player can see. Either way it returns null at the end of the entry rather than
+ * running on into the next: filling the last square of a word is a moment to look up and read a new
+ * clue, and being moved somewhere else unannounced is how a player loses their place.
  *
  * @param {EntryIndex} index - Built by `indexEntries`.
  * @param {number} cell - The square just filled.
  * @param {'A'|'D'} dir - Direction being worked.
- * @returns {number|null} The next square, or null at the end of the entry.
+ * @param {(cell: number) => string|null} valueOf - Reads a square's current value.
+ * @returns {number|null} The next square to type into, or null at the end of the entry.
  */
-export function nextInEntry(index, cell, dir) {
+export function nextOpenInEntry(index, cell, dir, valueOf) {
     const entry = entryAt(index, cell, dir);
     if (!entry) return null;
     const at = entry.cells.indexOf(cell);
-    return at >= 0 && at + 1 < entry.cells.length ? entry.cells[at + 1] : null;
+    if (at < 0 || at + 1 >= entry.cells.length) return null;
+
+    const open = entry.cells.slice(at + 1).find((next) => valueOf(next) == null);
+    return open ?? entry.cells[at + 1];
 }
 
 /**
@@ -131,6 +140,28 @@ export function stepEntry(index, from, step) {
     const at = from ? entries.indexOf(from) : -1;
     const next = (at + step + entries.length) % entries.length;
     return entries[next];
+}
+
+/**
+ * The next entry **in the same direction**, wrapping within it.
+ *
+ * Distinct from `stepEntry`, which walks the printed clue list and so falls off the end of the
+ * Acrosses into the Downs. This is what the clue bar's next button does: a solver working down the
+ * Across clues means 7A → 8A, and being turned around at the end of the column is a change of task
+ * rather than a step through one.
+ *
+ * @param {EntryIndex} index - Built by `indexEntries`.
+ * @param {Entry|null} from - The entry the cursor is in.
+ * @param {number} step - `1` for the next entry, `-1` for the previous.
+ * @returns {Entry|null} The entry to move to, or null when the puzzle has none that way.
+ */
+export function stepEntryInDirection(index, from, step) {
+    const dir = from?.dir ?? ACROSS;
+    const inDir = index.entries.filter((entry) => entry.dir === dir);
+    if (inDir.length === 0) return null;
+
+    const at = from ? inDir.indexOf(from) : -1;
+    return inDir[(at + step + inDir.length) % inDir.length];
 }
 
 /**

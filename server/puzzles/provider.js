@@ -48,6 +48,8 @@ export function loadBankFrom(dirs) {
  * @param {string} spec.type - Puzzle type, one of the supported modules.
  * @param {string} spec.difficulty - Requested difficulty.
  * @param {import('../../shared/protocol.js').GridSize} spec.size - Grid dimensions.
+ * @param {string} [spec.puzzleId] - A specific puzzle the host chose off the catalog. Only a bank
+ *   can honour it; a generator has no list to choose from, so it ignores it (ADR-0009).
  * @param {Iterable<string>} [spec.exclude] - Puzzle ids the asking room has already been served, so
  *   a finite bank does not hand back the puzzle just solved. Generators ignore it — they do not
  *   repeat.
@@ -55,10 +57,10 @@ export function loadBankFrom(dirs) {
  *   The client-safe document and the solution, which the room keeps and never serialises.
  * @throws {RangeError} If no provider serves the requested type.
  */
-export async function getPuzzle({ type, difficulty, size, exclude }) {
+export async function getPuzzle({ type, difficulty, size, puzzleId, exclude }) {
     const provider = PROVIDER_BY_TYPE[type];
     if (provider === 'generator') return pool.take({ type, difficulty, size });
-    if (provider === 'bank') return takeFromBank({ difficulty, size, exclude });
+    if (provider === 'bank') return takeFromBank({ id: puzzleId, difficulty, size, exclude });
     throw new RangeError(`no provider for puzzle type: ${type}`);
 }
 
@@ -69,8 +71,11 @@ export async function getPuzzle({ type, difficulty, size, exclude }) {
  * of a build with no licensed bank rather than an error state (ADR-0004), and a picker that offers a
  * type which fails when chosen would be worse than one that offers three.
  *
- * @returns {Object<string, { sizes: { rows: number, cols: number }[], difficulties: string[] }>}
- *   Available sizes and difficulties, keyed by puzzle type.
+ * A banked type also lists its puzzles by name, which is the whole difference between describing a
+ * puzzle and choosing one (ADR-0009). A generated type has no such list and carries none.
+ *
+ * @returns {Object<string, { sizes: { rows: number, cols: number }[], difficulties: string[],
+ *   puzzles?: object[] }>} What is available, keyed by puzzle type.
  */
 export function catalog() {
     const available = {};

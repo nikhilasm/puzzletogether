@@ -249,10 +249,15 @@ test.describe('leaving', () => {
         await expect(page.locator('.room-code')).toHaveCount(0);
 
         // Proved from outside: a fresh client joining that room finds only itself.
+        //
+        // Polled, because leaving is a round trip and arriving is a different one. Everything
+        // asserted above happens in this browser the moment the route changes; the seat is not
+        // actually gone until the server says so, and the observer can finish joining first. Read
+        // once, this passed or failed on which message the server happened to handle first.
         const context = await browser.newContext();
         const observer = await context.newPage();
         await joinRoom(observer, 'Alan', code);
-        expect(await playersOf(observer)).toHaveLength(1);
+        await expect.poll(async () => (await playersOf(observer)).length).toBe(1);
         await context.close();
     });
 

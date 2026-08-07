@@ -1,7 +1,7 @@
 /**
  * The icon set: inline SVG, drawn here rather than pulled from a pack.
  *
- * There are twelve of them, they are all simple geometry, and a dependency would cost more than it
+ * There are sixteen of them, they are all simple geometry, and a dependency would cost more than it
  * saves. Emoji are banned as UI icons (brand.md §1) because they render as somebody else's artwork
  * at somebody else's weight — these instead inherit `currentColor` and the app's line weight, so an
  * icon inside a disabled control greys out with it and the dark theme needs no second asset.
@@ -153,17 +153,48 @@ export const moonIcon = html`
 `;
 
 /**
- * Two arrows turning back on each other: a crossword's Across/Down flip.
+ * On to the next clue: a chevron, at the end of the clue it is moving off.
  *
- * One horizontal and one vertical on purpose, rather than the usual pair of parallel arrows — the
- * axes *are* the meaning here, so the icon says which two things are being swapped between.
+ * Deliberately not the pair of swapped axes that used to sit here. That icon said "turn the cursor
+ * around", and the bar it sat on no longer does that — pressing the clue now walks down the column
+ * of clues, so the icon has to say "forward" and nothing more. Turning around is what re-tapping the
+ * square you are on does, which is the convention every crossword app already teaches.
  */
-export const swapIcon = html`
+export const nextIcon = html`
     <svg viewBox="0 0 24 24" class="icon" aria-hidden="true">
-        <path d="M4 9h13" />
-        <path d="m13.5 5.5 3.5 3.5-3.5 3.5" />
-        <path d="M20 15H7" />
-        <path d="m10.5 11.5-3.5 3.5 3.5 3.5" />
+        <path d="m9 5 7 7-7 7" />
+    </svg>
+`;
+
+/**
+ * Rebus: more than one letter in a single square.
+ *
+ * The square is the cell, and the strokes inside it are the several characters that would not
+ * ordinarily fit — which is the whole of what the toggle changes. Drawn rather than lettered because
+ * a letterform in an icon is a word in disguise, and this button sits beside three others that are
+ * all pure geometry.
+ */
+export const rebusIcon = html`
+    <svg viewBox="0 0 24 24" class="icon" aria-hidden="true">
+        <rect x="3.5" y="5.5" width="17" height="13" rx="1.5" />
+        <path d="M8 10v4" />
+        <path d="M12 9.5v5" />
+        <path d="M16 10v4" />
+    </svg>
+`;
+
+/**
+ * Backspace, drawn the way every keyboard in the world draws it.
+ *
+ * This is the one icon in the set that is not free to be original. It sits in the bottom-right corner
+ * of a pad of letters, which is exactly where a phone keyboard puts the same key — so a solver reads
+ * it before they have consciously looked at it, and any cleverer shape would cost them that.
+ */
+export const backspaceIcon = html`
+    <svg viewBox="0 0 24 24" class="icon" aria-hidden="true">
+        <path d="M9 5h10.5A1.5 1.5 0 0 1 21 6.5v11a1.5 1.5 0 0 1-1.5 1.5H9L3 12Z" />
+        <path d="m11.5 9.5 5 5" />
+        <path d="m16.5 9.5-5 5" />
     </svg>
 `;
 

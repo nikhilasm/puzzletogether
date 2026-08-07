@@ -10,11 +10,11 @@
  * a player put something in a cell?", which has far fewer answers than there are puzzle types:
  * sudoku and kenken share `digits` despite having nothing else in common.
  *
- * Crossword is `letters` rather than the `native` this file guessed at in Phase 1. Handing a
- * crossword to the phone's own keyboard means fighting autocapitalize and predictive text, ceding an
- * unknowable share of the viewport on a 15×15, and maintaining the offscreen-`<input>` trick per
- * platform — so it gets a pad of ours, in the slot the digits and brushes already use
- * (design-spec.md §4).
+ * Crossword is `letters`: a pad of our own, which is where this landed after trying the platform
+ * keyboard on a real phone. The keyboard's letters were fine; everything around them was not. Half
+ * the actions a solver takes dismiss it, and a control bar pinned above it has to be positioned off
+ * `visualViewport` and still drifts. A pad we draw costs a share of the screen and gives back a
+ * layout that does not move (ADR-0010, reversing ADR-0008).
  */
 
 import { literal } from 'lit/static-html.js';

@@ -123,17 +123,53 @@ test.describe('shape and focus', () => {
     });
 
     test('the puzzle actions are one row, apart from the keys', async ({ page }) => {
-        const rows = await page.locator('pt-game').evaluate((game) => {
-            const buttons = [...game.shadowRoot.querySelectorAll('.puzzle-actions button')];
-            const keypad = game.shadowRoot.querySelector('pt-keypad').getBoundingClientRect();
-            return {
-                tops: buttons.map((el) => Math.round(el.getBoundingClientRect().top)),
-                belowKeypad: buttons[0].getBoundingClientRect().top > keypad.bottom,
-            };
-        });
+        const tops = await page
+            .locator('pt-game .puzzle-actions button')
+            .evaluateAll((buttons) =>
+                buttons.map((el) => Math.round(el.getBoundingClientRect().top)),
+            );
 
-        expect(new Set(rows.tops).size, 'all three share a row').toBe(1);
-        expect(rows.belowKeypad).toBe(true);
+        expect(new Set(tops).size, 'all three share a row').toBe(1);
+    });
+
+    /**
+     * The panel is pinned to the bottom of the *viewport*, not laid out at the bottom of the page
+     * (ADR-0010). That is the whole of what this change bought: a grid too tall for the screen can be
+     * scrolled and read while the keys stay exactly where a thumb left them.
+     */
+    test('the input panel stays at the foot of the screen, whatever the page does', async ({
+        page,
+    }) => {
+        const at = () =>
+            page.locator('pt-keypad').evaluate((panel) => ({
+                position: getComputedStyle(panel).position,
+                fromBottom: Math.round(window.innerHeight - panel.getBoundingClientRect().bottom),
+            }));
+
+        expect(await at()).toEqual({ position: 'fixed', fromBottom: 0 });
+
+        await page.mouse.wheel(0, 400);
+        expect(await at()).toEqual({ position: 'fixed', fromBottom: 0 });
+    });
+
+    /**
+     * ...and because it is out of the flow, the page has to make its own room for it. Without the
+     * spacer the last control on the page — Leave room — sits underneath the keys at every scroll
+     * position, which is to say it cannot be pressed at all.
+     */
+    test('nothing is stranded underneath the panel', async ({ page }) => {
+        await page.mouse.wheel(0, 5000);
+
+        // The last thing on the page is the theme switch in the footer, which is below the game
+        // screen and so below any spacer the game screen could have reserved for itself.
+        const clear = async (selector) => {
+            const panel = await page.locator('pt-keypad').boundingBox();
+            const box = await page.locator(selector).boundingBox();
+            return Math.round(panel.y - (box.y + box.height));
+        };
+
+        await expect.poll(() => clear('pt-game .leave button')).toBeGreaterThanOrEqual(0);
+        await expect.poll(() => clear('footer pt-switch button')).toBeGreaterThanOrEqual(0);
     });
 });
 
@@ -152,16 +188,16 @@ test.describe('the notice line', () => {
         await expect(page.locator('pt-game .notice')).toHaveText('pick a square first');
         expect(await height()).toBeGreaterThan(10);
 
-        // It sits under the keys whose result it reports, not down among the puzzle actions.
+        // It sits under the grid its result happened to, not down among the puzzle actions.
         const order = await page.locator('pt-game').evaluate((game) => {
             const box = (sel) => game.shadowRoot.querySelector(sel).getBoundingClientRect();
             return {
-                keypad: box('pt-keypad').bottom,
+                board: box('.board').bottom,
                 notice: box('.notice').top,
                 actions: box('.puzzle-actions').top,
             };
         });
-        expect(order.notice).toBeGreaterThanOrEqual(order.keypad);
+        expect(order.notice).toBeGreaterThanOrEqual(order.board);
         expect(order.notice).toBeLessThan(order.actions);
     });
 });
@@ -178,16 +214,18 @@ test.describe('input mode', () => {
         await expect(notes).toHaveAttribute('aria-checked', 'false');
         await expect(notes).toHaveText('Notes');
 
-        const geometry = await page.locator('pt-game').evaluate((game) => {
-            const box = (sel) => game.shadowRoot.querySelector(sel).getBoundingClientRect();
-            return {
-                board: box('.board').bottom,
-                mode: box('pt-mode-toggle').top,
-                keypad: box('pt-keypad').top,
-            };
-        });
-        expect(geometry.mode).toBeLessThan(geometry.keypad);
-        expect(geometry.mode).toBeGreaterThanOrEqual(geometry.board - 40);
+        // In the panel's button bar, above the digits it changes the meaning of — and below nothing
+        // else, since the bar is the top of the panel for a type with no clue to show.
+        const bottomOf = async (selector) => {
+            const box = await page.locator(selector).boundingBox();
+            return Math.round(box.y + box.height);
+        };
+        const topOf = async (selector) =>
+            Math.round((await page.locator(selector).boundingBox()).y);
+
+        const mode = await bottomOf('pt-mode-toggle');
+        expect(mode).toBeLessThanOrEqual(await topOf('pt-keypad .digits'));
+        expect(mode).toBeGreaterThan(await topOf('pt-keypad'));
     });
 
     test('flips, slides, and writes a pencil mark', async ({ page }) => {

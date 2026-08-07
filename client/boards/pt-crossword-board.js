@@ -21,9 +21,10 @@ import {
     firstOpenCell,
     hasDirection,
     indexEntries,
-    nextInEntry,
+    nextOpenInEntry,
     prevInEntry,
     stepEntry,
+    stepEntryInDirection,
 } from './crossword-entries.js';
 import { PtBoard } from './pt-board.js';
 
@@ -41,12 +42,22 @@ export class PtCrosswordBoard extends PtBoard {
              * The square the cursor is on, against the rest of its entry.
              *
              * Two depths of the same accent rather than two colours: the entry is context and the
-             * cursor is position, and they are the same idea at different strengths. The base
-             * element already washes the selected cell; this deepens it, so the cursor stays findable
-             * inside a highlighted run of fifteen squares.
+             * cursor is position, and they are the same idea at different strengths.
+             *
+             * The *gap* between the two depths is the point, and it used to be four percentage
+             * points — 34% against the base element's 30% — which is a difference nobody can see.
+             * A solver glancing back at a fifteen-square run could not find their own cursor in it,
+             * which was the single most-reported thing after the first playtest. So the cursor is
+             * now a solid statement of position and the entry is barely more than a tint: the
+             * question the entry wash answers is "which word am I in", and it only has to be
+             * distinguishable from *no wash at all* to answer it.
              */
             pt-cell[selected] {
-                background: color-mix(in srgb, var(--accent) 34%, transparent);
+                background: color-mix(in srgb, var(--accent) 62%, transparent);
+            }
+
+            pt-cell[highlighted]:not([selected]) {
+                background: color-mix(in srgb, var(--accent) 13%, transparent);
             }
         `,
     ];
@@ -176,13 +187,20 @@ export class PtCrosswordBoard extends PtBoard {
     }
 
     /**
-     * After a letter lands, move along the entry — and stop at its end rather than running on.
+     * After a letter lands, move along the entry — **over anything already filled in** — and stop at
+     * its end rather than running on.
+     *
+     * The board's own view of the grid is one op behind here: the letter that triggered this has been
+     * sent but has not come back as a property yet. That costs nothing, because the only square it
+     * changed is the one being left, and the search starts after it.
      *
      * @param {number} idx - The square just filled.
-     * @returns {number|null} The next square in the entry, or null at its end.
+     * @returns {number|null} The next square to type into, or null at the entry's end.
      */
     advanceAfterInput(idx) {
-        return nextInEntry(this.index, idx, this.direction);
+        return nextOpenInEntry(this.index, idx, this.direction, (cell) =>
+            effectiveValue(this.doc, this.board, cell),
+        );
     }
 
     /**
@@ -208,7 +226,26 @@ export class PtCrosswordBoard extends PtBoard {
      * @returns {void}
      */
     moveToEntry(step) {
-        const entry = stepEntry(this.index, this.currentEntry, step);
+        this.#enter(stepEntry(this.index, this.currentEntry, step));
+    }
+
+    /**
+     * Moves to the next entry **the same way the cursor is already pointing**, which is what the
+     * clue bar's button does.
+     *
+     * Different from Tab on purpose. Tab walks the printed clue list, so it falls off the end of the
+     * Acrosses into the Downs; this stays in the column a solver is working. 7 Down is followed by 8
+     * Down, and at the bottom of the Downs it wraps back to the first rather than changing the job.
+     *
+     * @param {number} [step] - `1` for the next entry, `-1` for the previous.
+     * @returns {void}
+     */
+    moveToNextClue(step = 1) {
+        this.#enter(stepEntryInDirection(this.index, this.currentEntry, step));
+    }
+
+    /** Puts the cursor into an entry, on its first square still empty. */
+    #enter(entry) {
         if (!entry) return;
         this.direction = entry.dir;
         this.goTo(firstOpenCell(entry, (cell) => effectiveValue(this.doc, this.board, cell)));
@@ -253,9 +290,9 @@ export class PtCrosswordBoard extends PtBoard {
      * convention on desktop and Enter is what a solver coming from paper reaches for. Space turns the
      * cursor, which is the other near-universal binding.
      *
-     * Backspace has a rule of its own worth stating. On an empty square it steps *back* and clears
-     * the square it lands on, so holding it walks a wrong answer out of the grid — deleting nothing,
-     * repeatedly, is not what anybody means by pressing it twice.
+     * Caught on the host during capture, so they are taken before the base element's own handler on
+     * the grid inside it — letters fall through to that, where they are handled the same as every
+     * other type's.
      */
     connectedCallback() {
         super.connectedCallback();
@@ -287,40 +324,94 @@ export class PtCrosswordBoard extends PtBoard {
         if (!this.doc || !this.interactive) return;
 
         if (event.key === 'Tab') {
-            event.preventDefault();
-            event.stopPropagation();
+            this.#take(event);
             this.moveToEntry(event.shiftKey ? -1 : 1);
             return;
         }
         if (event.key === 'Enter') {
-            event.preventDefault();
-            event.stopPropagation();
+            this.#take(event);
             this.moveToEntry(1);
             return;
         }
         if (event.key === ' ') {
-            event.preventDefault();
-            event.stopPropagation();
+            this.#take(event);
             this.toggleDirection();
             return;
         }
-        if (event.key === 'Backspace' && this.selection != null) {
-            const empty = effectiveValue(this.doc, this.board, this.selection) == null;
-            if (!empty) return;
-            const back = prevInEntry(this.index, this.selection, this.direction);
-            if (back == null) return;
-            event.preventDefault();
-            event.stopPropagation();
-            this.goTo(back);
-            this.dispatchEvent(
-                new CustomEvent('pt-cell-clear', {
-                    detail: { cell: back },
-                    bubbles: true,
-                    composed: true,
-                }),
-            );
+
+        /*
+         * Backspace is taken from the base element, which would only clear the square.
+         *
+         * A crossword's Backspace also steps back along the entry, which is what makes a wrong word
+         * walk out of the grid under a held key rather than needing a delete and an arrow per letter.
+         */
+        if (event.key === 'Backspace') {
+            this.#take(event);
+            this.backspace();
+            return;
+        }
+        // Delete empties the square without moving off it — the same rule, minus the step back.
+        if (event.key === 'Delete') {
+            this.#take(event);
+            if (this.selection != null) this.#clear(this.selection);
         }
     };
+
+    /** Takes a key for this element: neither the browser nor the base handler sees it. */
+    #take(event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+
+    /**
+     * Backspace: take a letter out, and step back along the entry.
+     *
+     * Three cases, one rule — *remove one character, and if that emptied the square, move back onto
+     * the one before it*:
+     *
+     * - An ordinary filled square empties and the cursor steps back, so a wrong word walks out of the
+     *   grid under a held key rather than needing a delete and an arrow per letter.
+     * - A rebus square being assembled loses its last letter and **keeps** the cursor, because the
+     *   player is correcting the word they are in the middle of writing.
+     * - An empty square has nothing to take, so the step back happens first and the letter comes off
+     *   the square landed on.
+     *
+     * It never leaves the entry. `prevInEntry` stops at the first square, and a Backspace that
+     * silently moved a solver into a different clue would lose them their place — the one thing the
+     * cursor rules in this file exist to prevent.
+     *
+     * Public because the panel's Backspace key presses it too, and there is no version of this rule
+     * that a screen can reimplement — the key on the pad and the key on the keyboard have to be the
+     * same act (design-spec.md §11).
+     *
+     * @returns {void}
+     */
+    backspace() {
+        const from = this.selection;
+        if (from == null) return;
+
+        const value = effectiveValue(this.doc, this.board, from);
+        if (value != null) {
+            this.#clear(from);
+            // Still holding letters, so the cursor has not finished with this square.
+            if (value.length > 1) return;
+            const back = prevInEntry(this.index, from, this.direction);
+            if (back != null) this.goTo(back);
+            return;
+        }
+
+        const back = prevInEntry(this.index, from, this.direction);
+        if (back == null) return;
+        this.goTo(back);
+        this.#clear(back);
+    }
+
+    /** Asks for a square to give up its last character; the screen decides what that means. */
+    #clear(cell) {
+        this.dispatchEvent(
+            new CustomEvent('pt-cell-clear', { detail: { cell }, bubbles: true, composed: true }),
+        );
+    }
 
     /** Whenever the cursor's position or heading settles, the clue bar is told what it is now on. */
     updated(changed) {

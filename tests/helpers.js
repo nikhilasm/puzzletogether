@@ -35,17 +35,26 @@ export async function joinRoom(page, name, code) {
  *
  * The type is clicked before the size, because choosing a type resets the size to that type's
  * default — a 4×4 nonogram does not exist, so the picker cannot carry a sudoku's size across.
+ *
+ * A banked type is chosen rather than described, so `side` names a card instead of a size button
+ * (ADR-0009). Passing nothing takes whichever card the bank lists first, which is what most tests
+ * want: they need *a* crossword, not a particular one.
  */
 export async function startPuzzle(page, side = '4×4', type = 'Sudoku') {
     await page.locator('pt-puzzle-picker .option', { hasText: type }).click();
-    await page.locator('pt-puzzle-picker .option', { hasText: side }).click();
+
+    if (type === 'Crossword') {
+        const cards = page.locator('pt-puzzle-picker .card');
+        await cards.first().waitFor();
+        await (side === '4×4' ? cards.first() : cards.filter({ hasText: side }).first()).click();
+    } else {
+        await page.locator('pt-puzzle-picker .option', { hasText: side }).click();
+    }
+
     // Named, not positional: Puzzle Select also carries a Leave room button.
     await page.locator('pt-puzzle-select button', { hasText: 'Start' }).click();
-    // Crossword takes the letter pad where the others take the keypad, so wait on whichever the
-    // type actually renders rather than assuming the digits.
-    await page
-        .locator(type === 'Crossword' ? 'pt-letter-pad' : 'pt-keypad')
-        .waitFor({ timeout: 30_000 });
+    // Every type has the same pinned panel, whatever keys are in it (ADR-0010).
+    await page.locator('pt-keypad').waitFor({ timeout: 30_000 });
     await expect(page.locator('pt-cell').first()).toBeVisible();
 }
 

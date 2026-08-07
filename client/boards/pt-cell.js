@@ -216,11 +216,25 @@ export class PtCell extends LitElement {
             animation: pop var(--motion-mark) ease-out;
         }
 
+        /*
+         * The entry number, sized and placed by the square it sits in rather than by the page.
+         *
+         * It used to be a flat --text-sm at a flat 2px inset, which is fine at the 40px cells a
+         * mini gets and wrong everywhere else — a 15×15 on a phone is 19px squares, where 12.8px of
+         * number is two thirds the height of the cell. It swamped the letter underneath and, because
+         * a fixed 2px inset is a different *proportion* in every grid, the numbers stopped reading as
+         * a column down the left edge and started looking scattered. Both complaints were really one
+         * measurement.
+         *
+         * Read outward: it scales with the cell, floors at 7px so a 25×25 does not lose its numbering
+         * altogether, and is capped at the old size so no grid gets a number *larger* than before.
+         */
         .label {
             position: absolute;
-            top: 2px;
-            left: 3px;
-            font-size: var(--text-sm);
+            top: 5%;
+            left: 7%;
+            font-size: min(var(--text-sm), max(7px, calc(var(--cell-size, 40px) * 0.3)));
+            line-height: 1;
             color: var(--graphite);
         }
 

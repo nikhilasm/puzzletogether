@@ -254,7 +254,13 @@ export function registerHandlers(io, socket) {
             let solution;
             try {
                 // `served` keeps a finite bank from handing back the puzzle the room just solved.
-                ({ doc, solution } = await getPuzzle({ ...spec, exclude: room.served }));
+                // A named `puzzleId` overrides it: having picked that crossword off a list, the host
+                // means that one even if the room has played it before (ADR-0009).
+                ({ doc, solution } = await getPuzzle({
+                    ...spec,
+                    puzzleId: payload.puzzleId,
+                    exclude: room.served,
+                }));
             } catch (error) {
                 // A generator refusing a size is a bug; a bank not holding one is a fact about the
                 // content, and the host is owed the difference rather than "something went wrong".

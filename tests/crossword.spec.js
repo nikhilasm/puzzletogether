@@ -110,19 +110,41 @@ test.describe('crossword', () => {
         expect(await cursorOf(page)).toMatchObject({ cell: 6, direction: 'D' });
     });
 
+    /**
+     * Re-tapping the square is now the *only* way to turn the cursor on a touch screen, because the
+     * clue bar's button was given to moving between clues instead. That makes this the load-bearing
+     * gesture of the whole screen rather than the convenient one it used to be.
+     */
     test('tapping the selected square flips direction, and the clue bar follows', async ({
         page,
     }) => {
         await page.locator('pt-cell >> nth=1').click();
-        await expect(page.locator('pt-clue-bar .num')).toHaveText('1 Across');
+        await expect(page.locator('pt-clue-bar .num')).toHaveText('1A');
 
         await page.locator('pt-cell >> nth=1').click();
         expect((await cursorOf(page)).direction).toBe('D');
-        await expect(page.locator('pt-clue-bar .num')).toHaveText('1 Down');
+        await expect(page.locator('pt-clue-bar .num')).toHaveText('1D');
+    });
 
-        // The bar is itself the toggle, which is the whole reason it is a button.
+    /**
+     * The clue bar moves *along the direction being worked* rather than through the printed list,
+     * which is what makes it different from Tab: someone reading down the Down clues means 1D then
+     * 2D, and being turned round into the Acrosses is a change of task rather than a step through
+     * one.
+     */
+    test('the clue bar walks to the next clue in the same direction', async ({ page }) => {
+        await page.locator('pt-cell >> nth=1').click();
+        await page.locator('pt-cell >> nth=1').click();
+        await expect(page.locator('pt-clue-bar .num')).toHaveText('1D');
+
         await page.locator('pt-clue-bar .clue').click();
-        await expect(page.locator('pt-clue-bar .num')).toHaveText('1 Across');
+        expect((await cursorOf(page)).entry).toMatchObject({ num: 2, dir: 'D' });
+
+        // The whole direction, and then round — never across into the Acrosses.
+        for (let press = 0; press < 4; press += 1) {
+            await page.locator('pt-clue-bar .clue').click();
+        }
+        expect((await cursorOf(page)).entry).toMatchObject({ num: 1, dir: 'D' });
     });
 
     /**
@@ -139,17 +161,102 @@ test.describe('crossword', () => {
         expect((await cursorOf(page)).cell).toBe(3);
     });
 
-    test('the letter pad writes the same letters the keyboard does', async ({ page }) => {
-        const key = (letter) =>
-            page.locator('pt-letter-pad').getByRole('button', { name: letter, exact: true });
+    /**
+     * Typing jumps the crossings somebody has already filled in.
+     *
+     * With a letter in the middle of the word, the next keystroke has to land *past* it rather than
+     * on top of it — the crossings are the whole point of the grid, and overwriting one to type
+     * around it is the fastest way to undo a teammate's work in a room solving together.
+     */
+    test('typing steps over squares that are already filled', async ({ page }) => {
+        // Fill the middle square of 1 Across from the crossing Down entry, then come back to it.
+        await page.locator('pt-cell >> nth=2').click();
+        await page.keyboard.press('ArrowDown');
+        await page.keyboard.type('X');
 
+        // Selecting a square does not change which way the cursor points — that is the direction's
+        // whole nature — so getting back to 1 Across takes a tap to select and a re-tap to turn.
         await page.locator('pt-cell >> nth=1').click();
-        await key('C').click();
-        await key('A').click();
+        await page.locator('pt-cell >> nth=1').click();
+        expect(await cursorOf(page)).toMatchObject({ cell: 1, direction: 'A' });
 
-        expect((await valuesOf(page)).slice(1, 3)).toEqual(['C', 'A']);
-        // It advances exactly as the keyboard does, which is the point of one input path.
+        await page.keyboard.type('C');
+        // Square 2 holds a letter, so the cursor is on 3 rather than poised to overwrite it.
         expect((await cursorOf(page)).cell).toBe(3);
+
+        await page.keyboard.type('T');
+        expect((await valuesOf(page)).slice(1, 4)).toEqual(['C', 'X', 'T']);
+    });
+
+    /**
+     * The letters come from a pad of ours again, and the pad is the *same input path* as the
+     * keyboard: a tapped key and a pressed key reach the store through one method (ADR-0010).
+     *
+     * The two assertions after the letter are the ones that matter. The cursor advancing proves the
+     * tap went through the board's own advance rule rather than around it, and the grid still holding
+     * focus proves the pad does not steal it — which is what would silently kill every arrow key and
+     * every physical keystroke after the first tap.
+     */
+    test('a key on the pad types into the grid without taking focus off it', async ({ page }) => {
+        await page.locator('pt-cell >> nth=1').click();
+        await page.locator('pt-keypad .letters button', { hasText: 'C' }).click();
+
+        expect((await valuesOf(page))[1]).toBe('C');
+        expect((await cursorOf(page)).cell).toBe(2);
+
+        const focused = await boardOf(page).evaluate(
+            (board) => board.shadowRoot.activeElement?.className ?? null,
+        );
+        expect(focused).toBe('grid');
+
+        // ...so the keyboard still reaches the grid straight afterwards, with no tap in between.
+        await page.keyboard.type('A');
+        expect((await valuesOf(page))[2]).toBe('A');
+    });
+
+    /**
+     * The pad's own Backspace, which is the only way to delete on a touch screen now that there is no
+     * platform keyboard to borrow one from.
+     *
+     * It is the *same* act as the keyboard's, not a second implementation of it — clear the square
+     * and step back along the entry — which is why it asks the board rather than the store.
+     */
+    test('the pad has a Backspace, and it walks back through the entry', async ({ page }) => {
+        await page.locator('pt-cell >> nth=1').click();
+        await page.keyboard.type('CAT');
+
+        const backspace = page.locator('pt-keypad [aria-label="Backspace"]');
+        await backspace.click();
+        expect((await valuesOf(page))[3]).toBeNull();
+        expect((await cursorOf(page)).cell).toBe(2);
+
+        await backspace.click();
+        await backspace.click();
+        expect((await valuesOf(page)).slice(1, 4)).toEqual([null, null, null]);
+        // And it stops at the entry's first square rather than reversing into another clue.
+        await backspace.click();
+        expect(await cursorOf(page)).toMatchObject({ cell: 1, entry: { num: 1, dir: 'A' } });
+    });
+
+    /**
+     * The keys are QWERTY, in three staggered rows, because that is the arrangement a solver's thumbs
+     * already know from every phone they have ever held — which is the one thing a pad of ours can
+     * borrow from the keyboard it replaces (ADR-0010).
+     */
+    test('the letter keys are laid out like a keyboard', async ({ page }) => {
+        const rows = await page
+            .locator('pt-keypad .row')
+            .evaluateAll((elements) =>
+                elements.map((row) =>
+                    [...row.querySelectorAll('button')].map((key) => key.textContent.trim()),
+                ),
+            );
+
+        expect(rows).toHaveLength(3);
+        expect(rows[0].join('')).toBe('QWERTYUIOP');
+        expect(rows[1].join('')).toBe('ASDFGHJKL');
+        // The last row is the remaining letters plus Backspace, which draws no text of its own.
+        expect(rows[2].join('')).toBe('ZXCVBNM');
     });
 
     test('Tab moves to the next entry and lands on an empty square', async ({ page }) => {
@@ -164,19 +271,66 @@ test.describe('crossword', () => {
     });
 
     /**
-     * Backspace on an empty square steps back and clears what it lands on, so holding it walks a
-     * wrong answer out of the grid. Deleting nothing, repeatedly, is not what anybody means.
+     * Backspace takes the letter out **and** steps back, so a held key walks a wrong answer out of
+     * the grid a square at a time. It used to clear in place and only move once the square was
+     * already empty, which meant deleting a three-letter word took six presses.
      */
-    test('Backspace walks back through what was typed', async ({ page }) => {
+    test('Backspace clears the square and steps back through the entry', async ({ page }) => {
         await page.locator('pt-cell >> nth=1').click();
         await page.keyboard.type('CAT');
+        expect((await cursorOf(page)).cell).toBe(3);
 
         await page.keyboard.press('Backspace');
         expect((await valuesOf(page))[3]).toBeNull();
+        expect((await cursorOf(page)).cell).toBe(2);
 
         await page.keyboard.press('Backspace');
         expect((await valuesOf(page))[2]).toBeNull();
+        expect((await cursorOf(page)).cell).toBe(1);
+    });
+
+    /**
+     * And it stops at the start of the entry rather than reversing into whatever came before it in
+     * the clue list. A cursor that leaves the clue you are reading, without being asked to, is how a
+     * solver loses their place.
+     */
+    test('Backspace never leaves the entry it is in', async ({ page }) => {
+        await page.locator('pt-cell >> nth=1').click();
+        await page.keyboard.type('C');
         expect((await cursorOf(page)).cell).toBe(2);
+
+        await page.keyboard.press('Backspace');
+        await page.keyboard.press('Backspace');
+        expect((await cursorOf(page)).cell).toBe(1);
+
+        // Held down at the first square: it empties it and then has nowhere to go.
+        await page.keyboard.press('Backspace');
+        await page.keyboard.press('Backspace');
+        expect(await cursorOf(page)).toMatchObject({ cell: 1, entry: { num: 1, dir: 'A' } });
+        expect((await valuesOf(page))[1]).toBeNull();
+    });
+
+    /**
+     * The cursor has to be findable inside a highlighted run of squares, which after the first
+     * playtest it was not: the two washes were 34% and 30% of the same accent, a difference nobody
+     * can see. Asserted as a ratio rather than a colour so the dark theme and any later retune stay
+     * within it — what matters is that one reads as a position and the other as context.
+     */
+    test('the cursor is plainly stronger than the rest of its entry', async ({ page }) => {
+        await page.locator('pt-cell >> nth=1').click();
+
+        const alpha = (index) =>
+            page
+                .locator(`pt-cell >> nth=${index}`)
+                .evaluate((cell) =>
+                    Number(
+                        getComputedStyle(cell).backgroundColor.match(/[\d.]+(?=\))/)?.[0] ?? '1',
+                    ),
+                );
+
+        const cursor = await alpha(1);
+        const entry = await alpha(2);
+        expect(cursor).toBeGreaterThan(entry * 3);
     });
 
     /**
@@ -189,7 +343,7 @@ test.describe('crossword', () => {
         page,
     }) => {
         await page.locator('pt-cell >> nth=1').click();
-        await page.locator('pt-clue-bar .list').click();
+        await page.locator('pt-keypad [aria-label="All clues"]').click();
 
         const dialog = page.locator('pt-clue-list dialog');
         await expect(dialog).toBeVisible();
@@ -255,7 +409,7 @@ test.describe('crossword', () => {
 
         // Reload so every frame of a fresh join, including the snapshot, is observed.
         await page.reload();
-        await page.locator('pt-letter-pad').waitFor();
+        await page.locator('pt-clue-bar').waitFor();
         await page.locator('pt-cell >> nth=1').click();
         await page.keyboard.press('KeyQ');
         await expect.poll(() => frames.length).toBeGreaterThan(2);
@@ -294,13 +448,16 @@ test.describe('crossword rebus', () => {
      * an ordinary `set` op carrying the whole value rather than as any new kind of edit.
      */
     /**
-     * The switch is set *before* the square is chosen, which is both the natural order and the
-     * necessary one — pressing it takes keyboard focus, exactly as the Notes switch has always
-     * done, so the grid has to be clicked into afterwards. Shift is the path that avoids the trip.
+     * Rebus is a switch in the panel's button bar, sitting with Notes and the brushes — every type's
+     * one setting in the same place (design-spec.md §4).
+     *
+     * It is the *only* way to a rebus square on a touch screen: Shift is the desktop path, and a pad
+     * of ours has no Shift key to offer. That is why the switch has to hold its state visibly rather
+     * than being a press-and-forget button.
      */
     async function turnOnRebus(page) {
-        // Scoped to the game screen: the footer carries a Dark theme switch of the same element.
-        const rebus = page.locator('pt-game pt-switch button');
+        const rebus = page.locator('pt-keypad pt-switch button');
+        await expect(rebus).toHaveText('Rebus');
         await rebus.click();
         await expect(rebus).toHaveAttribute('aria-checked', 'true');
     }

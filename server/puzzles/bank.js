@@ -183,13 +183,19 @@ export function loadBank(dirs) {
 /**
  * What the bank can actually serve, as Puzzle Select needs to offer it.
  *
- * Sizes are `{ rows, cols }` pairs rather than square sides, because real crosswords are 15×15 and
- * 5×5 and also 20×21. Difficulties are the union across the whole type rather than per size: a bank
- * of six puzzles would otherwise offer a different set of buttons for every grid, which reads as the
- * interface flickering rather than as information.
+ * **`puzzles` is the part that matters, and it is what a generator can never supply.** A bank's
+ * content is finite and knowable, so the host picks a *puzzle* — by title, by whoever wrote it, by
+ * where it came from — rather than describing one and hoping (ADR-0009). Sizes and difficulties are
+ * still published beside it: they are what the room's settings record, and what "start another"
+ * falls back to when the named puzzle has since gone.
  *
- * @returns {{ sizes: { rows: number, cols: number }[], difficulties: string[] }|null} What is on
- *   offer, or null when the bank holds nothing — in which case the type is not offered at all.
+ * The solution is emphatically not in here. This is a browsing list, sent to every player on join,
+ * and it carries only what is printed above a crossword in a newspaper.
+ *
+ * @returns {{ sizes: { rows: number, cols: number }[], difficulties: string[],
+ *   puzzles: { id: string, title: string|null, author: string|null, source: string|null,
+ *   size: { rows: number, cols: number }, difficulty: string }[] }|null} What is on offer, or null
+ *   when the bank holds nothing — in which case the type is not offered at all.
  */
 export function bankCatalog() {
     if (puzzles.size === 0) return null;
@@ -204,22 +210,46 @@ export function bankCatalog() {
         difficulties.add(doc.difficulty);
     }
 
+    // Smallest first, then alphabetical: a list a host scrolls should be ordered by the thing they
+    // are choosing between, and on a bank of minis and 15×15s that is the size before the title.
+    const listed = [...puzzles.values()]
+        .map(({ id, meta }) => ({
+            id,
+            title: meta.title,
+            author: meta.author,
+            source: meta.source,
+            size: meta.size,
+            difficulty: meta.difficulty,
+        }))
+        .sort(
+            (a, b) =>
+                a.size.rows * a.size.cols - b.size.rows * b.size.cols ||
+                (a.title ?? a.id).localeCompare(b.title ?? b.id),
+        );
+
     return {
         sizes: [...sizes.values()].sort((a, b) => a.rows * a.cols - b.rows * b.cols),
         difficulties: [...difficulties],
+        puzzles: listed,
     };
 }
 
 /**
  * Picks a puzzle matching a request, preferring one the room has not seen.
  *
- * The match loosens rather than failing. Size is honoured exactly, because a host who asked for a
- * 15×15 and got a mini has been given the wrong puzzle; difficulty is a preference, because a bank
- * of a dozen files cannot promise every combination and the document's own label is what the game
- * screen displays either way. That is the same bargain sudoku already makes when its generator
- * misses the requested band.
+ * **A named `id` wins outright**, because the host picked that puzzle off a list rather than
+ * describing one — honouring the description instead would hand back a different crossword than the
+ * one whose title they pressed. It falls back to the description when the id names nothing, which is
+ * a client holding a catalog older than the bank rather than a mistake worth failing a start over.
+ *
+ * Without an id the match loosens rather than failing. Size is honoured exactly, because a host who
+ * asked for a 15×15 and got a mini has been given the wrong puzzle; difficulty is a preference,
+ * because a bank of a dozen files cannot promise every combination and the document's own label is
+ * what the game screen displays either way. That is the same bargain sudoku already makes when its
+ * generator misses the requested band.
  *
  * @param {object} spec - What was asked for.
+ * @param {string} [spec.id] - A specific puzzle the host chose off the catalog.
  * @param {string} spec.difficulty - Preferred difficulty.
  * @param {import('../../shared/protocol.js').GridSize} spec.size - Required grid dimensions.
  * @param {Iterable<string>} [spec.exclude] - Puzzle ids this room has already been served.
@@ -227,7 +257,10 @@ export function bankCatalog() {
  *   cannot alter the bank every later room reads.
  * @throws {RangeError} If the bank holds nothing of that size.
  */
-export function takeFromBank({ difficulty, size, exclude = [] }) {
+export function takeFromBank({ id = null, difficulty, size, exclude = [] }) {
+    const named = id ? puzzles.get(id) : null;
+    if (named) return structuredClone({ doc: named.doc, solution: named.solution });
+
     const seen = new Set(exclude);
     const bySize = [...puzzles.values()].filter(
         (entry) => entry.doc.size.rows === size.rows && entry.doc.size.cols === size.cols,

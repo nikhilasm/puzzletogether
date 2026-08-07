@@ -1,20 +1,25 @@
 /**
- * The clue for the entry under the cursor, and the control that turns the cursor around.
+ * The clue under the cursor, and the way to the next one.
  *
- * The one thing a crossword solver needs at every moment, so the one thing always on screen — the
- * full lists live behind a button (design-spec.md §4). It is also the direction toggle, because
- * flipping between Across and Down is offered where the player is already looking rather than as a
- * separate control elsewhere.
+ * It is the top strip of the input panel (ADR-0010), which is where a clue belongs once the keys are
+ * pinned to the bottom of the screen: the clue and the letters that answer it are read as one thing,
+ * and putting them in one block means a solver's eyes never travel between the question and the keys.
+ * It used to be a pinned bar of its own, positioned off `visualViewport` so it could ride above the
+ * phone's keyboard — all of which is gone with the keyboard that made it necessary.
  *
- * Holds nothing. It is told which entry is current and reports that it was pressed, like every other
+ * What it carries is the clue and nothing else. Rebus, Undo, and All clues sit in the panel's button
+ * bar with every other action, rather than crowding the one piece of text on this screen that a
+ * solver actually has to read.
+ *
+ * Holds no state. It is told which entry is current and reports that it was pressed, like every other
  * shared leaf in this app.
  */
 
-import { LitElement, css, html, nothing } from 'lit';
+import { LitElement, css, html } from 'lit';
 
 import { focusRing } from '../styles/controls.js';
 
-import { iconStyle, listIcon, swapIcon } from './icons.js';
+import { iconStyle, nextIcon } from './icons.js';
 
 export class PtClueBar extends LitElement {
     static properties = {
@@ -28,26 +33,19 @@ export class PtClueBar extends LitElement {
         css`
             :host {
                 display: block;
-                max-width: 480px;
-                margin: 0 auto var(--space-3);
-            }
-
-            .bar {
-                display: flex;
-                gap: var(--space-2);
-                align-items: stretch;
             }
 
             /*
-             * The clue itself is the button. Making the whole strip the target rather than hanging a
-             * small ⇄ off the end is what makes flipping direction a thumb-sized action on a phone,
-             * which it has to be — it is the most-used control on this screen after the letters.
+             * The clue itself is the button, and pressing it goes to the next clue in the direction
+             * being worked. Making the whole strip the target rather than hanging a small arrow off
+             * the end is what makes moving on a thumb-sized action, which it has to be — it is the
+             * most-used control on this screen after the letters themselves.
              */
             .clue {
                 display: flex;
-                flex: 1;
                 gap: var(--space-3);
                 align-items: center;
+                width: 100%;
                 min-height: 2.75rem;
                 padding: var(--space-2) var(--space-3);
                 border: var(--border);
@@ -58,6 +56,7 @@ export class PtClueBar extends LitElement {
                 font-size: var(--text-base);
                 text-align: left;
                 cursor: pointer;
+                touch-action: manipulation;
             }
 
             .clue:hover:not(:disabled) {
@@ -65,9 +64,16 @@ export class PtClueBar extends LitElement {
             }
 
             /*
-             * The number is set in the accent and never wraps, so the eye finds "7 Down" instantly
-             * on a bar whose text changes every few seconds. Tabular figures keep it from shifting
-             * width as the number climbs.
+             * "7D", not "7 Down".
+             *
+             * The clue shares its line with the number and an arrow, and a spelled-out direction cost
+             * about four characters of the clue itself on every entry — while saying nothing a solver
+             * does not already know from the grid. The full words are still in the button's accessible
+             * name, where there is no such pressure.
+             *
+             * Set in the accent and never wrapping, so the eye finds it instantly on a strip whose
+             * text changes every few seconds. Tabular figures keep it from shifting width as the
+             * number climbs.
              */
             .num {
                 flex-shrink: 0;
@@ -77,44 +83,27 @@ export class PtClueBar extends LitElement {
                 white-space: nowrap;
             }
 
+            /*
+             * One line, cut off rather than wrapped. A strip that grows a second line when the clue is
+             * long would move the keys under it every few entries, and the full text is a tap away in
+             * the list — whereas keys that shift under a thumb are unusable.
+             */
             .text {
                 flex: 1;
+                overflow: hidden;
+                min-width: 0;
+                white-space: nowrap;
+                text-overflow: ellipsis;
             }
 
-            .swap {
+            .next {
                 flex-shrink: 0;
                 color: var(--graphite);
-            }
-
-            .list {
-                display: flex;
-                flex-shrink: 0;
-                gap: var(--space-2);
-                align-items: center;
-                padding: var(--space-2) var(--space-3);
-                border: var(--border);
-                border-radius: var(--radius-control);
-                background: var(--paper-raised);
-                color: var(--ink);
-                font-family: var(--font-ui);
-                font-size: var(--text-sm);
-                cursor: pointer;
-            }
-
-            .list:hover {
-                border-color: var(--accent);
             }
 
             .empty {
                 color: var(--graphite);
                 font-style: italic;
-            }
-
-            /* The label goes at the narrowest widths; the icon carries it, with the name in aria. */
-            @media (max-width: 30rem) {
-                .list span {
-                    display: none;
-                }
             }
         `,
     ];
@@ -125,43 +114,43 @@ export class PtClueBar extends LitElement {
         this.disabled = false;
     }
 
+    /** Keeps the grid's keyboard focus where it is, the same as every key in the panel. */
+    #onPointerDown(event) {
+        event.preventDefault();
+    }
+
     /** Announces a press; the screen decides what to do with it. */
-    #emit(name) {
-        this.dispatchEvent(new CustomEvent(name, { bubbles: true, composed: true }));
+    #emit(name, detail = {}) {
+        this.dispatchEvent(new CustomEvent(name, { detail, bubbles: true, composed: true }));
     }
 
     render() {
         const entry = this.entry;
-        const where = entry ? `${entry.num} ${entry.dir === 'A' ? 'Across' : 'Down'}` : '';
+        const direction = entry?.dir === 'A' ? 'Across' : 'Down';
 
         return html`
-            <div class="bar">
-                <button
-                    class="clue"
-                    type="button"
-                    ?disabled=${this.disabled || !entry}
-                    aria-label=${entry ? `${where}: ${entry.clue}. Switch direction` : 'No clue'}
-                    @click=${() => this.#emit('pt-clue-flip')}
-                >
-                    ${
-                        entry
-                            ? html`
-                                  <span class="num">${where}</span>
-                                  <span class="text">${entry.clue}</span>
-                                  <span class="swap">${swapIcon}</span>
-                              `
-                            : html`<span class="empty">pick a square to start</span>`
-                    }
-                </button>
-                <button
-                    class="list"
-                    type="button"
-                    aria-label="All clues"
-                    @click=${() => this.#emit('pt-clue-list-open')}
-                >
-                    ${listIcon}<span>All clues</span>
-                </button>
-            </div>
+            <button
+                class="clue"
+                type="button"
+                ?disabled=${this.disabled || !entry}
+                aria-label=${
+                    entry
+                        ? `${entry.num} ${direction}: ${entry.clue}. Next ${direction} clue`
+                        : 'No clue'
+                }
+                @pointerdown=${this.#onPointerDown}
+                @click=${() => this.#emit('pt-clue-next')}
+            >
+                ${
+                    entry
+                        ? html`
+                              <span class="num">${entry.num}${entry.dir}</span>
+                              <span class="text">${entry.clue}</span>
+                              <span class="next">${nextIcon}</span>
+                          `
+                        : html`<span class="empty">pick a square to start</span>`
+                }
+            </button>
         `;
     }
 }
