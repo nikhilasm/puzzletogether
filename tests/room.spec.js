@@ -7,6 +7,8 @@
 
 import { expect, test } from '@playwright/test';
 
+import { PLAYER_COLOR_COUNT } from '../shared/constants.js';
+
 import { createRoom, joinRoom, playersOf, submitLanding } from './helpers.js';
 
 /** Opens a second client in its own context, joined to `code`. */
@@ -20,10 +22,10 @@ async function secondPlayer(browser, code, name = 'Grace') {
 test.describe('the roster', () => {
     test('counts players against the room limit', async ({ page, browser }) => {
         const code = await createRoom(page);
-        await expect(page.locator('pt-player-chips .count')).toHaveText('1/8');
+        await expect(page.locator('.room-panel .count')).toHaveText('1/8');
 
         const guest = await secondPlayer(browser, code);
-        await expect(page.locator('pt-player-chips .count')).toHaveText('2/8');
+        await expect(page.locator('.room-panel .count')).toHaveText('2/8');
         await guest.context.close();
     });
 
@@ -78,7 +80,9 @@ test.describe('choosing a colour', () => {
 
         await page.locator('pt-player-chips button.chip').click();
         await expect(page.locator('pt-player-chips .palette')).toBeVisible();
-        await expect(page.locator('pt-player-chips .swatch')).toHaveCount(8);
+        // The whole palette, not the room's size: the point of having more colours than seats is
+        // that a full room still has colours left to change to.
+        await expect(page.locator('pt-player-chips .swatch')).toHaveCount(PLAYER_COLOR_COUNT);
 
         await guest.context.close();
     });

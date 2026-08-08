@@ -1,8 +1,12 @@
 /**
- * The player roster: one chip per player, two per row, host marked with a leading star, `x/n` above.
+ * The player roster: one chip per player, two per row, host marked with a leading star.
  *
- * The only place besides the presence dots where player colour appears — and the name is always
- * beside it, because colour is never the only channel (brand.md §3).
+ * A player's colour is carried by their name and by nothing else on the chip — one channel of colour
+ * against one of text, which is the rule (brand.md §3). A bar down the chip's leading edge was tried
+ * and taken out again: with ten of them stacked in a two-column grid it read as a stack of tabs, and
+ * the roster is a list of people rather than a legend for the grid.
+ *
+ * The room code and the seat count sit above this, in the panel `<pt-app>` draws around it.
  *
  * Your own chip is a button that opens the palette, and carries a quiet `you` so a room of similar
  * names is still readable. Colour is the one piece of identity a player can change, so it is edited
@@ -18,11 +22,7 @@
 
 import { LitElement, css, html, nothing } from 'lit';
 
-import {
-    MAX_PLAYERS_PER_ROOM,
-    PLAYER_COLOR_COUNT,
-    PLAYER_COLOR_NAMES,
-} from '../../shared/constants.js';
+import { PLAYER_COLOR_COUNT, PLAYER_COLOR_NAMES } from '../../shared/constants.js';
 import { roomStore } from '../store/room-store.js';
 import { focusRing } from '../styles/controls.js';
 import '../views/pt-confirm.js';
@@ -56,24 +56,9 @@ export class PtPlayerChips extends LitElement {
                 display: block;
             }
 
-            h2 {
-                margin: 0 0 var(--space-2);
-                font-family: var(--font-ui);
-                font-size: var(--text-base);
-                font-weight: 400;
-                color: var(--graphite);
-                text-align: center;
-            }
-
-            .count {
-                font-variant-numeric: tabular-nums;
-            }
-
             /* The palette hangs off this rather than off a chip; see .palette below. */
             .roster {
                 position: relative;
-                max-width: 420px;
-                margin: 0 auto;
             }
 
             ul {
@@ -129,6 +114,7 @@ export class PtPlayerChips extends LitElement {
 
             .name {
                 overflow: hidden;
+                color: var(--player-color, var(--ink));
                 text-overflow: ellipsis;
                 white-space: nowrap;
             }
@@ -325,9 +311,6 @@ export class PtPlayerChips extends LitElement {
         const self = this.players.find((player) => player.id === this.selfId);
 
         return html`
-            <h2>
-                Players <span class="count">${this.players.length}/${MAX_PLAYERS_PER_ROOM}</span>
-            </h2>
             <div class="roster">
                 <ul>
                     ${this.players.map((player) => this.#renderChip(player))}
@@ -349,14 +332,18 @@ export class PtPlayerChips extends LitElement {
 
         const body = html`
             ${isHost ? html`<span class="host" aria-hidden="true">★</span>` : nothing}
-            <span class="name" style="color: var(--player-${player.colorIndex});">
-                ${player.name}
-            </span>
+            <span class="name">${player.name}</span>
             ${isSelf ? html`<span class="you">you</span>` : nothing}
         `;
 
+        // The colour as a property on the chip rather than inline on the name, so anything else the
+        // chip grows can reach it without the render method handing it out twice.
         return html`
-            <li ?data-away=${!player.connected} ?data-kickable=${isKickable}>
+            <li
+                style="--player-color: var(--player-${player.colorIndex});"
+                ?data-away=${!player.connected}
+                ?data-kickable=${isKickable}
+            >
                 ${
                     isSelf
                         ? html`<button

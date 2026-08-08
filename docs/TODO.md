@@ -565,6 +565,8 @@ rewritten to look prescient.*
       failing the start
 - [x] The picker announces the default it resolves to, so the list cannot show one card as chosen
       while Start still carries "any 5×5"
+- [-] Filters over the list — deferred here as clutter at four puzzles, built two days later once
+      the bank had two sizes in it. → **Filtering the bank**, below
 
 **The rest of the visual list**
 
@@ -625,6 +627,76 @@ decision of the pass above, one day old.* → [ADR-0010](adr/0010-one-pinned-inp
 > failed at once on `pt is not defined`, with nothing pointing at the CSS. **The build is not the
 > check.** `node -e "import('./client/…/thing.js')"` on each changed component is — a module that
 > loads is a template that closed. Still worth a lint rule in Phase 5, now more than before.
+
+### Filtering the bank
+
+*A list long enough to want narrowing. This is the alternative
+[ADR-0009](adr/0009-a-bank-is-browsed-not-described.md) rejected two days earlier as "pure clutter at
+four" — adopted rather than reversed, because the clutter case is now the case that draws nothing.*
+
+- [x] **Size and difficulty filter rows above the card list**, each drawn only where the bank has
+      more than one value behind it. On the tracked bank — four minis, all 5×5, all easy — neither
+      appears, which is the whole of the answer to the objection that deferred them
+- [x] **An option that would leave nothing on show is disabled, not hidden.** That is not only
+      manners: an option is pressable only if something is behind it *given the other filter*, so
+      every reachable pair holds a card and the list can never come up empty with Start still aimed
+      at whatever was selected before
+- [x] Filtering the chosen card away moves the selection to the first one still visible, and the
+      picker announces it — the same property that stopped the list showing one card as chosen while
+      Start carried "any 5×5"
+- [x] `Choose a puzzle · 2 of 12` while a filter is on, and plain `Choose a puzzle` when it is not
+- [x] **The card states its difficulty.** ADR-0009 said it did and it did not; a filter narrowing on
+      a fact the cards do not show would be a guessing game
+- [x] The list takes the whole 40rem column in Puzzle Select *and* in the congrats modal, while the
+      picker caps its own option rows at 28rem and centres them. 28, not 26: it is where the four
+      puzzle types stop wrapping
+- [x] `tests/puzzle-select.spec.js` — the list against the real app and the tracked bank, the filters
+      against a picker mounted alone behind an invented catalog. The filters cannot be driven from
+      the tracked bank, since that bank is exactly the case where they are not drawn
+- [x] **`PT_BANK_DIRS` pins the bank the browser suite reads** to the tracked directory. Found while
+      writing the above: `data/crosswords-local/` is a scratch space, so any test that asserts what
+      the bank *holds* was passing or failing on which `.puz` files the developer last imported
+
+### Presence and player colour
+
+*Where everybody is, and whose colour is whose. The dots had two complaints against them and they
+turned out to be one complaint: presence was drawn in the cell's content area at a size that grew
+with the room.*
+
+- [x] **Presence is a segmented stripe on the cell's bottom edge**, one equal share per player, in
+      place of up to three corner dots and a `+n`. An edge cannot cover a pencil mark, and a fixed
+      footprint that subdivides has no fourth-player problem — eight players are eight thin bands.
+      The cap and its overflow count are gone
+- [x] Its thickness comes from `--cell-size` like everything else in the grid, clamped to 3–6px. The
+      dots were a flat 9px, which was the one piece of grid furniture that did not scale: three of
+      them overflowed a 15×15's squares on a phone before the `+n` could even appear
+- [x] **Two more player colours — sky and grey — for ten against eight seats.** The palette used to be
+      exactly the size of the room, so a full room had nothing to change *to*. `MAX_PLAYERS_PER_ROOM`
+      is now a layout question and nothing else. Both clear 4.5:1 on both themes, per the contrast
+      test that already gates the palette
+- [x] **Tried and reverted: a colour bar down the leading edge of each player chip.** Ten of them
+      stacked in a two-column grid read as a rack of tabs, and the second channel bought nothing the
+      name in that colour was not already carrying. The chip's colour is its name, as before
+- [x] **Your own cursor is drawn in your own colour.** The board publishes the local player's
+      `--player-N` as `--focus-color`; `<pt-cell>` mixes both washes from it, so every type inherits
+      it, and crossword and nonogram keep their own strengths by overriding the mix and not the hue
+- [x] **Sudoku and kenken highlight the cursor's row and column**, which is what the lighter wash was
+      already for elsewhere. `isHighlighted` in `<pt-board>` now returns that by default instead of
+      `false`; crossword (its entry) and nonogram (the run a drag has covered) already overrode it
+- [x] `[highlighted]` is `:not([selected])` in the base element, so context can no longer paint over
+      the cursor. Nonogram overrides that deliberately: its highlight is a gesture in progress rather
+      than context, and has to be legible on the square the cursor is sitting on
+- [x] **The room code, seat count, and roster are one panel.** Code top left at its old size, count
+      top right, unlabelled and centred against it — the word "Players" over a `2/8` at the head of
+      the roster it counts was saying it twice, and a shared baseline hung the smaller of the two off
+      the bottom of the line. The count moves to `<pt-app>`: it is a fact about the room, not about
+      the chips
+- [x] **The panel is a rule, not a filled box**, and sits `--space-4` above the grid rather than
+      `--space-8`. On `--paper-raised` it read as a card to be dealt with before getting to the
+      puzzle, which is exactly backwards — it is a caption on the room
+- [x] Known and accepted: on a nonogram's filled square the stripe sits on solid `--ink`, where a
+      player colour reads at about 3.5:1. Visible, quieter than it is on paper. A `--paper` backing
+      behind the stripe would fix it and would leave a pale notch across any washed cell
 
 ---
 

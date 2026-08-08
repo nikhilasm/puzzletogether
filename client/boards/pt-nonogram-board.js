@@ -110,6 +110,19 @@ export class PtNonogramBoard extends PtBoard {
             .zero {
                 opacity: 0.4;
             }
+
+            /*
+             * A nonogram's highlight is the only one that is not context.
+             *
+             * Everywhere else the wash says "this is what your cursor implies" and is a faint tint
+             * under the cursor's own strength. Here it is the extent of a drag *in progress*, which
+             * has to be legible over the marks already in the run and has to be readable while the
+             * finger is still down — including on the square the cursor happens to be sitting on,
+             * which is why this deliberately paints over [selected] rather than ducking under it.
+             */
+            pt-cell[highlighted] {
+                background: color-mix(in srgb, var(--focus-color) 48%, transparent);
+            }
         `,
     ];
 

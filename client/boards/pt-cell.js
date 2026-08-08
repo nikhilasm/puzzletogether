@@ -88,20 +88,33 @@ export class PtCell extends LitElement {
             cursor: default;
         }
 
+        /*
+         * The square this player's cursor is in, in this player's own colour.
+         *
+         * --focus-color is published by the board from the local player's --player-N, so the cursor
+         * answers "where am I" in the same hue the roster and everyone else's presence stripes
+         * already use — and two people looking over one screen can tell whose cursor is whose. It
+         * falls back to --accent, which is what every cursor was before.
+         *
+         * This is the one place a player's colour touches the grid's *surface*. It still never
+         * touches what is written on it: an entered value is --ink whoever wrote it (brand.md §3).
+         */
         :host([selected]) {
-            background: color-mix(in srgb, var(--accent) 16%, transparent);
+            background: color-mix(in srgb, var(--focus-color) 40%, transparent);
         }
 
         /*
-         * A cell a gesture in progress has reached but not yet committed to.
+         * The squares the cursor implies — a sudoku's row and column, a crossword's entry, the run a
+         * nonogram drag has covered so far.
          *
-         * The same accent wash the selected cell uses, and deeper, because a drag is a stronger
-         * statement of intent than a cursor resting somewhere — the point of showing it is to answer
-         * "how far have I got?" while the finger is still down, which needs to be legible over the
-         * marks already in the run.
+         * Much lighter than the cursor, and :not([selected]) so it cannot paint over it. The two
+         * are one idea at two strengths: this wash answers "what am I working within", and it only
+         * has to be distinguishable from *no wash at all* to do that, while the cursor has to be
+         * findable at a glance in a fifteen-square run. A board whose highlight means something
+         * more urgent than context overrides this from outside — see nonogram.
          */
-        :host([highlighted]) {
-            background: color-mix(in srgb, var(--accent) 30%, transparent);
+        :host([highlighted]:not([selected])) {
+            background: color-mix(in srgb, var(--focus-color) 12%, transparent);
         }
 
         /*
@@ -149,7 +162,7 @@ export class PtCell extends LitElement {
 
         /*
          * Givens carry more weight than entries. The difference is weight, never colour: attribution
-         * lives in chips and presence dots, and an entered digit is always --ink (brand.md §3).
+         * lives in chips and presence stripes, and an entered digit is always --ink (brand.md §3).
          */
         .value.given {
             font-weight: 700;

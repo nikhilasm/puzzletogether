@@ -48,6 +48,19 @@
     --player-5: #5b63c4;
     --player-6: #7a5aa8;
     --player-7: #8a6c24;
+    --player-8: #2073b0;
+    --player-9: #676b70;
+
+    /*
+     * The colour the local player's own cursor is drawn in.
+     *
+     * A board publishes its player's `--player-N` here, so the cell you are in is washed in the
+     * colour that is already *you* everywhere else in the room. It falls back to `--accent` — which
+     * is what every cursor was before — so a grid with no seat behind it still draws one.
+     *
+     * Only the cursor. A player's colour still never touches an entered value (brand.md §3).
+     */
+    --focus-color: var(--accent);
 
     /*
      * Shape and line. Chrome is a softened rectangle and the puzzle is square — `--radius-round` is
@@ -90,7 +103,15 @@
      */
     --grid-heavy-width: 2.5px;
     --grid-heavy-color: var(--ink);
-    --presence-dot: 9px;
+
+    /*
+     * How tall a cell's presence stripe is, as a fraction of the cell.
+     *
+     * A fraction rather than a length, because the arithmetic has to happen where `--cell-size` is
+     * known — a custom property resolves its `var()`s on the element that declares it, so a length
+     * computed here would be a 40px cell's stripe on every grid. The layer clamps it at both ends.
+     */
+    --presence-stripe: 0.09;
 
     /* Texture */
     --texture-gap: 24px;
@@ -137,4 +158,6 @@
     --player-5: #757ccd;
     --player-6: #9176b7;
     --player-7: #a8842c;
+    --player-8: #4fa8dd;
+    --player-9: #9ea4ab;
 }

@@ -32,8 +32,13 @@ export class PtCongratsModal extends LitElement {
     static styles = [
         controls,
         css`
+            /*
+             * As wide as Puzzle Select's column, because it holds the same picker and "start
+             * another" should offer the same list at the same size rather than a cramped copy of it.
+             * Everything above the picker is centred short text, which does not mind the room.
+             */
             dialog {
-                width: min(26rem, calc(100vw - 2 * var(--space-4)));
+                width: min(40rem, calc(100vw - 2 * var(--space-4)));
                 padding: var(--space-6);
                 border: var(--border);
                 border-radius: var(--radius-modal);

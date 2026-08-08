@@ -1,6 +1,17 @@
 /**
- * The presence overlay: one coloured dot per player, in the top-right of the cell they are looking
- * at.
+ * The presence overlay: a stripe along the bottom edge of every cell somebody is looking at, split
+ * into one segment per player.
+ *
+ * It was a row of dots in the cell's top-right corner through Phase 4, and both of that design's
+ * problems were the same problem — presence was drawn *in* the cell's content area, at a size that
+ * grew with the room. The dots covered the top-right pencil mark, and a fourth player had nowhere
+ * left to go, so the layer capped at three and wrote `+n` for the rest.
+ *
+ * A stripe fixes both by construction. It occupies an edge rather than the interior, so it can
+ * never sit on a note or a value; and the room subdivides a footprint that does not change, so
+ * eight players make eight thin bands instead of eight dots' worth of cell. Reading "how many
+ * people are here" off the number of colours is also faster than counting dots, which is what the
+ * `+n` was quietly admitting.
  *
  * A separate layer on purpose. Focus updates arrive at ~10/s per player, and routing them through
  * `<pt-cell>` would re-render the grid constantly (architecture.md §6). It draws only the cells
@@ -10,9 +21,6 @@
 import { LitElement, css, html, nothing } from 'lit';
 
 import { PLAYER_COLOR_NAMES } from '../../shared/constants.js';
-
-/** How many dots fit in a cell corner before they collapse into a count. */
-const MAX_DOTS = 3;
 
 export class PtPresenceLayer extends LitElement {
     static properties = {
@@ -31,35 +39,61 @@ export class PtPresenceLayer extends LitElement {
             pointer-events: none;
         }
 
+        /*
+         * The stripe hangs off the bottom of the cell and is inset from its sides, so it reads as
+         * belonging to one square rather than as a rule running between two. The bottom edge is the
+         * one part of a cell nothing else claims: the label is top-left, and the mark grid's own 6%
+         * padding keeps the last row of notes clear of it.
+         */
         .cell {
             display: flex;
-            gap: 2px;
-            align-items: flex-start;
-            justify-content: flex-end;
-            padding: 3px;
+            align-items: flex-end;
+            padding: 0 6%;
         }
 
-        .dot {
-            width: var(--presence-dot);
-            height: var(--presence-dot);
+        /*
+         * Sized by the cell, like everything else in the grid, and clamped at both ends: 3px is the
+         * least that reads as a colour rather than as a hairline on a 25×25, and past 6px a mini's
+         * 90px squares would be wearing a bar instead of a stripe.
+         *
+         * The gap is what keeps two players' colours from merging into one band. It shows whatever
+         * is under the layer, so it costs nothing on a nonogram's filled square.
+         */
+        .stripe {
+            display: flex;
+            gap: 1px;
+            width: 100%;
+            height: clamp(3px, calc(var(--cell-size, 40px) * var(--presence-stripe, 0.09)), 6px);
+        }
+
+        /*
+         * Every player gets the same share of the stripe, however many there are — an equal flex of
+         * a fixed width, which is the whole reason this scales where a row of dots did not. The
+         * zero min-width is because a flex item will not otherwise shrink below its content, and
+         * eight of them on a phone are asking to.
+         */
+        .who {
+            flex: 1 1 0;
+            min-width: 0;
+            /*
+             * Rounded, which at this height is a capsule — --radius-round clamps to half the
+             * shorter side. Each player's share reads as a thing rather than as a length of rule,
+             * and a lone player in a cell gets a mark instead of a dash. This is one of the few
+             * places the round radius is right on a square grid (brand.md §4): the stripe is a
+             * badge sitting on the cell, not part of its ruling.
+             */
             border-radius: var(--radius-round);
             animation: appear var(--motion-presence) ease-in;
-        }
-
-        .more {
-            font-family: var(--font-ui);
-            font-size: var(--text-xs);
-            color: var(--graphite);
         }
 
         @keyframes appear {
             from {
                 opacity: 0;
-                transform: scale(0.6);
+                transform: scaleY(0.4);
             }
             to {
                 opacity: 1;
-                transform: scale(1);
+                transform: scaleY(1);
             }
         }
     `;
@@ -92,7 +126,7 @@ export class PtPresenceLayer extends LitElement {
         if (grouped.size === 0) return nothing;
 
         // Both axes, explicitly. With only the columns declared, every row past the first was an
-        // implicit track sized to its dot, so a dot below row 1 landed nowhere near its cell.
+        // implicit track sized to its contents, so a stripe below row 1 landed nowhere near its cell.
         return html`
             <style>
                 :host {
@@ -104,26 +138,27 @@ export class PtPresenceLayer extends LitElement {
         `;
     }
 
-    /** Draws one cell's dot stack, positioned by grid coordinates rather than pixel maths. */
+    /** One cell's stripe, positioned by grid coordinates rather than pixel maths. */
     #renderCell(cell, players) {
         const row = Math.floor(cell / this.cols) + 1;
         const col = (cell % this.cols) + 1;
-        const shown = players.slice(0, MAX_DOTS);
-        const overflow = players.length - shown.length;
 
         return html`
             <div class="cell" style="grid-row: ${row}; grid-column: ${col};">
-                ${shown.map(
-                    (player) => html`
-                        <span
-                            class="dot"
-                            style="background: var(--player-${player.colorIndex});"
-                            title="${player.name}"
-                            aria-label="${player.name} (${PLAYER_COLOR_NAMES[player.colorIndex]})"
-                        ></span>
-                    `,
-                )}
-                ${overflow > 0 ? html`<span class="more">+${overflow}</span>` : nothing}
+                <div class="stripe">
+                    ${players.map(
+                        (player) => html`
+                            <span
+                                class="who"
+                                style="background: var(--player-${player.colorIndex});"
+                                title="${player.name}"
+                                aria-label="${player.name} (${PLAYER_COLOR_NAMES[
+                                    player.colorIndex
+                                ]})"
+                            ></span>
+                        `,
+                    )}
+                </div>
             </div>
         `;
     }

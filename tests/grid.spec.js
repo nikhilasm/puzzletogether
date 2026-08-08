@@ -1,5 +1,6 @@
 /**
- * How the grid is drawn: cell geometry, region rules, pencil-mark positions, and presence dots.
+ * How the grid is drawn: cell geometry, region rules, pencil-mark positions, presence stripes, and
+ * the cursor's own colour.
  *
  * These are the assertions that a screenshot would have made for us if screenshots were reliable
  * across engines. Every one of them corresponds to something that went wrong once — cells a pixel
@@ -126,7 +127,7 @@ test.describe('pencil marks', () => {
     });
 });
 
-test.describe('presence dots', () => {
+test.describe('presence stripes', () => {
     test('land inside the cell they belong to, on every row', async ({ page, browser }) => {
         const code = await createRoom(page);
         await startPuzzle(page);
@@ -140,28 +141,33 @@ test.describe('presence dots', () => {
         const target = 15;
         await guest.locator(`pt-cell >> nth=${target}`).click();
 
-        const dot = page.locator('pt-presence-layer .dot').first();
-        await expect(dot).toBeVisible();
+        const who = page.locator('pt-presence-layer .who').first();
+        await expect(who).toBeVisible();
 
         const placement = await page.locator('pt-sudoku-board').evaluate((board, index) => {
             const cells = board.shadowRoot.querySelectorAll('pt-cell');
             const cell = cells[index].getBoundingClientRect();
             const layer = board.shadowRoot.querySelector('pt-presence-layer');
-            const mark = layer.shadowRoot.querySelector('.dot').getBoundingClientRect();
+            const mark = layer.shadowRoot.querySelector('.who').getBoundingClientRect();
             return {
                 cell: { x: cell.x, y: cell.y, right: cell.right, bottom: cell.bottom },
-                dot: { x: mark.x + mark.width / 2, y: mark.y + mark.height / 2, size: mark.width },
+                stripe: { x: mark.x + mark.width / 2, y: mark.y + mark.height / 2 },
             };
         }, target);
 
-        expect(placement.dot.x).toBeGreaterThan(placement.cell.x);
-        expect(placement.dot.x).toBeLessThan(placement.cell.right);
-        expect(placement.dot.y).toBeGreaterThan(placement.cell.y);
-        expect(placement.dot.y).toBeLessThan(placement.cell.bottom);
+        expect(placement.stripe.x).toBeGreaterThan(placement.cell.x);
+        expect(placement.stripe.x).toBeLessThan(placement.cell.right);
+        expect(placement.stripe.y).toBeGreaterThan(placement.cell.y);
+        expect(placement.stripe.y).toBeLessThan(placement.cell.bottom);
 
         await context.close();
     });
 
+    /**
+     * The stripe subdivides a fixed footprint rather than growing, which is what a row of dots did
+     * not do. So "big enough to see" is now two measurements: it stays thick enough to read as a
+     * colour, and it spans the cell rather than a corner of it.
+     */
     test('are big enough to see', async ({ page, browser }) => {
         const code = await createRoom(page);
         await startPuzzle(page);
@@ -172,14 +178,61 @@ test.describe('presence dots', () => {
         await expect(guest.locator('pt-cell').first()).toBeVisible();
         await guest.locator('pt-cell >> nth=5').click();
 
-        const dot = page.locator('pt-presence-layer .dot').first();
-        await expect(dot).toBeVisible();
-        // Laid-out size, not the painted box: the dot arrives on a scale animation, and a bounding
-        // box caught mid-flight measures the animation rather than the dot.
-        const size = await dot.evaluate((el) => getComputedStyle(el).width);
-        expect(Number.parseFloat(size)).toBeGreaterThanOrEqual(9);
+        await expect(page.locator('pt-presence-layer .who').first()).toBeVisible();
+
+        const size = await page.locator('pt-sudoku-board').evaluate((board) => {
+            const cell = board.shadowRoot.querySelector('pt-cell').getBoundingClientRect();
+            const layer = board.shadowRoot.querySelector('pt-presence-layer');
+            // Laid-out size, not the painted box: the stripe arrives on a scale animation, and a
+            // bounding box caught mid-flight measures the animation rather than the stripe.
+            const style = getComputedStyle(layer.shadowRoot.querySelector('.who'));
+            return {
+                height: Number.parseFloat(style.height),
+                width: Number.parseFloat(style.width),
+                cell: cell.width,
+            };
+        });
+
+        expect(size.height).toBeGreaterThanOrEqual(3);
+        expect(size.width).toBeGreaterThan(size.cell / 2);
 
         await context.close();
+    });
+
+    /**
+     * One segment per player, however many there are — the cap and its `+n` are gone, because a
+     * stripe divides where a row of dots had to queue.
+     */
+    test('give every player in the cell a segment of their own', async ({ page, browser }) => {
+        const code = await createRoom(page);
+        await startPuzzle(page);
+
+        // A context each: the reconnect token is per-room in localStorage, so four guests sharing
+        // one would be four tabs fighting over a single seat.
+        const contexts = [];
+        for (const name of ['Grace', 'Alan', 'Edsger', 'Barbara']) {
+            const context = await browser.newContext();
+            const guest = await context.newPage();
+            await joinRoom(guest, name, code);
+            await expect(guest.locator('pt-cell').first()).toBeVisible();
+            await guest.locator('pt-cell >> nth=5').click();
+            contexts.push(context);
+        }
+
+        // Four other players on one square: four bands, none of them an overflow count.
+        await expect.poll(() => page.locator('pt-presence-layer .who').count()).toBe(4);
+
+        const widths = await page
+            .locator('pt-presence-layer')
+            .evaluate((layer) =>
+                [...layer.shadowRoot.querySelectorAll('.who')].map(
+                    (el) => el.getBoundingClientRect().width,
+                ),
+            );
+        // Equal shares of the same stripe, so no player's presence is louder than another's.
+        for (const width of widths) expect(Math.abs(width - widths[0])).toBeLessThan(1);
+
+        for (const context of contexts) await context.close();
     });
 
     test('recolour the moment their player changes colour', async ({ page, browser }) => {
@@ -192,20 +245,57 @@ test.describe('presence dots', () => {
         await expect(guest.locator('pt-cell').first()).toBeVisible();
         await guest.locator('pt-cell >> nth=5').click();
 
-        const dotColor = () =>
+        const stripeColor = () =>
             page
-                .locator('pt-presence-layer .dot')
+                .locator('pt-presence-layer .who')
                 .first()
                 .evaluate((el) => getComputedStyle(el).backgroundColor);
 
-        await expect(page.locator('pt-presence-layer .dot')).toBeVisible();
-        const before = await dotColor();
+        await expect(page.locator('pt-presence-layer .who')).toBeVisible();
+        const before = await stripeColor();
 
         // No reselecting the cell afterwards: the roster changing is the only event involved.
         await guest.locator('pt-player-chips button.chip').click();
         await guest.locator('pt-player-chips .swatch').nth(6).click();
 
-        await expect.poll(dotColor).not.toBe(before);
+        await expect.poll(stripeColor).not.toBe(before);
         await context.close();
+    });
+});
+
+test.describe('the cursor', () => {
+    /**
+     * Your own cursor is drawn in your own colour, and the row and column it implies in a lighter
+     * wash of the same — the two questions a solver asks of a grid ("where am I", "what constrains
+     * this square") answered as one idea at two strengths.
+     */
+    test('is washed in the local player’s colour, and its lines more faintly', async ({ page }) => {
+        await createRoom(page);
+        await startPuzzle(page);
+        await page.locator('pt-cell >> nth=5').click();
+
+        const washes = await page.locator('pt-sudoku-board').evaluate((board) => {
+            const cells = [...board.shadowRoot.querySelectorAll('pt-cell')];
+            const alpha = (cell) => {
+                const match = getComputedStyle(cell).backgroundColor.match(/[\d.]+/g);
+                return match?.length === 4 ? Number.parseFloat(match[3]) : 1;
+            };
+            const style = getComputedStyle(board);
+            return {
+                // The host is the room's first seat, so their colour is index 0.
+                focus: style.getPropertyValue('--focus-color').trim(),
+                own: style.getPropertyValue('--player-0').trim(),
+                accent: style.getPropertyValue('--accent').trim(),
+                selected: alpha(cells[5]),
+                // Cell 1 shares a column with cell 5 on a 4×4; cell 10 shares neither.
+                line: alpha(cells[1]),
+                elsewhere: alpha(cells[10]),
+            };
+        });
+
+        expect(washes.focus).not.toBe(washes.accent);
+        expect([washes.own, 'var(--player-0)']).toContain(washes.focus);
+        expect(washes.selected).toBeGreaterThan(washes.line);
+        expect(washes.line).toBeGreaterThan(washes.elsewhere);
     });
 });

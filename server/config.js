@@ -5,6 +5,7 @@
  * exercised without waiting ten minutes (design-spec.md Verification).
  */
 
+import { delimiter, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
@@ -37,10 +38,21 @@ const isDev = process.argv.includes('--dev') || process.env.NODE_ENV === 'develo
  * and is where the freely-distributed `.puz` files the importer is developed against end up — so a
  * 15×15 is playable while building, and no copyrighted grid can enter git history by accident, which
  * is the failure that cannot be undone.
+ *
+ * **Overridable by `PT_BANK_DIRS`**, a delimited list resolved against the working directory, and the
+ * browser suite sets it to the tracked directory alone. The local overlay is a scratch space that
+ * differs from machine to machine — whichever `.puz` files somebody happened to import last — so a
+ * test that asserts anything about what the bank *holds* passes or fails on which developer ran it.
+ * Pinning it is the same reasoning as the lifecycle timings above: the environment names what the
+ * run is about, and the default stays the one a real deployment wants.
  */
-const bankDirs = ['../data/crosswords', '../data/crosswords-local'].map((path) =>
-    fileURLToPath(new URL(path, import.meta.url)),
-);
+const bankDirs = process.env.PT_BANK_DIRS
+    ? process.env.PT_BANK_DIRS.split(delimiter)
+          .filter(Boolean)
+          .map((path) => resolve(path))
+    : ['../data/crosswords', '../data/crosswords-local'].map((path) =>
+          fileURLToPath(new URL(path, import.meta.url)),
+      );
 
 export const config = {
     isDev,

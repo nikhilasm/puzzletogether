@@ -11,7 +11,7 @@ export const APP_VERSION = '0.1.0';
 export const GITHUB_URL = 'https://github.com/nmurthy99/puzzletogether';
 
 /** Number of distinct player identities. Colour hexes live in `client/styles/tokens.css`. */
-export const PLAYER_COLOR_COUNT = 8;
+export const PLAYER_COLOR_COUNT = 10;
 
 /**
  * Human names for each colour index, used in aria labels so presence is never conveyed by hue
@@ -26,6 +26,8 @@ export const PLAYER_COLOR_NAMES = [
     'indigo',
     'violet',
     'ochre',
+    'sky',
+    'grey',
 ];
 
 /** Room codes are 4 lowercase characters (design-spec.md §9). */
@@ -34,7 +36,13 @@ export const ROOM_CODE_LENGTH = 4;
 /** `l` and `o` are omitted because they are unreadable next to `1` and `0`. */
 export const ROOM_CODE_ALPHABET = 'abcdefghijkmnpqrstuvwxyz';
 
-/** Beyond this the player chips stop fitting the 640px column and colours would repeat. */
+/**
+ * Beyond this the player chips stop fitting the 640px column.
+ *
+ * It used to be the palette's size too, and no longer is: there are ten colours and eight seats, so
+ * a room always has spare colours to change *to*. Raising this is now a layout question rather than
+ * a palette one, but it stays where it is until the roster is proved at that width.
+ */
 export const MAX_PLAYERS_PER_ROOM = 8;
 
 /** Display names are labels only — they carry no authority (ADR-0005). */

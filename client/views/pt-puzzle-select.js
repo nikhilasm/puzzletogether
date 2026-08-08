@@ -39,8 +39,14 @@ export class PtPuzzleSelect extends LitElement {
                 font-size: var(--text-sm);
             }
 
+            /*
+             * The whole column, not a reading measure. A banked type's card list is the widest thing
+             * this screen shows — a title, an author, and a publication on two lines — and the picker
+             * keeps its own option rows at 26rem and centred, so the extra width reaches the list and
+             * nothing else.
+             */
             pt-puzzle-picker {
-                max-width: 26rem;
+                max-width: 40rem;
                 margin: 0 auto var(--space-6);
             }
 

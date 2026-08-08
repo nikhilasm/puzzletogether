@@ -10,6 +10,11 @@
  * crosswords with titles and authors, and describing one would be asking the host to guess at a list
  * they could simply be shown.
  *
+ * A browsed list can also be **filtered**, by the same two facts a generated type is described by.
+ * That is not the question coming back — nothing here asks the host to specify a puzzle that might
+ * not exist — it only narrows the list of ones that do. Each filter row appears once there is more
+ * than one value behind it, so a bank of four minis still shows a list and nothing else.
+ *
  * Holds the working selection as its own state and reports it on every change; the screen around it
  * decides when to turn that into a `game:start`.
  */
@@ -33,6 +38,16 @@ function titleCase(value) {
     return value[0].toUpperCase() + value.slice(1);
 }
 
+/** A size as a single comparable token, since the filter cannot hold an object and match on it. */
+function sizeKey(size) {
+    return `${size.rows}x${size.cols}`;
+}
+
+/** How a size is written wherever it is shown: columns first, the way a grid is described. */
+function sizeLabel(size) {
+    return `${size.cols}×${size.rows}`;
+}
+
 export class PtPuzzlePicker extends LitElement {
     static properties = {
         spec: { type: Object },
@@ -45,6 +60,14 @@ export class PtPuzzlePicker extends LitElement {
          * `SIZES_BY_TYPE` is only the fallback for a client that somehow has no catalog yet.
          */
         catalog: { type: Object },
+        /**
+         * Which slice of a banked type's list is on show, or null for all of it.
+         *
+         * State rather than part of the spec: a filter is a way of looking at the bank, not a
+         * request travelling to the server. Nothing outside this component needs to know one is on.
+         */
+        sizeFilter: { state: true },
+        difficultyFilter: { state: true },
     };
 
     static styles = [
@@ -94,10 +117,28 @@ export class PtPuzzlePicker extends LitElement {
                 vertical-align: -0.15em;
             }
 
+            /*
+             * A row of options is comfortable at a reading measure and centres in whatever width it
+             * is given, so the picker can be handed the whole column without the short rows
+             * sprawling across it. 28rem rather than 26 for one reason: it is where the four puzzle
+             * types stop wrapping, and Crossword alone on a second line read as a different kind of
+             * choice from the other three.
+             */
             fieldset {
-                margin: 0 0 var(--space-4);
+                max-width: 28rem;
+                margin: 0 auto var(--space-4);
                 padding: 0;
                 border: none;
+            }
+
+            /*
+             * The list is the exception, and it is why the picker is given the column in the first
+             * place. Everything else here is glanced at; this is read — a title, whoever set it, and
+             * where it came from, on one line each. At 26rem the second line wrapped under any real
+             * newspaper credit and the cards stopped scanning as a column of titles.
+             */
+            fieldset.list {
+                max-width: none;
             }
 
             legend {
@@ -178,13 +219,26 @@ export class PtPuzzlePicker extends LitElement {
                 font-weight: 400;
             }
 
-            /* Fixed width and tabular, so the sizes form a column the eye can run down. */
-            .card .size {
+            /*
+             * The two facts the filters above narrow on, right-aligned so they form a column the eye
+             * can run down rather than trailing off the end of titles of every length.
+             */
+            .card .facts {
                 flex-shrink: 0;
+                text-align: right;
+            }
+
+            .card .size,
+            .card .level {
+                display: block;
                 color: var(--graphite);
                 font-size: var(--text-sm);
-                font-variant-numeric: tabular-nums;
+                font-weight: 400;
                 white-space: nowrap;
+            }
+
+            .card .size {
+                font-variant-numeric: tabular-nums;
             }
 
             .empty {
@@ -201,6 +255,8 @@ export class PtPuzzlePicker extends LitElement {
         this.spec = null;
         this.disabled = false;
         this.catalog = null;
+        this.sizeFilter = null;
+        this.difficultyFilter = null;
     }
 
     /**
@@ -241,13 +297,35 @@ export class PtPuzzlePicker extends LitElement {
         return this.catalog?.[type]?.puzzles ?? null;
     }
 
+    /**
+     * The puzzles left once a size and a difficulty are applied, either of which may be null for any.
+     *
+     * Takes the pair as arguments rather than reading the filters, because the filter row also has to
+     * ask the hypothetical question — what *would* be left if this option were pressed.
+     */
+    #matching(puzzles, size, difficulty) {
+        return puzzles.filter(
+            (puzzle) =>
+                (size == null || sizeKey(puzzle.size) === size) &&
+                (difficulty == null || puzzle.difficulty === difficulty),
+        );
+    }
+
+    /** The puzzles currently on show. */
+    #visible(puzzles) {
+        return this.#matching(puzzles, this.sizeFilter, this.difficultyFilter);
+    }
+
     /** The working selection, falling back to the first of everything before one is supplied. */
     get #current() {
         const type = this.spec?.type ?? this.#types[0] ?? PUZZLE_TYPES[0];
         const banked = this.#puzzlesFor(type);
         // A banked type's whole selection comes off one card, so the fallback is the first card
-        // rather than three independent defaults that might not name any puzzle that exists.
-        if (banked) return this.#specFor(type, this.#chosenPuzzle(type) ?? banked[0]);
+        // rather than three independent defaults that might not name any puzzle that exists — and
+        // the first *visible* card, so filtering the chosen one away moves the selection with it
+        // rather than leaving Start pointed at a puzzle that is no longer on screen.
+        if (banked)
+            return this.#specFor(type, this.#chosenPuzzle(type) ?? this.#visible(banked)[0]);
 
         return {
             type,
@@ -267,10 +345,12 @@ export class PtPuzzlePicker extends LitElement {
         };
     }
 
-    /** The card currently chosen for a banked type, if the working spec names one that still exists. */
+    /** The card currently chosen for a banked type, if the working spec names one that is on show. */
     #chosenPuzzle(type) {
         const id = this.spec?.type === type ? this.spec?.puzzleId : null;
-        return id ? (this.#puzzlesFor(type)?.find((puzzle) => puzzle.id === id) ?? null) : null;
+        const puzzles = id ? this.#puzzlesFor(type) : null;
+        if (!puzzles) return null;
+        return this.#visible(puzzles).find((puzzle) => puzzle.id === id) ?? null;
     }
 
     /**
@@ -358,7 +438,7 @@ export class PtPuzzlePicker extends LitElement {
         if (banked) {
             return html`
                 ${this.#types.length > 1 ? this.#renderTypes(current) : nothing}
-                ${this.#renderCards(banked, current)}
+                ${this.#renderFilters(banked)} ${this.#renderCards(banked, current)}
             `;
         }
 
@@ -436,13 +516,114 @@ export class PtPuzzlePicker extends LitElement {
             return html`<p class="empty">this build has no puzzles of that kind</p>`;
         }
 
+        // The count appears only once a filter is on, and it is there because the alternative is a
+        // list that silently got shorter. It also says how much of the bank is being hidden, which is
+        // the thing that tells a host whether it is worth widening the filter back out.
+        const visible = this.#visible(puzzles);
+        const legend =
+            visible.length === puzzles.length
+                ? 'Choose a puzzle'
+                : `Choose a puzzle · ${visible.length} of ${puzzles.length}`;
+
         return html`
-            <fieldset>
-                <legend>Choose a puzzle</legend>
+            <fieldset class="list">
+                <legend>${legend}</legend>
                 <div class="cards">
-                    ${puzzles.map((puzzle) => this.#renderCard(puzzle, current))}
+                    ${visible.map((puzzle) => this.#renderCard(puzzle, current))}
                 </div>
             </fieldset>
+        `;
+    }
+
+    /**
+     * The size and difficulty filters over a banked type's list.
+     *
+     * **A row appears only when it has more than one thing to choose between**, which is the same
+     * rule the puzzle-type row follows. It is also the answer to the objection that had these
+     * deferred in ADR-0009: a filter over a bank of four minis, all 5×5 and all easy, is pure
+     * clutter — so on that bank neither row is drawn, and the list is still the only thing on screen.
+     *
+     * **An option that would empty the list is disabled rather than hidden**, shown greyed the way a
+     * colour another player holds is. That is not only manners: it is what guarantees the list is
+     * never empty. A pressable option is one with something behind it *given the other filter's
+     * current value*, so every reachable pair matches at least one puzzle, and the card list can
+     * never come up blank with Start still pointed at whatever was last selected.
+     */
+    #renderFilters(puzzles) {
+        // Both axes come off the list being filtered rather than off the catalog's own size and
+        // difficulty arrays, so a filter can never offer a value with no card behind it.
+        const sizes = [...new Map(puzzles.map((puzzle) => [sizeKey(puzzle.size), puzzle.size]))];
+        sizes.sort(([, a], [, b]) => a.rows * a.cols - b.rows * b.cols);
+
+        const present = new Set(puzzles.map((puzzle) => puzzle.difficulty));
+        // Easy before hard, whatever order the bank's files happened to load in; anything the
+        // constant does not know about follows, rather than being dropped from a filter it belongs in.
+        const difficulties = [
+            ...DIFFICULTIES.filter((difficulty) => present.has(difficulty)),
+            ...[...present].filter((difficulty) => !DIFFICULTIES.includes(difficulty)),
+        ];
+
+        return html`
+            ${
+                sizes.length > 1
+                    ? html`
+                          <fieldset class="filter filter-size">
+                              <legend>Filter by size</legend>
+                              <div class="options">
+                                  ${this.#renderOption({
+                                      label: 'Any size',
+                                      isChosen: this.sizeFilter == null,
+                                      onPick: () => {
+                                          this.sizeFilter = null;
+                                      },
+                                  })}
+                                  ${sizes.map(([key, size]) =>
+                                      this.#renderOption({
+                                          label: sizeLabel(size),
+                                          isChosen: this.sizeFilter === key,
+                                          isDisabled:
+                                              this.#matching(puzzles, key, this.difficultyFilter)
+                                                  .length === 0,
+                                          onPick: () => {
+                                              this.sizeFilter = key;
+                                          },
+                                      }),
+                                  )}
+                              </div>
+                          </fieldset>
+                      `
+                    : nothing
+            }
+            ${
+                difficulties.length > 1
+                    ? html`
+                          <fieldset class="filter filter-difficulty">
+                              <legend>Filter by difficulty</legend>
+                              <div class="options">
+                                  ${this.#renderOption({
+                                      label: 'Any difficulty',
+                                      isChosen: this.difficultyFilter == null,
+                                      onPick: () => {
+                                          this.difficultyFilter = null;
+                                      },
+                                  })}
+                                  ${difficulties.map((difficulty) =>
+                                      this.#renderOption({
+                                          label: titleCase(difficulty),
+                                          isChosen: this.difficultyFilter === difficulty,
+                                          isDisabled:
+                                              this.#matching(puzzles, this.sizeFilter, difficulty)
+                                                  .length === 0,
+                                          onPick: () => {
+                                              this.difficultyFilter = difficulty;
+                                          },
+                                      }),
+                                  )}
+                              </div>
+                          </fieldset>
+                      `
+                    : nothing
+            }
         `;
     }
 
@@ -453,7 +634,10 @@ export class PtPuzzlePicker extends LitElement {
         const credits = [puzzle.author ? `by ${puzzle.author}` : null, puzzle.source].filter(
             Boolean,
         );
-        const size = `${puzzle.size.cols}×${puzzle.size.rows}`;
+        const size = sizeLabel(puzzle.size);
+        // A banked puzzle's difficulty is a fact about it rather than a question put to the host, so
+        // the card states it — and it has to, now that there is a filter narrowing on it.
+        const level = titleCase(puzzle.difficulty);
         const name = puzzle.title ?? puzzle.id;
 
         return html`
@@ -461,7 +645,7 @@ export class PtPuzzlePicker extends LitElement {
                 type="button"
                 class="card"
                 aria-pressed=${current.puzzleId === puzzle.id}
-                aria-label=${[name, ...credits, size].join(', ')}
+                aria-label=${[name, ...credits, size, level].join(', ')}
                 ?disabled=${this.disabled}
                 @click=${() => this.#chooseWhole(this.#specFor(current.type, puzzle))}
             >
@@ -473,7 +657,10 @@ export class PtPuzzlePicker extends LitElement {
                             : nothing
                     }
                 </span>
-                <span class="size">${size}</span>
+                <span class="facts">
+                    <span class="size">${size}</span>
+                    <span class="level">${level}</span>
+                </span>
             </button>
         `;
     }
@@ -493,7 +680,13 @@ export class PtPuzzlePicker extends LitElement {
                             // nonogram is not on offer, a bank has only the difficulties its files
                             // happen to carry, and a puzzle id from one type names nothing in
                             // another. `#current` supplies the new type's own default either way.
-                            onPick: () => this.#chooseWhole(this.#defaultSpec(type)),
+                            // The filters go with it, for the same reason: they narrow one type's
+                            // list, and holding them across would hide most of the next one.
+                            onPick: () => {
+                                this.sizeFilter = null;
+                                this.difficultyFilter = null;
+                                this.#chooseWhole(this.#defaultSpec(type));
+                            },
                         }),
                     )}
                 </div>

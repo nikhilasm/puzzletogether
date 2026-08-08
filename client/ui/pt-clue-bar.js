@@ -13,6 +13,10 @@
  *
  * Holds no state. It is told which entry is current and reports that it was pressed, like every other
  * shared leaf in this app.
+ *
+ * It has no disabled state, unlike every other control in the panel. The keys write and the clue bar
+ * only *moves*, and a finished grid is still read — so the strip goes on working after the last
+ * letter lands, for the same reason the arrow keys do.
  */
 
 import { LitElement, css, html } from 'lit';
@@ -24,7 +28,6 @@ import { iconStyle, nextIcon } from './icons.js';
 export class PtClueBar extends LitElement {
     static properties = {
         entry: { type: Object },
-        disabled: { type: Boolean },
     };
 
     static styles = [
@@ -111,7 +114,6 @@ export class PtClueBar extends LitElement {
     constructor() {
         super();
         this.entry = null;
-        this.disabled = false;
     }
 
     /** Keeps the grid's keyboard focus where it is, the same as every key in the panel. */
@@ -132,7 +134,7 @@ export class PtClueBar extends LitElement {
             <button
                 class="clue"
                 type="button"
-                ?disabled=${this.disabled || !entry}
+                ?disabled=${!entry}
                 aria-label=${
                     entry
                         ? `${entry.num} ${direction}: ${entry.clue}. Next ${direction} clue`

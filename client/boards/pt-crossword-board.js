@@ -7,7 +7,7 @@
  * below exists to keep that second half correct without the player ever having to think about it.
  *
  * Direction is local to each player, not shared. Two people can work the same square from different
- * directions, and where everyone else is stays on the grid as presence dots (design-spec.md §4).
+ * directions, and where everyone else is stays on the grid as presence stripes (design-spec.md §4).
  */
 
 import { css } from 'lit';
@@ -51,13 +51,19 @@ export class PtCrosswordBoard extends PtBoard {
              * now a solid statement of position and the entry is barely more than a tint: the
              * question the entry wash answers is "which word am I in", and it only has to be
              * distinguishable from *no wash at all* to answer it.
+             *
+             * Both depths are the player's own colour, via --focus-color — the base element's
+             * rule in the player's hue, at the strengths a crossword needs. A crossword's cursor
+             * carries more than any other type's (it also has a *direction*), and its squares are
+             * the smallest thing a room ever shares, so it keeps its own numbers rather than
+             * inheriting ones tuned for a 9×9.
              */
             pt-cell[selected] {
-                background: color-mix(in srgb, var(--accent) 62%, transparent);
+                background: color-mix(in srgb, var(--focus-color) 62%, transparent);
             }
 
             pt-cell[highlighted]:not([selected]) {
-                background: color-mix(in srgb, var(--accent) 13%, transparent);
+                background: color-mix(in srgb, var(--focus-color) 13%, transparent);
             }
         `,
     ];
@@ -312,16 +318,26 @@ export class PtCrosswordBoard extends PtBoard {
      * Caught on the way down, while `this.selection` is still the square being tapped — the base
      * element's own handler asks the store to move the cursor, and the answer does not come back
      * until the next render, so afterwards there would be no way to tell a re-tap from a first tap.
+     *
+     * Not gated on `interactive`, because turning the cursor is navigation and navigation outlives
+     * the solve: a finished grid is still a thing people read back, and a board that stops answering
+     * taps the moment the last letter lands reads as broken rather than as finished.
      */
     #onCrosswordPointer = (event) => {
-        if (!this.doc || !this.interactive) return;
+        if (!this.doc) return;
         const cell = event.composedPath().find((node) => node.localName === 'pt-cell');
         if (cell && cell.index === this.selection) this.toggleDirection();
     };
 
-    /** Handles the crossword-only keys, letting everything else fall through to the base. */
+    /**
+     * Handles the crossword-only keys, letting everything else fall through to the base.
+     *
+     * Split the way the base element splits it: the keys that only *move* the cursor work whether or
+     * not the room is still taking input, and the keys that change the grid are the ones `interactive`
+     * turns off.
+     */
     #onCrosswordKey = (event) => {
-        if (!this.doc || !this.interactive) return;
+        if (!this.doc) return;
 
         if (event.key === 'Tab') {
             this.#take(event);
@@ -338,6 +354,8 @@ export class PtCrosswordBoard extends PtBoard {
             this.toggleDirection();
             return;
         }
+
+        if (!this.interactive) return;
 
         /*
          * Backspace is taken from the base element, which would only clear the square.

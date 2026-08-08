@@ -188,6 +188,24 @@ export class PtBoard extends LitElement {
         this.#resizeObserver.observe(grid);
     }
 
+    /**
+     * Publishes the local player's colour as `--focus-color`, which is what draws this player's
+     * cursor in their own colour rather than in the app's accent.
+     *
+     * Written to the host rather than into `render()`, because the cells that read it are a shadow
+     * root down and inherit it — and because the wash is a *style*, not a property any cell should
+     * have to be told about one at a time.
+     *
+     * Guarded on the two things it depends on. The roster arrives whenever anybody joins, leaves, or
+     * is renamed, and none of that moves this player's colour.
+     */
+    willUpdate(changed) {
+        if (!changed.has('players') && !changed.has('selfId')) return;
+        const self = this.players?.find((player) => player.id === this.selfId);
+        if (self) this.style.setProperty('--focus-color', `var(--player-${self.colorIndex})`);
+        else this.style.removeProperty('--focus-color');
+    }
+
     /** Stops observing when the board leaves the page. */
     disconnectedCallback() {
         this.#resizeObserver?.disconnect();
@@ -311,15 +329,25 @@ export class PtBoard extends LitElement {
      * Whether a cell is part of what the player is currently reaching for, as opposed to what they
      * have already written.
      *
-     * Distinct from selection, which is one cell and survives between gestures. This is the *extent*
-     * of something in progress — the run a nonogram drag has covered so far, and the entry a
-     * crossword will highlight around the cursor.
+     * Distinct from selection, which is one cell. This is the *extent* around it: the entry a
+     * crossword is working, the run a nonogram drag has covered so far — and, by default, the row
+     * and column the cursor sits in, which for the two Latin-square types is precisely the set of
+     * squares a solver scans before writing anything. Neither sudoku nor kenken needs to override
+     * this; both did without it, and finding your own cursor on a 9×9 was harder than it should be.
      *
-     * @param {number} _idx - Cell index.
-     * @returns {boolean} True to wash the cell as part of the current gesture.
+     * A type whose highlight means something else says so by overriding — and a type that wants no
+     * highlight at all overrides to `false`.
+     *
+     * @param {number} idx - Cell index.
+     * @returns {boolean} True to wash the cell as context for the cursor.
      */
-    isHighlighted(_idx) {
-        return false;
+    isHighlighted(idx) {
+        if (this.selection == null) return false;
+        const cols = this.doc.size.cols;
+        return (
+            Math.floor(idx / cols) === Math.floor(this.selection / cols) ||
+            idx % cols === this.selection % cols
+        );
     }
 
     /**

@@ -469,7 +469,6 @@ export class PtGame extends LitElement {
                         ? html`<pt-clue-bar
                               slot="clue"
                               .entry=${this.entry}
-                              .disabled=${!isPlaying}
                               @pt-clue-next=${() => this.#board?.moveToNextClue()}
                           ></pt-clue-bar>`
                         : nothing

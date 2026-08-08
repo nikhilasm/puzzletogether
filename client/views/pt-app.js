@@ -7,7 +7,12 @@
 
 import { LitElement, css, html, nothing } from 'lit';
 
-import { APP_VERSION, GITHUB_URL, ROOM_CODE_LENGTH } from '../../shared/constants.js';
+import {
+    APP_VERSION,
+    GITHUB_URL,
+    MAX_PLAYERS_PER_ROOM,
+    ROOM_CODE_LENGTH,
+} from '../../shared/constants.js';
 import { ROOM_STATE } from '../../shared/protocol.js';
 import { roomStore } from '../store/room-store.js';
 import { StoreController } from '../store/store-controller.js';
@@ -70,8 +75,42 @@ export class PtApp extends LitElement {
                 color: var(--accent);
             }
 
+            /*
+             * The room's own facts, boxed together: which room this is, how full it is, and who is
+             * in it. They were three things stacked down the middle of the page with nothing saying
+             * they belonged to each other, and the roster in particular read as a second screen
+             * above the real one.
+             *
+             * Subtle on purpose — a rule and nothing else. It takes the page's own background rather
+             * than the raised paper: a filled box reads as a card to be dealt with, and this is a
+             * caption on the room. The puzzle under it is what the page is about, and it sits close
+             * enough underneath to be read as the next thing rather than the next screen.
+             */
+            .room-panel {
+                max-width: 420px;
+                margin: 0 auto var(--space-4);
+                padding: var(--space-3);
+                border: var(--border);
+                border-radius: var(--radius-control);
+            }
+
+            /*
+             * Code at one end, seats at the other, on the line above the roster.
+             *
+             * Centred rather than aligned on their baselines: the two are set several steps apart on
+             * the type scale, and a shared baseline hung the smaller of them off the bottom of the
+             * line. Nothing here is prose, so there is no baseline to keep.
+             */
+            .room-head {
+                display: flex;
+                gap: var(--space-3);
+                align-items: center;
+                justify-content: space-between;
+                margin-bottom: var(--space-3);
+            }
+
             .room-code {
-                margin: 0 0 var(--space-6);
+                margin: 0;
                 font-size: var(--text-lg);
             }
 
@@ -82,8 +121,17 @@ export class PtApp extends LitElement {
                 color: var(--accent);
             }
 
-            pt-player-chips {
-                margin-bottom: var(--space-8);
+            /*
+             * The seat count, unlabelled.
+             *
+             * It sits at the top of the roster it counts, so a word saying so would be saying it
+             * twice — and "2/8" is not ambiguous in a box whose other half is a room code.
+             * Screen readers get the sentence the sighted reading gets from the layout.
+             */
+            .count {
+                color: var(--graphite);
+                font-size: var(--text-sm);
+                font-variant-numeric: tabular-nums;
             }
 
             .screen {
@@ -150,8 +198,8 @@ export class PtApp extends LitElement {
                     margin-bottom: var(--space-6);
                 }
 
-                pt-player-chips {
-                    margin-bottom: var(--space-6);
+                .room-panel {
+                    margin-bottom: var(--space-3);
                 }
 
                 .screen {
@@ -300,20 +348,35 @@ export class PtApp extends LitElement {
     }
 
     /**
-     * The room code and roster, shown on every screen inside a room — and on none outside one, so
-     * navigating away cannot leave a roster stranded above the landing form.
+     * The room panel — code, seat count, roster — shown on every screen inside a room, and on none
+     * outside one, so navigating away cannot leave a roster stranded above the landing form.
+     *
+     * The count is drawn here rather than by `<pt-player-chips>`, where it used to live as a
+     * heading. It is a fact about the *room* (how many seats are taken of how many there are), it
+     * belongs on the same line as the room code, and the roster below it is now free to be nothing
+     * but the roster.
      */
     #renderRoom() {
         const { room, playerId } = this.#room.state;
         if (!room || this.route.name !== 'room') return nothing;
 
         return html`
-            <p class="room-code">Room <code>${room.code}</code></p>
-            <pt-player-chips
-                .players=${room.players}
-                .hostId=${room.hostId}
-                .selfId=${playerId}
-            ></pt-player-chips>
+            <div class="room-panel">
+                <div class="room-head">
+                    <p class="room-code">Room <code>${room.code}</code></p>
+                    <span
+                        class="count"
+                        aria-label="${room.players.length} of ${MAX_PLAYERS_PER_ROOM} players"
+                    >
+                        ${room.players.length}/${MAX_PLAYERS_PER_ROOM}
+                    </span>
+                </div>
+                <pt-player-chips
+                    .players=${room.players}
+                    .hostId=${room.hostId}
+                    .selfId=${playerId}
+                ></pt-player-chips>
+            </div>
         `;
     }
 

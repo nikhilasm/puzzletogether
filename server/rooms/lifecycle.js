@@ -148,7 +148,7 @@ export function dropPlayer(room, playerId) {
  * Reassigns a player's colour, provided nobody else in the room holds it.
  *
  * Uniqueness is the whole point: colour is an identity here, and two players sharing one would make
- * the presence dots ambiguous — the one channel the roster cannot fall back on a name for
+ * the presence stripes ambiguous — the one channel the roster cannot fall back on a name for
  * (brand.md §3). Re-picking the colour you already have is a no-op that succeeds.
  *
  * @param {Room} room - The room.

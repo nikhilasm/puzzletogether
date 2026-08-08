@@ -132,7 +132,7 @@ Computed against each theme's `--paper`:
 
 ### Player palette
 
-Eight identities, extending the mock's crimson / magenta / orange / green / teal. **Verified in Phase 1** — every value below clears 4.5:1 against its own theme's `--paper`, asserted by `client/styles/tokens.test.js` on every `npm test`.
+Ten identities, extending the mock's crimson / magenta / orange / green / teal. **Verified in Phase 1** — every value below clears 4.5:1 against its own theme's `--paper`, asserted by `client/styles/tokens.test.js` on every `npm test`.
 
 ```css
 /* light — "paper" */
@@ -140,13 +140,17 @@ Eight identities, extending the mock's crimson / magenta / orange / green / teal
 --player-2: #A75D16;  --player-3: #3D7E32;
 --player-4: #177C7C;  --player-5: #5B63C4;
 --player-6: #7A5AA8;  --player-7: #8A6C24;
+--player-8: #2073B0;  --player-9: #676B70;
 
 /* dark — "evening desk" */
 --player-0: #DA5858;  --player-1: #BC63A7;
 --player-2: #C9701A;  --player-3: #4B9B3E;
 --player-4: #1D9A9A;  --player-5: #757CCD;
 --player-6: #9176B7;  --player-7: #A8842C;
+--player-8: #4FA8DD;  --player-9: #9EA4AB;
 ```
+
+> **Ten colours against eight seats, deliberately.** The palette used to be exactly the size of the room, which meant a full room had nothing to change *to*: the picker opened onto eight swatches with seven struck through. Sky and grey are the two the set was short of — a blue that is not the indigo, and one identity that is not a hue at all, which is also the one that reads on its own terms in a grayscale check. `MAX_PLAYERS_PER_ROOM` is now a question about how many chips fit the column and nothing else.
 
 Assigned by lowest free index on join, released on leave, and **changeable by that player from their own chip** — the palette opens under the roster with the colours other people hold shown but unpickable. The server hands out a `colorIndex`, never a hex — the theme decides the value, which is why one index can carry two colours.
 
@@ -154,9 +158,9 @@ Assigned by lowest free index on join, released on leave, and **changeable by th
 
 Three hard rules regardless of the values:
 
-- **Color is never the only channel.** A name always accompanies it. Presence dots reveal names on hover and focus, and every swatch in the picker is labelled with its colour's name.
-- **Player color never tints puzzle content.** Entered digits are always `--ink`. Attribution lives in chips and presence dots, nowhere else.
-- **No two players in a room share a colour.** Enforced on the server, not by the picker's disabled swatches — a presence dot is the one place identity is carried by hue with no name beside it, so two players on one colour would make the grid ambiguous. A colour already held is shown greyed *and* struck through: dimming alone is easy to miss on a saturated swatch, and the same rule applies here as everywhere else — never one channel.
+- **Color is never the only channel.** A name always accompanies it. A presence stripe names its player on hover and focus, a chip *is* its owner's name, and every swatch in the picker is labelled with its colour's name.
+- **Player color never tints puzzle *content*.** Entered digits are always `--ink`, whoever wrote them. Colour carries three things and no others: a chip's name, a presence stripe, and **your own cursor** — the selection wash and the row/entry it implies, drawn from `--focus-color`. The last of those is new, and it is the boundary worth being careful about: a wash under a square says who is *looking*, which is presence; a coloured digit would say who *wrote* it, which is attribution, and attribution never touches the puzzle.
+- **No two players in a room share a colour.** Enforced on the server, not by the picker's disabled swatches — a presence stripe is the one place identity is carried by hue with no name beside it, so two players on one colour would make the grid ambiguous. A colour already held is shown greyed *and* struck through: dimming alone is easy to miss on a saturated swatch, and the same rule applies here as everywhere else — never one channel.
 
 ---
 
@@ -168,7 +172,7 @@ Three hard rules regardless of the values:
 --radius-control: 6px;    /* chips, buttons, inputs, switches — everything human-facing */
 --radius-grid:    0;      /* the grid and every cell */
 --radius-modal:   12px;   /* modals only */
---radius-round:   999px;  /* things that are actually round: presence dots, a switch track */
+--radius-round:   999px;  /* things that are actually round: a switch track, a presence stripe's segments */
 ```
 
 Nothing else gets a radius. The soft-vs-square contrast is load-bearing — it's principle 3 made literal — but it is carried by a *softened rectangle*, not a pill. **Revised in Phase 2**: chrome was originally 999px on everything, and at that radius a row of buttons reads as a row of lozenges floating over the page rather than as a form laid on it. 6px keeps the chrome soft against the grid's hard corners while letting a button still look like a button. `--radius-round` is not a fallback for boxes — the only things allowed to use it are things that are genuinely circular.
@@ -267,7 +271,7 @@ Physical and sparse.
 | Event | Motion |
 |---|---|
 | Cell value entered | 90ms scale-pop (`0.85 → 1`), not a fade. It should feel like a mark landing. |
-| Presence dot appears | 120ms ease-in fade + scale |
+| Presence stripe appears | 120ms ease-in fade + vertical scale, so a player arriving in a cell grows into their share of it |
 | Modal opens | 160ms fade + 4px rise |
 | Switch flips | 90ms slide of the knob, borrowing `--motion-mark`. A switch that teleports reads as a redraw rather than as a thing you moved. |
 | Everything else | none |

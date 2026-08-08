@@ -57,7 +57,9 @@ described.
 
 - **The catalog now grows with the bank.** Four minis is nothing; a thousand crosswords with titles
   and authors is a payload on every join, sent to every player including the ones who cannot start
-  anything. There is no pagination and no search, and at some size there will have to be.
+  anything. There is no pagination and no search, and at some size there will have to be. *(Filters
+  landed 2026-08-07 and do not touch this: they narrow what is drawn, client-side, out of a catalog
+  that was sent whole.)*
 - Two picker shapes is more UI than one, and the seam between them is a property test — `puzzles`
   present or absent — which is the kind of implicit contract that rots if a third provider kind ever
   appears.
@@ -76,6 +78,16 @@ as a specimen of a class, which is exactly what a crossword is not.
 pure clutter at four, and it would have to be built now to be built at all. The list is the thing
 that has to exist; filtering it is a real feature to add when there is enough content to need it, and
 adding it later costs nothing that adding it now saves.
+
+> **Adopted, 2026-08-07.** A bank with two sizes and three difficulties in it made the list worth
+> narrowing, and adding the filters cost what this paragraph predicted it would: a component change
+> and nothing else. The clutter objection was answered rather than overruled — **a filter row is
+> drawn only where the bank has more than one value behind it**, so the four-mini case this
+> paragraph was written about still shows a list and nothing above it. Two things came with the
+> filters that are worth naming: an option that would empty the list is **disabled**, which is what
+> makes an empty list unreachable and keeps Start from pointing at a card nobody can see; and the
+> card now states its **difficulty**, which this ADR claimed it did and it did not — with a filter
+> narrowing on it, the omission stopped being cosmetic. See [design-spec.md §4](../design-spec.md#4-the-game-screen).
 
 **Give every type a list, generating a few sudokus up front to populate it.** Makes the interface
 uniform by making the generator worse — it would have to produce puzzles nobody asked for, hold them,

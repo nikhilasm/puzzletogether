@@ -46,7 +46,13 @@ export default defineConfig({
     webServer: {
         command: 'npm run build && node server/index.js',
         url: BASE_URL,
-        env: { PORT: String(PORT) },
+        /*
+         * The tracked bank only, never the gitignored overlay beside it. What `data/crosswords-local/`
+         * holds is whatever a developer last imported, so a suite that reads it asserts against a
+         * different bank on every machine — and the picker's own tests are about what the bank
+         * contains.
+         */
+        env: { PORT: String(PORT), PT_BANK_DIRS: 'data/crosswords' },
         reuseExistingServer: false,
         timeout: 120_000,
     },

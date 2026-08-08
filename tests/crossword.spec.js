@@ -424,6 +424,70 @@ test.describe('crossword', () => {
         }
     });
 
+    /**
+     * A solved grid is still a grid people read back — whose word was that, what was 4 Down — and
+     * every way of moving around it has to keep working after the last letter lands. Only *writing*
+     * stops.
+     *
+     * Worth a browser test rather than a unit one because the bug it guards was three separate
+     * controls going quiet at once, each for the same reason: an `interactive` flag that meant "the
+     * room is still taking input" being read as "this control does anything at all".
+     */
+    test('a finished grid can still be navigated, but not typed into', async ({ page }) => {
+        const id = await boardOf(page).evaluate((board) => board.doc.id);
+        const { solution } = JSON.parse(readFileSync(`${BANK}/${id}.json`, 'utf8'));
+
+        // Typed square by square rather than word by word, so no assumption about where the cursor
+        // lands after a letter is baked into the solve.
+        for (const [idx, letter] of solution.entries()) {
+            if (letter == null) continue;
+            await page.locator(`pt-cell >> nth=${idx}`).click();
+            await page.keyboard.press(`Key${letter}`);
+        }
+
+        const modal = page.locator('pt-congrats-modal dialog');
+        await expect(modal).toBeVisible({ timeout: 15_000 });
+        await modal.locator('button', { hasText: 'See the grid' }).click();
+        await expect(modal).toBeHidden();
+
+        // Tapping a square still moves the cursor.
+        await page.locator('pt-cell >> nth=1').click();
+        expect((await cursorOf(page)).cell).toBe(1);
+
+        /*
+         * Arrows still steer, and this one also settles which way the cursor points — Up in the top
+         * row can only turn it, never move it, so the cursor faces Down afterwards whichever way the
+         * solve happened to leave it.
+         */
+        await page.keyboard.press('ArrowUp');
+        expect(await cursorOf(page)).toMatchObject({ cell: 1, direction: 'D' });
+        await expect(page.locator('pt-clue-bar .num')).toHaveText('1D');
+
+        // Re-tapping still turns it, which on a touch screen is the only way to turn it at all.
+        await page.locator('pt-cell >> nth=1').click();
+        expect((await cursorOf(page)).direction).toBe('A');
+
+        // And so do the other keys that only move: Space turns, Tab changes entry.
+        await page.keyboard.press('Space');
+        expect((await cursorOf(page)).direction).toBe('D');
+        await page.keyboard.press('Space');
+        await page.keyboard.press('ArrowRight');
+        expect((await cursorOf(page)).cell).toBe(2);
+        await page.keyboard.press('Tab');
+        expect((await cursorOf(page)).entry).toMatchObject({ num: 1, dir: 'D' });
+
+        // And the clue bar, which is the only way to walk the clues on a phone.
+        await page.locator('pt-clue-bar .clue').click();
+        expect((await cursorOf(page)).entry).toMatchObject({ num: 2, dir: 'D' });
+
+        // Writing is what stopped. The grid keeps the answer it was solved with.
+        const before = await valuesOf(page);
+        await page.locator('pt-cell >> nth=1').click();
+        await page.keyboard.press('KeyQ');
+        await page.keyboard.press('Backspace');
+        expect(await valuesOf(page)).toEqual(before);
+    });
+
     test('two players see each other typing into the same grid', async ({ page, browser }) => {
         const code = await page.evaluate(() => window.location.hash.split('/').pop());
         const other = await browser.newPage();
