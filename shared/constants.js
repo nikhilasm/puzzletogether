@@ -4,11 +4,19 @@
  * Runs in both environments, so nothing here may touch `window`, `process`, or the filesystem.
  */
 
-/** Shown in the footer. Keep in step with `package.json`'s `version`. */
+/** Shown in the About dialog. Keep in step with `package.json`'s `version`. */
 export const APP_VERSION = '0.1.0';
 
-/** Repository link in the footer. */
+/** Repository link in the footer, and in About. */
 export const GITHUB_URL = 'https://github.com/nmurthy99/puzzletogether';
+
+/**
+ * Where "Report an issue" goes.
+ *
+ * Derived from `GITHUB_URL` rather than written out, so moving the repository moves both links.
+ * `/issues/new` rather than `/issues`: somebody who has clicked this has already decided.
+ */
+export const ISSUES_URL = `${GITHUB_URL}/issues/new`;
 
 /** Number of distinct player identities. Colour hexes live in `client/styles/tokens.css`. */
 export const PLAYER_COLOR_COUNT = 10;

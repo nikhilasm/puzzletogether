@@ -9,6 +9,7 @@
 import { LitElement, css, html, nothing } from 'lit';
 
 import { controls } from '../styles/controls.js';
+import { closeIcon, iconStyle, puzzlesIcon, startIcon } from '../ui/icons.js';
 
 import '../ui/pt-puzzle-picker.js';
 
@@ -31,6 +32,7 @@ export class PtCongratsModal extends LitElement {
 
     static styles = [
         controls,
+        iconStyle,
         css`
             /*
              * As wide as Puzzle Select's column, because it holds the same picker and "start
@@ -48,12 +50,26 @@ export class PtCongratsModal extends LitElement {
                 box-shadow: var(--shadow-modal);
             }
 
+            /*
+             * The one modal in the app allowed to be seen arriving.
+             *
+             * Everything else opens as quietly as it can, because a confirm dialog is an
+             * interruption. This one is the room finishing something together, and it was sharing
+             * the confirm dialog's 160ms of a 4px drift — restrained to the point that people
+             * reported it as appearing with no animation at all.
+             *
+             * It now rises further, scales up from just under full size, and takes --motion-celebrate
+             * to do it. The easing overshoots slightly at the end, which is the whole of the
+             * celebration: a panel that settles rather than stops reads as arriving rather than as
+             * being switched on. Both tokens collapse to 0ms under prefers-reduced-motion.
+             */
             dialog[open] {
-                animation: rise var(--motion-modal) ease-out;
+                animation: celebrate var(--motion-celebrate) cubic-bezier(0.2, 0.9, 0.3, 1.25);
             }
 
             dialog::backdrop {
                 background: color-mix(in srgb, var(--ink) 40%, transparent);
+                animation: fade var(--motion-celebrate) ease-out;
             }
 
             h2 {
@@ -82,26 +98,49 @@ export class PtCongratsModal extends LitElement {
                 border-top: var(--border);
             }
 
+            /*
+             * Every way out of this modal, in one row.
+             *
+             * They were two rows — the host's two choices, then "See the grid" set apart below on
+             * the reasoning that dismissing is what you do *after* deciding. True of the order, not
+             * of the placement: three buttons under one picker are three answers to one question,
+             * and the odd one out sitting alone read as a footer to a dialog that has no footer.
+             * The order still carries the argument, since it is last.
+             *
+             * It wraps rather than shrinking, because the modal is as narrow as 320px on a phone and
+             * three labelled buttons do not fit that.
+             */
             .buttons {
                 display: flex;
                 flex-wrap: wrap;
                 gap: var(--space-3);
                 justify-content: center;
-            }
-
-            /* Last, and quiet: leaving the modal is what you do after deciding what comes next. */
-            .dismiss {
                 margin-top: var(--space-4);
             }
 
-            @keyframes rise {
+            .buttons button {
+                display: inline-flex;
+                gap: var(--space-2);
+                align-items: center;
+            }
+
+            @keyframes celebrate {
                 from {
                     opacity: 0;
-                    transform: translateY(4px);
+                    transform: translateY(12px) scale(0.94);
                 }
                 to {
                     opacity: 1;
-                    transform: translateY(0);
+                    transform: translateY(0) scale(1);
+                }
+            }
+
+            @keyframes fade {
+                from {
+                    opacity: 0;
+                }
+                to {
+                    opacity: 1;
                 }
             }
         `,
@@ -156,10 +195,11 @@ export class PtCongratsModal extends LitElement {
                 <h2 id="congrats-heading">${solved.revealed ? 'Revealed' : 'Solved!'}</h2>
                 <p class="time">${formatElapsed(solved.elapsedMs)}</p>
                 <p class="detail">${this.#detailLine(solved)}</p>
-                ${this.isHost ? this.#renderHostControls() : this.#renderWaiting()}
-                <div class="buttons dismiss">
+                ${this.isHost ? this.#renderPicker() : this.#renderWaiting()}
+                <div class="buttons">
+                    ${this.isHost ? this.#renderHostButtons() : nothing}
                     <button type="button" @click=${() => this.#emit('pt-dismiss', {})}>
-                        See the grid
+                        ${closeIcon} See the grid
                     </button>
                 </div>
             </dialog>
@@ -173,8 +213,8 @@ export class PtCongratsModal extends LitElement {
         return `Solve streak ${solved.streak} · ${assists}`;
     }
 
-    /** What the host does next: another puzzle, or back to Puzzle Select for everyone. */
-    #renderHostControls() {
+    /** What the host chooses from: the same picker Puzzle Select shows, over the same catalog. */
+    #renderPicker() {
         return html`
             <hr class="divider" />
             <pt-puzzle-picker
@@ -185,18 +225,27 @@ export class PtCongratsModal extends LitElement {
                     this.spec = event.detail.spec;
                 }}
             ></pt-puzzle-picker>
-            <div class="buttons">
-                <button type="button" ?disabled=${this.busy} @click=${this.#onStartAnother}>
-                    ${this.busy ? 'finding a puzzle…' : 'Start another'}
-                </button>
-                <button
-                    type="button"
-                    ?disabled=${this.busy}
-                    @click=${() => this.#emit('pt-back-to-select', {})}
-                >
-                    Puzzle Select
-                </button>
-            </div>
+        `;
+    }
+
+    /**
+     * The host's two choices, which share the button row with everybody's way out.
+     *
+     * The icons are the ones these actions already wear on the game screen — Puzzle Select is the
+     * same four squares in both places, because it is the same action.
+     */
+    #renderHostButtons() {
+        return html`
+            <button type="button" ?disabled=${this.busy} @click=${this.#onStartAnother}>
+                ${startIcon} ${this.busy ? 'finding a puzzle…' : 'Start another'}
+            </button>
+            <button
+                type="button"
+                ?disabled=${this.busy}
+                @click=${() => this.#emit('pt-back-to-select', {})}
+            >
+                ${puzzlesIcon} Puzzle Select
+            </button>
         `;
     }
 

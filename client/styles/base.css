@@ -55,6 +55,7 @@ pt-app {
         --motion-mark: 0ms;
         --motion-presence: 0ms;
         --motion-modal: 0ms;
+        --motion-celebrate: 0ms;
     }
 
     *,

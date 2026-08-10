@@ -37,6 +37,17 @@
     --wrong: #c4442e;
 
     /*
+     * A control that takes something away — Leave room, and nothing else yet.
+     *
+     * Deliberately its own token rather than `--wrong`, which it currently matches to the byte.
+     * `--wrong` means *this answer is incorrect*: it is grid feedback, it is transient, and
+     * brand.md §4 already refuses it for the caution triangle on the same grounds. Leaving a room
+     * is not a mistake, so borrowing the colour that says "mistake" would make the two indivisible
+     * the first time either wants to move. One of them will.
+     */
+    --danger: #c4442e;
+
+    /*
      * Player identities. Values are per theme: a colour dark enough to clear 4.5:1 on cream is too
      * dark to clear it on charcoal, so one set cannot serve both (see the contrast test).
      */
@@ -61,6 +72,18 @@
      * Only the cursor. A player's colour still never touches an entered value (brand.md §3).
      */
     --focus-color: var(--accent);
+
+    /*
+     * The wash behind a square the puzzle came with, rather than one a player filled in.
+     *
+     * Mixed from `--ink`, which means it needs no per-theme value to do the right thing: on cream
+     * `--ink` is near-black so the square goes very slightly darker, and on charcoal `--ink` is the
+     * warm off-white so it goes very slightly lighter. Both readings are "this one was printed".
+     *
+     * It carries no meaning on its own — the weight of the digit is what says "given" (brand.md §3),
+     * and this only has to separate the printed squares from the empty ones at a glance.
+     */
+    --given-fill: color-mix(in srgb, var(--ink) 5%, transparent);
 
     /*
      * Shape and line. Chrome is a softened rectangle and the puzzle is square — `--radius-round` is
@@ -132,6 +155,16 @@
     --motion-mark: 90ms;
     --motion-presence: 120ms;
     --motion-modal: 160ms;
+
+    /*
+     * The one arrival that is allowed to be seen.
+     *
+     * Every other modal in the app opens as quietly as it can — a confirm dialog is an interruption
+     * and should not celebrate itself. The congrats modal is the opposite: it is the room finishing
+     * something together, and 160ms of a 4px drift was so restrained that people reported it as
+     * appearing with no animation at all. Longer, and with a scale, so the panel reads as arriving.
+     */
+    --motion-celebrate: 260ms;
 }
 
 /*
@@ -149,6 +182,10 @@
     --pencil: #7fa3e8;
     --correct: #6fbf8b;
     --wrong: #e88a76;
+    --danger: #e88a76;
+
+    /* A touch stronger on charcoal: the same 5% of a light ink reads fainter than 5% of a dark one. */
+    --given-fill: color-mix(in srgb, var(--ink) 8%, transparent);
 
     --player-0: #da5858;
     --player-1: #bc63a7;

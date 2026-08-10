@@ -51,7 +51,7 @@ const THEMES = {
 };
 
 /** Foreground tokens that carry body-size text and so owe the full 4.5:1. */
-const BODY_TOKENS = ['ink', 'graphite', 'accent-text', 'pencil', 'correct', 'wrong'];
+const BODY_TOKENS = ['ink', 'graphite', 'accent-text', 'pencil', 'correct', 'wrong', 'danger'];
 
 describe.each(Object.entries(THEMES))('%s theme', (_name, tokens) => {
     it('defines every colour token', () => {

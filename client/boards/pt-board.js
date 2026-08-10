@@ -102,6 +102,19 @@ export class PtBoard extends LitElement {
                 border-radius: var(--radius-grid);
             }
 
+            /*
+             * The columns are declared inline, per puzzle, as minmax(0, 1fr) — never a bare 1fr.
+             *
+             * A bare 1fr is minmax(auto, 1fr), and that auto minimum is the track's *min-content*
+             * size: whatever the widest unbreakable thing in the column happens to be. Every cell
+             * holds one character, so for three phases that was the same for every column and the
+             * distinction never showed. A crossword rebus square holding eight characters is the
+             * first content wide enough to move it, and it moved everything: the column grew to fit
+             * the word, the grid grew with it, and every row visibly stepped out of alignment.
+             *
+             * The clue gutters have always used minmax(0, 1fr) for the same reason. This is the grid
+             * catching up with its own gutters.
+             */
             .grid {
                 display: grid;
                 touch-action: manipulation;
@@ -470,7 +483,7 @@ export class PtBoard extends LitElement {
                         role="grid"
                         tabindex="0"
                         aria-label="${this.doc.type} puzzle, ${rows} by ${cols}"
-                        style="grid-template-columns: repeat(${cols}, 1fr);"
+                        style="grid-template-columns: repeat(${cols}, minmax(0, 1fr));"
                         @keydown=${this.#onKeyDown}
                         @pointerdown=${this.#onPointerDown}
                     >

@@ -14,8 +14,14 @@
  *
  * Two slots, both above the keys, because what goes in them differs per type and this element has no
  * business knowing which type it is serving: `clue` for the strip a crossword shows, and `actions`
- * for its one setting — Notes, a brush, Rebus. Erase and Undo are rendered here instead of slotted
- * because they mean the same thing in every puzzle that has keys at all.
+ * for its one setting — Notes, a brush, Rebus. Erase, Backspace, and Undo are rendered here instead
+ * of slotted because they mean the same thing in every puzzle that has keys at all.
+ *
+ * **Every control in the bar carries a one-word label under its icon**, and the bar is always one
+ * row. ADR-0011 took the words off on the theory that it would buy vertical space; it did not. The
+ * panel's height is set by the rows of keys below the bar, so a shorter bar just left a gap — the
+ * wrapping the words were blamed for was the bar being laid out to shrink-to-fit rather than to
+ * share the row. Stacking the label under the icon fixes the wrap and keeps the word.
  *
  * It also reports its own height, since it is out of the flow and so cannot push the page down
  * itself; the game screen keeps a spacer that tall at the foot of the page.
@@ -23,7 +29,7 @@
 
 import { LitElement, css, html, nothing } from 'lit';
 
-import { focusRing } from '../styles/controls.js';
+import { actionButton, focusRing } from '../styles/controls.js';
 
 import { backspaceIcon, eraseIcon, iconStyle, undoIcon } from './icons.js';
 
@@ -50,6 +56,7 @@ export class PtKeypad extends LitElement {
     };
 
     static styles = [
+        actionButton,
         focusRing,
         iconStyle,
         css`
@@ -87,16 +94,20 @@ export class PtKeypad extends LitElement {
             }
 
             /*
-             * The button bar: this puzzle's setting, then the two actions every keyed puzzle has.
+             * The button bar: this puzzle's setting, then the actions every keyed puzzle has.
              *
-             * It wraps rather than shrinking, because a 320px phone cannot fit a switch and two
-             * labelled buttons on one line and a squeezed tap target is worse than a second row.
+             * **One row, always, and no wrapping.** The controls share the row rather than each
+             * taking the width of its own word, so the bar's height does not depend on how long the
+             * longest label happens to be — which is what used to make it wrap. Four of them is the
+             * most any type asks for, and four fit 320px with room over.
+             *
+             * align-items: stretch so a two-line label somewhere would not leave the others short;
+             * nothing here has one, and that is a property worth not relying on.
              */
             .actions {
                 display: flex;
-                flex-wrap: wrap;
                 gap: var(--space-2);
-                align-items: center;
+                align-items: stretch;
                 justify-content: center;
             }
 
@@ -107,39 +118,38 @@ export class PtKeypad extends LitElement {
             }
 
             /*
-             * The letter rows, staggered.
+             * The letter rows: every key the same width, every row centred under the one above.
              *
-             * Twenty half-columns rather than ten whole ones, so the nine-key row can start half a
-             * key in — which is what makes three rows of different lengths read as a keyboard rather
-             * than as three unrelated rows of buttons. Backspace takes the width the last row has
-             * spare, which is where a phone keyboard puts it too.
+             * This was a twenty-half-column grid, so that a nine-key row could start half a key in.
+             * Two things were wrong with it. grid-column: span 2 followed by grid-column-start: 2
+             * on the row's first key **overrode the span** — grid-column sets start *and* end, and
+             * naming the start afterwards left the end at auto, so A and Z came out one column
+             * wide where every other key was two. And a row shorter than the grid could only ever be
+             * left-aligned within it: with Backspace gone from the bottom row, that row's seven keys
+             * sat well left of centre.
+             *
+             * Flex fixes both, and gives up nothing the grid was buying. Each key takes exactly the
+             * width it would have had in a ten-key row — the arithmetic below is that row solved for
+             * one key — and justify-content: center centres the shorter rows against it. The rows
+             * no longer line up on a common column grid, which is what a real keyboard does too.
              */
             .letters {
-                display: grid;
+                display: flex;
+                flex-direction: column;
                 gap: var(--space-1);
             }
 
             .row {
-                display: grid;
-                grid-template-columns: repeat(20, minmax(0, 1fr));
+                display: flex;
                 gap: var(--space-1);
+                justify-content: center;
             }
 
             .row button {
-                grid-column: span 2;
+                flex: 0 1 calc((100% - 9 * var(--space-1)) / 10);
+                min-width: 0;
                 padding: var(--space-2) 0;
                 font-size: var(--text-base);
-            }
-
-            .row:not(:first-child) button:first-child {
-                grid-column-start: 2;
-            }
-
-            .row .wide {
-                display: flex;
-                grid-column: span 4;
-                align-items: center;
-                justify-content: center;
             }
 
             button {
@@ -154,15 +164,6 @@ export class PtKeypad extends LitElement {
                 font-variant-numeric: tabular-nums;
                 cursor: pointer;
                 touch-action: manipulation;
-            }
-
-            .actions button {
-                display: flex;
-                gap: var(--space-2);
-                align-items: center;
-                justify-content: center;
-                min-width: 5rem;
-                font-size: var(--text-base);
             }
 
             button:hover:not(:disabled) {
@@ -260,8 +261,14 @@ export class PtKeypad extends LitElement {
      * A puzzle with no keys at all still gets the button bar, because **Undo belongs to every type**.
      * Erase does not: it clears the selected square, which is the counterpart to pressing a key into
      * it, so a type with no keys has no use for it — nonogram erases by dragging with its erase brush,
-     * and a second Erase here would be a different gesture wearing the same word. Nor does a
-     * crossword, whose Backspace key is that control and sits on the pad where a keyboard puts it.
+     * and a second Erase here would be a different gesture wearing the same word.
+     *
+     * **A crossword gets Backspace in the bar instead of Erase**, and it is in the bar rather than on
+     * the pad. It used to take the corner of the bottom letter row, which is where a phone keyboard
+     * puts it — but a phone keyboard's ⌫ is a key among keys, and ours is not: it clears a square and
+     * steps back along the entry, which is the same kind of thing Erase and Undo are and a different
+     * kind of thing from pressing a letter. Moving it up puts every control that acts on a square in
+     * one place and leaves the pad as nothing but letters.
      */
     render() {
         const letters = this.layout === 'letters';
@@ -272,29 +279,50 @@ export class PtKeypad extends LitElement {
                 <slot name="clue"></slot>
                 <div class="actions">
                     <slot name="actions"></slot>
-                    ${
-                        keys.length > 0 && !letters
-                            ? html`<button
-                                  type="button"
-                                  ?disabled=${this.disabled}
-                                  @pointerdown=${this.#onPointerDown}
-                                  @click=${() => this.#emit('pt-keypad-erase', {})}
-                              >
-                                  ${eraseIcon} Erase
-                              </button>`
-                            : nothing
-                    }
-                    <button
-                        type="button"
-                        ?disabled=${this.disabled || !this.canUndo}
-                        @pointerdown=${this.#onPointerDown}
-                        @click=${() => this.#emit('pt-keypad-undo', {})}
-                    >
-                        ${undoIcon} Undo
-                    </button>
+                    ${keys.length > 0 && !letters ? this.#renderErase() : nothing}
+                    ${this.#renderUndo()} ${letters ? this.#renderBackspace() : nothing}
                 </div>
                 ${letters ? this.#renderLetters() : this.#renderDigits(keys)}
             </div>
+        `;
+    }
+
+    /**
+     * Undo, which every type has and which is therefore the one fixed point in the bar.
+     *
+     * A digit puzzle ends the row with it; a crossword puts Backspace after it. Backspace is the
+     * one control here a solver reaches for *mid-word*, so it sits at the end of the row nearest
+     * the letters it corrects, and Undo — pressed occasionally, and about the puzzle rather than
+     * about the square — moves inboard.
+     */
+    #renderUndo() {
+        return html`
+            <button
+                type="button"
+                class="action"
+                aria-label="Undo"
+                ?disabled=${this.disabled || !this.canUndo}
+                @pointerdown=${this.#onPointerDown}
+                @click=${() => this.#emit('pt-keypad-undo', {})}
+            >
+                ${undoIcon}<span class="action-label">Undo</span>
+            </button>
+        `;
+    }
+
+    /** Clears the selected square outright — the counterpart to pressing a key into it. */
+    #renderErase() {
+        return html`
+            <button
+                type="button"
+                class="action"
+                aria-label="Erase"
+                ?disabled=${this.disabled}
+                @pointerdown=${this.#onPointerDown}
+                @click=${() => this.#emit('pt-keypad-erase', {})}
+            >
+                ${eraseIcon}<span class="action-label">Erase</span>
+            </button>
         `;
     }
 
@@ -311,7 +339,7 @@ export class PtKeypad extends LitElement {
     }
 
     /**
-     * The three QWERTY rows, with Backspace on the end of the last.
+     * The three QWERTY rows — letters and nothing else, since Backspace moved up to the button bar.
      *
      * Rows are filtered by the puzzle's alphabet rather than drawn as written, so a key the puzzle
      * would refuse is never offered. For every crossword we serve that filter is the identity.
@@ -324,12 +352,7 @@ export class PtKeypad extends LitElement {
 
         return html`<div class="letters" role="group" aria-label="letters">
             ${rows.map(
-                (row, index) => html`
-                    <div class="row">
-                        ${row.map((key) => this.#renderKey(key))}
-                        ${index === rows.length - 1 ? this.#renderBackspace() : nothing}
-                    </div>
-                `,
+                (row) => html`<div class="row">${row.map((key) => this.#renderKey(key))}</div>`,
             )}
         </div>`;
     }
@@ -359,13 +382,13 @@ export class PtKeypad extends LitElement {
         return html`
             <button
                 type="button"
-                class="wide"
+                class="action"
                 aria-label="Backspace"
                 ?disabled=${this.disabled}
                 @pointerdown=${this.#onPointerDown}
                 @click=${() => this.#emit('pt-keypad-backspace', {})}
             >
-                ${backspaceIcon}
+                ${backspaceIcon}<span class="action-label">Backspace</span>
             </button>
         `;
     }

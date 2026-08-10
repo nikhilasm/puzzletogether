@@ -15,7 +15,7 @@ import { effectiveValue, isEditable } from '../../shared/puzzle-doc.js';
 import { boardFor } from '../boards/registry.js';
 import { roomStore } from '../store/room-store.js';
 import { StoreController } from '../store/store-controller.js';
-import { controls } from '../styles/controls.js';
+import { actionButton, controls, dangerButton } from '../styles/controls.js';
 import {
     checkIcon,
     iconStyle,
@@ -33,7 +33,6 @@ import '../ui/pt-clue-bar.js';
 import '../ui/pt-clue-list.js';
 import '../ui/pt-keypad.js';
 import '../ui/pt-mode-toggle.js';
-import '../ui/pt-switch.js';
 import '../ui/pt-timer.js';
 
 /** How many of each value the grid already holds, so the keypad can dim what is used up. */
@@ -56,7 +55,9 @@ export class PtGame extends LitElement {
     };
 
     static styles = [
+        actionButton,
         controls,
+        dangerButton,
         iconStyle,
         css`
             :host {
@@ -87,33 +88,6 @@ export class PtGame extends LitElement {
                 margin: 0 auto var(--space-6);
             }
 
-            /*
-             * The crossword's All clues button, which sits in the panel's button bar beside the
-             * Rebus switch.
-             *
-             * Wordless, so it matches the switch's height rather than its width and leaves the bar
-             * room for both on a 320px screen. It is square and thumb-sized, which is the
-             * compensation for being an icon alone (brand.md §4).
-             */
-            .tool {
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                width: 2.75rem;
-                min-height: 2.75rem;
-                padding: 0;
-                border: var(--border);
-                border-radius: var(--radius-control);
-                background: var(--paper-raised);
-                color: var(--ink);
-                cursor: pointer;
-                touch-action: manipulation;
-            }
-
-            .tool:hover:not(:disabled) {
-                border-color: var(--accent);
-            }
-
             .controls {
                 display: flex;
                 flex-direction: column;
@@ -122,12 +96,20 @@ export class PtGame extends LitElement {
             }
 
             /*
-             * Everything that acts on the puzzle as a whole, in one row under a rule.
+             * Everything that acts on the puzzle or the room, in one row under a rule.
              *
-             * Erase and Undo live on the keypad because they act on the cell you are in; Check,
-             * Reveal, and Back to Puzzle Select act on the room's puzzle, and two of the three are
-             * host-only. Keeping them apart is what stops a player reaching for Undo and finding
-             * Reveal. The rule is the separation — a border, not a shadow (brand.md §1).
+             * Erase and Undo live on the keypad because they act on the cell you are in; Puzzle
+             * Select, Check, Reveal, and Leave room act on the room's puzzle or on your seat in it,
+             * and two of them are host-only. Keeping them apart is what stops a player reaching for
+             * Undo and finding Reveal. The rule is the separation — a border, not a shadow
+             * (brand.md §1).
+             *
+             * **Leave room is the last of them rather than a block of its own.** It used to sit
+             * below at a smaller size, on the argument that leaving is not what you came here to do
+             * — but a control set apart and shrunk reads as an afterthought rather than as a quiet
+             * one, and it was the only button on the screen at its own size. It keeps its place at
+             * the end of the reading order and says what it is with colour instead, which is the
+             * channel that does not cost it a tap target.
              */
             .puzzle-actions {
                 display: flex;
@@ -170,19 +152,6 @@ export class PtGame extends LitElement {
 
             .notice:not(:empty) {
                 margin-bottom: var(--space-3);
-            }
-
-            /* Same control, same place in the reading order, on both screens. */
-            .leave {
-                margin-top: var(--space-2);
-            }
-
-            .leave button {
-                display: inline-flex;
-                gap: var(--space-2);
-                align-items: center;
-                padding: var(--space-1) var(--space-4);
-                font-size: var(--text-sm);
             }
 
             @media (max-width: 480px) {
@@ -500,20 +469,15 @@ export class PtGame extends LitElement {
         }
 
         if (board.input === 'letters') {
+            // Clues leads the row. It is the only control here that does not change or clear a
+            // square — it opens the puzzle's other half — so it reads as the way *in* rather than as
+            // one more thing to do to the square you are on, and putting it first says so. Rebus,
+            // Backspace, and Undo follow, in the order the other types put their setting and their
+            // two corrections.
             return html`
-                <pt-switch
-                    slot="actions"
-                    label="Rebus"
-                    .checked=${state.rebus}
-                    .disabled=${!isPlaying}
-                    @pointerdown=${(event) => event.preventDefault()}
-                    @pt-switch-change=${(event) => roomStore.setRebus(event.detail.checked)}
-                >
-                    <span slot="icon">${rebusIcon}</span>
-                </pt-switch>
                 <button
                     slot="actions"
-                    class="tool"
+                    class="action"
                     type="button"
                     aria-label="All clues"
                     @pointerdown=${(event) => event.preventDefault()}
@@ -521,7 +485,18 @@ export class PtGame extends LitElement {
                         this.showingClues = true;
                     }}
                 >
-                    ${listIcon}
+                    ${listIcon}<span class="action-label">Clues</span>
+                </button>
+                <button
+                    slot="actions"
+                    class="action"
+                    type="button"
+                    aria-pressed=${state.rebus}
+                    ?disabled=${!isPlaying}
+                    @pointerdown=${(event) => event.preventDefault()}
+                    @click=${() => roomStore.setRebus(!state.rebus)}
+                >
+                    ${rebusIcon}<span class="action-label">Rebus</span>
                 </button>
             `;
         }
@@ -573,11 +548,12 @@ export class PtGame extends LitElement {
     }
 
     /**
-     * The puzzle-wide actions, then the way out of the room.
+     * The row of actions on the puzzle and on the room, under its rule.
      *
-     * The row renders only the actions this player actually has, and disappears entirely for a
-     * non-host in a room with checking switched off — an empty rule under the keypad would be a
-     * line drawn around nothing.
+     * The row renders only the actions this player actually has — a non-host in a room with
+     * checking switched off gets Leave room and nothing else. It no longer disappears, because
+     * Leave room is in it and every player has that: the rule is now always drawn, and it is always
+     * drawn around something.
      */
     #renderControls(state, isPlaying) {
         const settings = state.room?.settings ?? {};
@@ -587,49 +563,46 @@ export class PtGame extends LitElement {
 
         return html`
             <div class="controls">
-                ${
-                    canCheck || canReveal || canGoBack
-                        ? html`
-                              <div class="puzzle-actions">
-                                  ${
-                                      canGoBack
-                                          ? html`<button
-                                                type="button"
-                                                ?disabled=${this.busy}
-                                                @click=${() => void roomStore.backToSelect()}
-                                            >
-                                                ${puzzlesIcon} Puzzle Select
-                                            </button>`
-                                          : nothing
-                                  }
-                                  ${
-                                      canCheck
-                                          ? html`<button
-                                                type="button"
-                                                ?disabled=${this.busy}
-                                                @click=${() => void roomStore.check()}
-                                            >
-                                                ${checkIcon} Check
-                                            </button>`
-                                          : nothing
-                                  }
-                                  ${
-                                      canReveal
-                                          ? html`<button
-                                                type="button"
-                                                ?disabled=${this.busy}
-                                                @click=${() => {
-                                                    this.confirmingReveal = true;
-                                                }}
-                                            >
-                                                ${revealIcon} Reveal
-                                            </button>`
-                                          : nothing
-                                  }
-                              </div>
-                          `
-                        : nothing
-                }
+                <div class="puzzle-actions">
+                    ${
+                        canGoBack
+                            ? html`<button
+                                  type="button"
+                                  ?disabled=${this.busy}
+                                  @click=${() => void roomStore.backToSelect()}
+                              >
+                                  ${puzzlesIcon} Puzzle Select
+                              </button>`
+                            : nothing
+                    }
+                    ${
+                        canCheck
+                            ? html`<button
+                                  type="button"
+                                  ?disabled=${this.busy}
+                                  @click=${() => void roomStore.check()}
+                              >
+                                  ${checkIcon} Check
+                              </button>`
+                            : nothing
+                    }
+                    ${
+                        canReveal
+                            ? html`<button
+                                  type="button"
+                                  ?disabled=${this.busy}
+                                  @click=${() => {
+                                      this.confirmingReveal = true;
+                                  }}
+                              >
+                                  ${revealIcon} Reveal
+                              </button>`
+                            : nothing
+                    }
+                    <button class="danger leave" type="button" @click=${this.#onLeave}>
+                        ${leaveIcon} Leave Room
+                    </button>
+                </div>
                 ${
                     state.assists > 0
                         ? html`<p class="assists">
@@ -637,10 +610,6 @@ export class PtGame extends LitElement {
                           </p>`
                         : nothing
                 }
-
-                <div class="leave">
-                    <button type="button" @click=${this.#onLeave}>${leaveIcon} Leave room</button>
-                </div>
             </div>
         `;
     }

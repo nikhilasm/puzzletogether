@@ -239,6 +239,39 @@ test.describe('crossword', () => {
     });
 
     /**
+     * Crossword's button bar: Clues, Rebus, Backspace, Undo — one row, in that order.
+     *
+     * Clues leads because it is the only one that does not act on the square you are on; it opens
+     * the puzzle's other half. Backspace has moved off the bottom letter row and up here, where the
+     * other controls that clear a square already were — a phone keyboard's ⌫ is a key among keys and
+     * ours is not, and having it in the corner of the pad was borrowing a shape without the reason
+     * for it.
+     */
+    test('the button bar is Clues, Rebus, Undo, Backspace, in one row', async ({ page }) => {
+        const bar = page.locator('pt-keypad .action');
+        await expect(bar).toHaveCount(4);
+
+        const seen = await bar.evaluateAll((els) =>
+            els.map((el) => ({
+                label: el.querySelector('.action-label').textContent.trim(),
+                top: Math.round(el.getBoundingClientRect().top),
+                left: Math.round(el.getBoundingClientRect().left),
+            })),
+        );
+
+        expect(new Set(seen.map((one) => one.top)).size, 'one row').toBe(1);
+        expect(seen.sort((a, b) => a.left - b.left).map((one) => one.label)).toEqual([
+            'Clues',
+            'Rebus',
+            'Undo',
+            'Backspace',
+        ]);
+
+        // Backspace is no longer among the letters.
+        await expect(page.locator('pt-keypad .letters [aria-label="Backspace"]')).toHaveCount(0);
+    });
+
+    /**
      * The keys are QWERTY, in three staggered rows, because that is the arrangement a solver's thumbs
      * already know from every phone they have ever held — which is the one thing a pad of ours can
      * borrow from the keyboard it replaces (ADR-0010).
@@ -255,8 +288,52 @@ test.describe('crossword', () => {
         expect(rows).toHaveLength(3);
         expect(rows[0].join('')).toBe('QWERTYUIOP');
         expect(rows[1].join('')).toBe('ASDFGHJKL');
-        // The last row is the remaining letters plus Backspace, which draws no text of its own.
+        // Letters only: Backspace moved up to the button bar with the other controls that act on a
+        // square rather than putting something in it.
         expect(rows[2].join('')).toBe('ZXCVBNM');
+    });
+
+    /**
+     * Every key the same width, and every row centred against the ten-key row above.
+     *
+     * Neither was true. The rows were a twenty-half-column grid, and `grid-column: span 2` followed
+     * by `grid-column-start: 2` on the first key of rows two and three left the end at `auto` — so A
+     * and Z came out a single column wide, visibly narrower than every other key. And a short row
+     * could only be left-aligned in the grid, which the bottom row made obvious once Backspace left
+     * it.
+     */
+    test('the letter keys are all one width, and the short rows are centred', async ({ page }) => {
+        const rows = await page.locator('pt-keypad .row').evaluateAll((elements) =>
+            elements.map((row) => {
+                const keys = [...row.querySelectorAll('button')];
+                const box = row.getBoundingClientRect();
+                return {
+                    keys: keys.map((key) => ({
+                        label: key.textContent.trim(),
+                        width: key.getBoundingClientRect().width,
+                    })),
+                    keyCentre:
+                        (keys[0].getBoundingClientRect().left +
+                            keys.at(-1).getBoundingClientRect().right) /
+                        2,
+                    rowCentre: box.left + box.width / 2,
+                };
+            }),
+        );
+
+        const keys = rows.flatMap((row) => row.keys);
+        const widths = keys.map((key) => key.width);
+        expect(Math.max(...widths) - Math.min(...widths), 'one width').toBeLessThan(1.5);
+
+        // A and Z specifically, since they are the two the old rule got wrong.
+        for (const label of ['A', 'Z']) {
+            const key = keys.find((one) => one.label === label);
+            expect(Math.abs(key.width - Math.max(...widths)), label).toBeLessThan(1.5);
+        }
+
+        for (const row of rows) {
+            expect(Math.abs(row.keyCentre - row.rowCentre), 'centred row').toBeLessThan(1.5);
+        }
     });
 
     test('Tab moves to the next entry and lands on an empty square', async ({ page }) => {
@@ -331,6 +408,58 @@ test.describe('crossword', () => {
         const cursor = await alpha(1);
         const entry = await alpha(2);
         expect(cursor).toBeGreaterThan(entry * 3);
+    });
+
+    /**
+     * The clue dialog's own layout, which had four things wrong with it at once.
+     *
+     * The worst was invisible in the source: both the head and the columns were padded with
+     * `var(--space-5)`, and the scale has no `--space-5` — it runs 1, 2, 3, 4, 6, 8, 12. An
+     * undefined custom property with no fallback makes the whole declaration invalid at
+     * computed-value time, so `padding` fell back to its initial `0` and the dialog had no inset at
+     * all. Nothing warns about this; the property simply is not there.
+     */
+    test('the clue dialog is evenly padded, unruled, and vertically centred', async ({ page }) => {
+        await page.locator('pt-cell >> nth=1').click();
+        await page.locator('pt-keypad [aria-label="All clues"]').click();
+
+        const dialog = page.locator('pt-clue-list dialog');
+        await expect(dialog).toBeVisible();
+
+        const layout = await dialog.evaluate((el) => {
+            const root = el.getRootNode();
+            const px = (value) => Number.parseFloat(value);
+            const head = root.querySelector('.head');
+            const lists = root.querySelector('.lists');
+            const column = root.querySelector('.column');
+            const close = root.querySelector('.close');
+            const button = root.querySelector('li button');
+            const num = button.querySelector('.num');
+            return {
+                headLeft: px(getComputedStyle(head).paddingLeft),
+                listsLeft: px(getComputedStyle(lists).paddingLeft),
+                headBorder: getComputedStyle(head).borderBottomWidth,
+                columnBorder: getComputedStyle(column).borderLeftWidth,
+                closeBorder: getComputedStyle(close).borderTopWidth,
+                buttonHeight: button.getBoundingClientRect().height,
+                numBox: num.getBoundingClientRect(),
+                buttonBox: button.getBoundingClientRect(),
+            };
+        });
+
+        // One inset, shared: the heading and the clues start on the same left edge.
+        expect(layout.headLeft).toBeGreaterThan(0);
+        expect(layout.listsLeft).toBe(layout.headLeft);
+
+        // No separating rules — not under the head, not between the columns, not round the close.
+        expect(layout.headBorder).toBe('0px');
+        expect(layout.columnBorder).toBe('0px');
+        expect(layout.closeBorder).toBe('0px');
+
+        // A one-line clue's text is centred in its row rather than sitting at the top of it.
+        const numCentre = layout.numBox.top + layout.numBox.height / 2;
+        const rowCentre = layout.buttonBox.top + layout.buttonBox.height / 2;
+        expect(Math.abs(numCentre - rowCentre)).toBeLessThan(layout.buttonHeight / 4);
     });
 
     /**
@@ -512,18 +641,18 @@ test.describe('crossword rebus', () => {
      * an ordinary `set` op carrying the whole value rather than as any new kind of edit.
      */
     /**
-     * Rebus is a switch in the panel's button bar, sitting with Notes and the brushes — every type's
-     * one setting in the same place (design-spec.md §4).
+     * Rebus is a toggle in the panel's button bar, sitting where Notes and the brushes sit in the
+     * other types — every type's one setting in the same place (design-spec.md §4).
      *
      * It is the *only* way to a rebus square on a touch screen: Shift is the desktop path, and a pad
-     * of ours has no Shift key to offer. That is why the switch has to hold its state visibly rather
-     * than being a press-and-forget button.
+     * of ours has no Shift key to offer. That is why it has to hold its state visibly rather than
+     * being a press-and-forget button — which is what `aria-pressed` and the accent wash are for.
      */
     async function turnOnRebus(page) {
-        const rebus = page.locator('pt-keypad pt-switch button');
-        await expect(rebus).toHaveText('Rebus');
+        const rebus = page.locator('pt-keypad .action', { hasText: 'Rebus' });
+        await expect(rebus).toHaveAttribute('aria-pressed', 'false');
         await rebus.click();
-        await expect(rebus).toHaveAttribute('aria-checked', 'true');
+        await expect(rebus).toHaveAttribute('aria-pressed', 'true');
     }
 
     test('holds a whole word in one square when Rebus is on', async ({ page }) => {
@@ -579,5 +708,52 @@ test.describe('crossword rebus', () => {
 
         await page.keyboard.press('Backspace');
         expect((await valuesOf(page))[1]).toBe('HAN');
+    });
+
+    /**
+     * A long rebus is clipped by its square and never widens it.
+     *
+     * Past about five characters the font-size hits its floor and the string is wider than the cell.
+     * It was supposed to clip — `overflow: hidden` and `max-width: 100%` were both already there —
+     * but the value is a flex item, and a flex item's `min-width` defaults to its min-content width,
+     * which for unbreakable text is the whole string. `min-width` beats `max-width`, so the span
+     * pushed its cell wider than every other cell and bent the entire grid: at eight characters the
+     * row visibly stepped out and every column crossing it went with it.
+     *
+     * Measured against the grid rather than against the cell, because that is where it showed.
+     */
+    test('a long rebus never widens its square or bends the grid', async ({ page }) => {
+        const rowGeometry = () =>
+            page.locator('pt-crossword-board').evaluate((board) => {
+                const cells = [...board.shadowRoot.querySelectorAll('pt-cell')];
+                const cols = board.doc.size.cols;
+                const widths = cells.map((cell) => cell.getBoundingClientRect().width);
+                const lefts = cells
+                    .filter((_cell, idx) => idx % cols === 0)
+                    .map((cell) => Math.round(cell.getBoundingClientRect().left));
+                return {
+                    spread: Math.max(...widths) - Math.min(...widths),
+                    // Every row starts at the same x, or the grid is not a grid.
+                    leftEdges: new Set(lefts).size,
+                    gridWidth: Math.round(board.shadowRoot.querySelector('.grid').scrollWidth),
+                    frameWidth: Math.round(
+                        board.shadowRoot.querySelector('.grid').getBoundingClientRect().width,
+                    ),
+                };
+            });
+
+        const before = await rowGeometry();
+
+        await turnOnRebus(page);
+        await page.locator('pt-cell >> nth=1').click();
+        await page.keyboard.type('ABCDEFGH');
+        expect((await valuesOf(page))[1]).toBe('ABCDEFGH');
+
+        const after = await rowGeometry();
+
+        expect(after.spread, 'every cell is still the same width').toBeLessThan(1.5);
+        expect(after.leftEdges, 'every row still starts at the same x').toBe(1);
+        expect(after.gridWidth, 'the grid did not grow').toBeLessThanOrEqual(after.frameWidth + 1);
+        expect(Math.abs(after.frameWidth - before.frameWidth)).toBeLessThan(1.5);
     });
 });

@@ -40,7 +40,7 @@ A warm editorial pairing, chosen specifically because neither face reads as a st
 | Wordmark, headings | **Fraunces** (variable) | Old-style serif with `SOFT` and `WONK` axes. The wordmark sets `WONK` on for a slightly off-kilter, hand-cut feel. The single biggest anti-generic lever in the system. |
 | UI text | **Karla** | Grotesque with idiosyncratic details — that `K`, the curved leg on `R`. Clean at small sizes, never anonymous. |
 | Room code, technical | **DM Mono** | The mock already sets the code in mono. DM Mono is light and unfussy rather than terminal-green coder-y. |
-| Grid numerals | **Karla 700**, `tabular-nums` | Large, bold, unambiguous. Deliberately *not* a handwriting face — charming for five seconds, illegible forever. The "pencil" idea is carried by the notes' color and weight instead. |
+| Grid numerals | **Karla 400 / 700**, `tabular-nums` | Large, unambiguous. Deliberately *not* a handwriting face — charming for five seconds, illegible forever. The "pencil" idea is carried by the notes' color and weight instead. Extrabold was loaded briefly for sudoku givens and taken out again: a fourth face for a difference nobody could point to, once the faint ground beneath them was doing the work. |
 
 Self-host all three via `@fontsource` (`@fontsource-variable/fraunces`, `@fontsource/karla`, `@fontsource/dm-mono`) — no third-party request, no CDN dependency, no FOUT tied to someone else's uptime.
 
@@ -93,6 +93,7 @@ Warm neutrals are what stop this reading as SaaS. **There is no cool gray anywhe
 --pencil:       #3767CC;  /* pencil marks only */
 --correct:      #2F7A4A;  /* check feedback */
 --wrong:        #C4442E;  /* check feedback — warm red, not fire-engine */
+--danger:       #C4442E;  /* a control that takes something away — Leave room */
 ```
 
 **Why two accents.** `#0E8FA8` is the mock's cyan and hits **3.6:1** on `--paper` — fine for the wordmark, the room code, focus rings, and borders (all ≥3:1 contexts) but short of the 4.5:1 that body-size text needs. `--accent-text` is the same hue darkened to **4.7:1** for links and small type. Use the right one; don't paper over the difference.
@@ -114,6 +115,7 @@ Not a gray inversion. The paper metaphor survives into dark as warm charcoal, so
 --pencil:       #7FA3E8;
 --correct:      #6FBF8B;
 --wrong:        #E88A76;
+--danger:       #E88A76;
 ```
 
 ### Measured contrast
@@ -129,6 +131,7 @@ Computed against each theme's `--paper`:
 | `--pencil` | 5.0:1 | 7.0:1 |
 | `--correct` | 5.0:1 | ≥5:1 |
 | `--wrong` | 4.7:1 | ≥5:1 |
+| `--danger` | 4.7:1 | ≥5:1 |
 
 ### Player palette
 
@@ -220,17 +223,28 @@ It should be invisible until you look for it. This is the detail that makes the 
 
 ### Icons
 
-Twelve of them, drawn as inline SVG in `client/ui/icons.js`: **erase, undo, pencil (Notes), sun, moon, leave, close (remove a player), check, reveal, puzzles (Puzzle Select), fill (the nonogram brush), warning (a size that will be cramped on a phone)**. Emoji stay banned — they arrive as someone else's artwork at someone else's weight, and they don't recolour. These are line drawings on a 24×24 box that inherit `currentColor` and `--stroke-icon` (1.5, the border weight), so an icon inside a disabled control greys out with it and neither theme needs a second asset.
+Eighteen of them, drawn as inline SVG in `client/ui/icons.js`: **erase, undo, pencil (Notes), sun, moon, leave, close (remove a player, and dismiss a dialog), check, reveal, puzzles (Puzzle Select), fill (the nonogram brush), warning (a size that will be cramped on a phone), next (the clue strip), rebus, backspace, list (Clues), info (About), start (a play triangle — "start another")**. Emoji stay banned — they arrive as someone else's artwork at someone else's weight, and they don't recolour. These are line drawings on a 24×24 box that inherit `currentColor` and `--stroke-icon` (1.5, the border weight), so an icon inside a disabled control greys out with it and neither theme needs a second asset.
 
 ```css
 --stroke-icon: 1.5;   /* the border weight, so icons and rules read as one hand */
 ```
 
-**An icon never carries meaning alone.** Erase, Undo, Leave room, the three puzzle actions, and the three nonogram brushes keep their words; the switch icons repeat a visible label. Two icons have no words beside them, and both put the meaning in the accessible name instead: the host's remove control, whose `aria-label` names the player it would remove, and the warning triangle on a cautioned size, whose option is named `20×20, the squares get very small on a phone`. Every icon is `aria-hidden`, because the control around it already has a name. A thirteenth should be a decision, not a reflex — the moment there are twenty, the page is a toolbar.
+**An icon never carries meaning alone.** Every control in the app has its word.
+
+> This was briefly not true. [ADR-0011](adr/0011-icons-in-the-panel-words-in-the-page.md) stripped the labels off the input panel to buy a row of vertical space, and [ADR-0012](adr/0012-a-label-under-every-icon.md) put them back a day later because the space was not there — the panel's height is set by the rows of keys below its button bar, so a shorter bar left a gap rather than a shorter panel. The bar had been wrapping because each button took the width of its own word; buttons that *share* the row fit whatever their labels say. **The rule survived a real attempt to spend it, which is worth more than it never having been questioned.**
+
+**What frequency decides is size and placement, not whether there is a word:**
+
+- **Pressed constantly** — Notes, Rebus, the three brushes, Erase, Undo, Clues, Backspace. These go in the pinned panel at thumb size, with the label **under** the icon rather than beside it. Stacked, four of them come to 236px against the 296px a 320px screen has to give; side by side they came to 330px and wrapped. The label is `--text-sm`, stepping to `--text-xs` below 30rem.
+- **Pressed once or twice** — Puzzle Select, Check, Reveal, Leave Room. These go down the page with the label beside the icon.
+
+Two icons still stand alone, and both are peripheral: the **footer's** theme and About controls, which sit on a line of their own with nothing to align to. They are 44px squares carrying `aria-label` and `title`, and `tests/game.spec.js` holds both facts. Two others have never had visible words and put the meaning in the accessible name instead — the host's remove control, whose `aria-label` names the player it would remove, and the warning triangle on a cautioned size, whose option is named `20×20, the squares get very small on a phone`.
+
+Every icon is `aria-hidden`, because the control around it already has a name. An eighteenth icon should be a decision, not a reflex — the moment there are thirty, the page is a toolbar.
 
 **A caution is not an error.** The warning triangle marks a choice that works and costs something, so it is `--graphite` like any other note and never `--wrong`, and it never disables what it marks. Red would say the host had made a mistake by looking at the option.
 
-**Two icons that mean different things must look different.** Puzzle Select is a set of four squares, not a back arrow, because Leave room sits a few pixels below it wearing an arrow already — two arrows in a column would say the two buttons do the same thing. Check is a tick rather than a magnifier for the opposite reason: it should look like the ticks and crosses it draws on the cells.
+**Two icons that mean different things must look different.** Puzzle Select is a set of four squares, not a back arrow, because Leave room sits in the same row wearing an arrow already — two arrows side by side would say the two buttons do the same thing. Check is a tick rather than a magnifier for the opposite reason: it should look like the ticks and crosses it draws on the cells.
 
 **The one solid icon is the one that draws something solid.** `fill` is a filled square where every other icon is a stroked outline, because the mark it paints into the grid is a filled square. An icon that shows the mark its button makes is worth breaking the set's one visual rule for; nothing else has earned it.
 
@@ -250,13 +264,25 @@ A nonogram cell holds a filled square or a cross, not a character, and both borr
 
 The clue gutters are `--graphite` and step down in size with the grid. They state the puzzle rather than being part of the picture, so the grid stays the loudest thing on the screen even when the clues outnumber it.
 
-### Controls: buttons versus switches
+### Controls: actions, settings, and the one that takes something away
 
-A **button** says *do this* — Check, Reveal, Start another. A **switch** says *this is how things are* — Notes, Dark theme. The distinction is worth keeping literal: switches are `role="switch"` with the state in the track, so you can read the setting without reading the label, and screen readers announce it as a state rather than an action. Both settle to `--radius-control`; only the track inside a switch is round.
+An **action** says *do this* — Check, Reveal, Start another. A **setting** says *this is how things are* — Notes, Rebus, a brush, Dark theme. The distinction is still literal in the markup: a setting carries `aria-pressed`, so screen readers announce it as a state rather than an action and you can read it without reading the label. Everything settles to `--radius-control`.
 
-An engaged switch borrows the same 16% accent wash a selected cell uses. It never fills with colour — colour belongs to people (principle 2).
+**A setting is a pressed button, not a switch.** → [ADR-0011](adr/0011-icons-in-the-panel-words-in-the-page.md)
 
-**The state lives in the track and nowhere else.** An engaged switch got an accent border as well, until the obvious happened: an accent frame on a control nobody was focusing read as a stuck focus ring, since accent-on-the-outside means *focused* everywhere else in the app. The knob had already said it. A second channel is worth it when the first is colour alone (see the taken swatches, which are greyed *and* struck); it is a liability when it collides with a meaning the same treatment already carries.
+Notes and Dark theme were `role="switch"` with a sliding knob in a round track through Phases 2–4, while the nonogram brushes were an `aria-pressed` group from the day they shipped — two accessibility patterns sitting side by side in the same button bar. The switch is what gave, because what it needed to make sense of itself was a 2.5rem track, and the panel did not have it to spare.
+
+**And the theme control is neither** — it is a plain action. "Dark theme, pressed" is a state to be read; the control does one thing, so it names that thing ("Switch to dark theme") and wears the icon of the theme it would leave you in. That also settles which of the two icons to draw, which as a toggle was genuinely ambiguous: a sun could as easily mean *you are in light* as *press for light*, and it meant the first.
+
+**The pressed state is a border and a wash — two channels, never a fill.** `border-color: var(--accent)` plus the same 16% accent wash a selected cell carries. It never fills with colour: colour belongs to people (principle 2).
+
+Two channels rather than one is deliberate and is the thing that replaces the knob. A knob is a *shape* change and so survives losing colour outright; a pressed button has only paint, so the border and the ground both have to move, and they differ in lightness as well as hue. That is what carries the grayscale check, and `tests/game.spec.js` asserts both move.
+
+> This reverses an earlier finding rather than forgetting it. An engaged switch used to get an accent border too, and it was taken out because an accent frame on an unfocused control read as a stuck focus ring — accent-on-the-outside means *focused* everywhere else in the app. That was true of a control that already had a knob saying the same thing. With the knob gone the border is not a redundant second channel, it is one of the only two there are, and the ambiguity it was accused of is settled by the ground filling at the same time — a focus ring does not do that.
+
+**`--danger` is for a control that takes something away**, which today is Leave room and nothing else. Outlined like every other button: the red is in the border, the word, and the icon, and the ground stays paper until the pointer is on it. A solid red button would be the loudest thing on a screen whose subject is a puzzle.
+
+It is its own token and not `--wrong`, which it currently matches to the byte. `--wrong` means *this answer is incorrect* — grid feedback, transient, and already refused above for the caution triangle on the same grounds. Leaving a room is not a mistake. Keeping them apart costs a line of CSS and means the first time either wants to move, it can.
 
 ### The focus ring
 
@@ -272,8 +298,9 @@ Physical and sparse.
 |---|---|
 | Cell value entered | 90ms scale-pop (`0.85 → 1`), not a fade. It should feel like a mark landing. |
 | Presence stripe appears | 120ms ease-in fade + vertical scale, so a player arriving in a cell grows into their share of it |
-| Modal opens | 160ms fade + 4px rise |
-| Switch flips | 90ms slide of the knob, borrowing `--motion-mark`. A switch that teleports reads as a redraw rather than as a thing you moved. |
+| Modal opens | 160ms fade + 4px rise (`--motion-modal`) |
+| The congrats modal opens | 260ms fade + 12px rise + scale from 0.94, on an easing that overshoots slightly (`--motion-celebrate`). **The one arrival allowed to be seen.** Every other modal is an interruption and should not celebrate itself; this one is the room finishing something together, and at the shared 160ms/4px it was reported as having no animation at all. A panel that settles rather than stops reads as arriving. |
+| A toggle engages | none. There is no knob to slide since [ADR-0011](adr/0011-icons-in-the-panel-words-in-the-page.md); a border and a ground change together, and animating a colour swap on a control pressed hundreds of times a puzzle would be noise. |
 | Everything else | none |
 
 No page transitions, no spinners, no skeleton shimmer. Loading states are short italic text in `--graphite` ("finding a puzzle…").
@@ -314,5 +341,6 @@ Part of the Phase 1 and Phase 2 done-when criteria. All five have now been run:
 - ~~**Fraunces `WONK` and the paper texture are the two elements most likely to divide opinion.**~~ **Settled in Phase 1 on real screens: both kept.** The wordmark reads hand-cut rather than generic-serif, and the texture at 3% is invisible until looked for.
 - ~~**The player palette is unverified**~~ **Verified in Phase 1**, at the cost of going per theme (§3). All eight hues survived.
 - **The two-accent split is a papercut.** It's easy to reach for `--accent` in body text out of habit. If review catches this repeatedly, collapse to the single darker value and accept a slightly duller wordmark.
-- **Givens versus entries are distinguished by weight alone** (700 against 500), because colour is reserved for people. It is a quieter difference than most sudoku apps use; if it reads as too subtle in play, the next lever is size, not colour.
+- **Givens versus entries are distinguished by weight and a faint ground, never by colour**, because colour is reserved for people. 700 against 400, on `--given-fill` — about 5% of `--ink`, mixed from the ink rather than given a per-theme value, so it goes slightly darker on cream and slightly lighter on charcoal without a second token. Weight alone was the original answer and read as too subtle, which is what the ground was added for. **The ground, not the weight, is what fixed it**: pushing givens to Karla 800 at the same time was tried and reverted, since it cost a fourth font face for a change that could not be picked out once the tint was there. The lever after this one is size, still not colour.
+  - The tint is `background-color` and the cursor washes are `background-image`, deliberately: a given square in the cursor's row shows both rather than one replacing the other, so the tint does not blink out every time somebody moves.
 - **Check feedback is the one thing allowed to recolour puzzle content** (`--correct` / `--wrong` on the value). It is transient — any edit to the cell retires the mark — and it is named in the cell's aria-label, so it is never carried by colour alone. If it starts to feel like the grid is scoring you rather than answering you, the lever is duration, not saturation.

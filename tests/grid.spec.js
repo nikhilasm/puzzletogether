@@ -92,7 +92,7 @@ test.describe('pencil marks', () => {
 
         const cell = await firstEditableCell(page);
         await page.locator(`pt-cell >> nth=${cell}`).click();
-        await page.locator('pt-mode-toggle pt-switch button').click();
+        await page.locator('pt-mode-toggle .action').click();
 
         await page.locator('pt-keypad .digits button', { hasText: '4' }).click();
         await expect.poll(async () => Object.keys(await markPositions(page, cell))).toEqual(['4']);
@@ -276,9 +276,24 @@ test.describe('the cursor', () => {
 
         const washes = await page.locator('pt-sudoku-board').evaluate((board) => {
             const cells = [...board.shadowRoot.querySelectorAll('pt-cell')];
+            /*
+             * The wash is a background-*image* now, not a background-color.
+             *
+             * The two are separate longhands so that a given square shows its faint printed ground
+             * *and* the cursor wash on top, rather than one replacing the other and blinking out
+             * every time somebody moves. That means the colour to read here is the gradient's, and
+             * reading backgroundColor instead returns the given tint on every cell — which is why
+             * this used to see 0.05 for the cursor and 0.05 for its column and call them equal.
+             */
             const alpha = (cell) => {
-                const match = getComputedStyle(cell).backgroundColor.match(/[\d.]+/g);
-                return match?.length === 4 ? Number.parseFloat(match[3]) : 1;
+                const image = getComputedStyle(cell).backgroundImage;
+                if (image === 'none') return 0;
+                // Chromium serialises a resolved color-mix as `color(srgb r g b / a)` and Firefox
+                // as `rgba(r, g, b, a)`. Read the alpha out of whichever arrived.
+                const slashed = image.match(/\/\s*([\d.]+)\s*\)/);
+                if (slashed) return Number.parseFloat(slashed[1]);
+                const commas = image.match(/rgba\([^)]*,\s*([\d.]+)\s*\)/);
+                return commas ? Number.parseFloat(commas[1]) : 1;
             };
             const style = getComputedStyle(board);
             return {

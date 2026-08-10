@@ -225,11 +225,11 @@ flowchart TB
     KEYPAD -. "slot: clue" .-> CLUEBAR["pt-clue-bar<br/>crossword<br/>clue · next"]
     KEYPAD -. "slot: actions" .-> MODE["pt-mode-toggle<br/>digit types"]
     KEYPAD -. "slot: actions" .-> BRUSH["pt-brush-bar<br/>nonogram"]
-    KEYPAD -. "slot: actions" .-> REBUS["pt-switch Rebus<br/>+ All clues<br/>crossword"]
+    KEYPAD -. "slot: actions" .-> REBUS["Rebus toggle<br/>+ All clues<br/>crossword"]
 
-    APP --> THEMESW["pt-switch<br/>Dark theme"]
+    APP --> THEMESW["theme toggle<br/>+ About, in the footer"]
+    APP --> ABOUT["pt-about<br/>dialog"]
     APP --> SPACE["panel-space<br/>reserves the panel's height"]
-    MODE --> SWITCH["pt-switch<br/>Notes"]
     SEL --> PICKER["pt-puzzle-picker"]
     MODAL --> PICKER
 
@@ -250,7 +250,7 @@ flowchart TB
 
 **Cells render once.** `repeat()` keyed by cell index creates each `<pt-cell>` a single time; subsequent updates set reactive properties on the specific element that changed. This is the main frontend performance unknown, which is why a 25×25 grid gets tested in Phase 1 rather than when nonogram actually ships in Phase 3.
 
-**Shared leaves hold no state.** `<pt-switch>` and `<pt-puzzle-picker>` appear in more than one place, so neither owns what it shows: the switch is told whether it is on and reports the flip, which is why the Notes switch and the store can never disagree about the input mode. `client/styles/controls.js` and `client/ui/icons.js` are the styling counterpart — `css` fragments and templates composed into each shadow root, since a shadow root inherits properties but not rules.
+**Shared leaves hold no state.** `<pt-mode-toggle>`, `<pt-brush-bar>`, and `<pt-puzzle-picker>` are told what is on and report the press, which is why the Notes toggle and the store can never disagree about the input mode. Since [ADR-0011](adr/0011-icons-in-the-panel-words-in-the-page.md) the settings share no *element* — there is no `<pt-switch>` any more — but they share their whole appearance and semantics through the `iconButton` fragment in `client/styles/controls.js`. That file and `client/ui/icons.js` are the styling counterpart to the component tree: `css` fragments and templates composed into each shadow root, since a shadow root inherits properties but not rules.
 
 **The game screen does not know what a puzzle type is.** `client/boards/registry.js` maps a `doc.type` to the board element that renders it and to the *kind of input* it takes — `digits`, `brushes`, or `letters`. `<pt-game>` branches on the input kind and never on the type name, which is what keeps a new type from adding a conditional to a screen that has nothing to do with it. Sudoku and kenken share `digits` while having nothing else in common; there are far fewer ways to put something in a cell than there are puzzles.
 

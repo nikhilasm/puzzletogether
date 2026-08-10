@@ -8,20 +8,20 @@
 import { LitElement, css, html, nothing } from 'lit';
 
 import {
-    APP_VERSION,
     GITHUB_URL,
+    ISSUES_URL,
     MAX_PLAYERS_PER_ROOM,
     ROOM_CODE_LENGTH,
 } from '../../shared/constants.js';
 import { ROOM_STATE } from '../../shared/protocol.js';
 import { roomStore } from '../store/room-store.js';
 import { StoreController } from '../store/store-controller.js';
-import { controls } from '../styles/controls.js';
+import { controls, iconButton } from '../styles/controls.js';
 import { THEME, currentTheme, toggleTheme } from '../theme.js';
-import { iconStyle, moonIcon, sunIcon } from '../ui/icons.js';
+import { iconStyle, infoIcon, moonIcon, sunIcon } from '../ui/icons.js';
 
 import '../ui/pt-player-chips.js';
-import '../ui/pt-switch.js';
+import './pt-about.js';
 import './pt-game.js';
 import './pt-landing.js';
 import './pt-puzzle-select.js';
@@ -42,10 +42,12 @@ export class PtApp extends LitElement {
         announcement: { state: true },
         /** How tall the game screen's pinned input panel is, or 0 when there is none. */
         panelHeight: { state: true },
+        showingAbout: { state: true },
     };
 
     static styles = [
         controls,
+        iconButton,
         iconStyle,
         css`
             :host {
@@ -138,23 +140,63 @@ export class PtApp extends LitElement {
                 margin-bottom: var(--space-12);
             }
 
+            /*
+             * The app's own controls, and the two links out of it.
+             *
+             * Everything above the footer belongs to a room or a puzzle. What is left down here is
+             * the handful of things that are true of the *app* — how it looks, what it is — so they
+             * are drawn as the app's controls rather than as sentences about it: two icon buttons on
+             * one line, and the links that leave the app set smaller underneath them.
+             *
+             * The version line that used to be here has moved into About, where it sits with the
+             * rest of the answer to the question it was half of.
+             */
             footer {
+                display: flex;
+                flex-direction: column;
+                gap: var(--space-3);
+                align-items: center;
                 padding: var(--space-6) 0;
                 border-top: var(--border);
                 color: var(--graphite);
                 font-size: var(--text-sm);
             }
 
-            footer p {
-                margin: 0 0 var(--space-1);
+            .footer-actions {
+                display: flex;
+                gap: var(--space-2);
+                justify-content: center;
+            }
+
+            /*
+             * Side by side, divided by a middot rather than by a gap alone.
+             *
+             * They are two links and not two buttons because they leave the app — the rule the whole
+             * footer turns on. Set at --text-xs, which puts them a step below the smallest thing
+             * on the page above: they are the last thing anyone needs and should read that way.
+             */
+            .footer-links {
+                display: flex;
+                flex-wrap: wrap;
+                gap: var(--space-2);
+                justify-content: center;
+                margin: 0;
+                padding: 0;
+                font-size: var(--text-xs);
+            }
+
+            .footer-links li {
+                list-style: none;
+            }
+
+            .footer-links li + li::before {
+                content: '·';
+                margin-right: var(--space-2);
+                color: var(--rule);
             }
 
             footer a {
                 color: var(--accent-text);
-            }
-
-            footer pt-switch {
-                margin-bottom: var(--space-3);
             }
 
             .notice {
@@ -224,6 +266,7 @@ export class PtApp extends LitElement {
         this.theme = THEME.LIGHT;
         this.announcement = '';
         this.panelHeight = 0;
+        this.showingAbout = false;
     }
 
     /** Starts routing once the element is live, and reads back the theme already applied. */
@@ -275,16 +318,48 @@ export class PtApp extends LitElement {
             </div>
             <p class="visually-hidden" role="status" aria-live="polite">${this.announcement}</p>
             <footer>
-                <pt-switch
-                    label="Dark theme"
-                    .checked=${this.theme === THEME.DARK}
-                    @pt-switch-change=${this.#onToggleTheme}
-                >
-                    <span slot="icon">${this.theme === THEME.DARK ? moonIcon : sunIcon}</span>
-                </pt-switch>
-                <p>PuzzleTogether v${APP_VERSION}</p>
-                <p><a href=${GITHUB_URL} rel="noreferrer">View on GitHub</a></p>
+                <div class="footer-actions">
+                    <!--
+                      An action, not a toggle. "Dark theme, pressed" was a state to be read; this is
+                      a button that does one thing, so it says which thing and wears the icon of the
+                      theme it would leave you in. That also settles which of the two icons to draw,
+                      which as a toggle was genuinely ambiguous — the sun could as easily have meant
+                      "you are in light" as "press for light", and it meant the first.
+                    -->
+                    <button
+                        class="icon-button"
+                        type="button"
+                        aria-label=${this.#themeAction}
+                        title=${this.#themeAction}
+                        @click=${this.#onToggleTheme}
+                    >
+                        ${this.theme === THEME.DARK ? sunIcon : moonIcon}
+                    </button>
+                    <button
+                        class="icon-button"
+                        type="button"
+                        aria-label="About PuzzleTogether"
+                        title="About"
+                        @click=${() => {
+                            this.showingAbout = true;
+                        }}
+                    >
+                        ${infoIcon}
+                    </button>
+                </div>
+                <ul class="footer-links">
+                    <li><a href=${GITHUB_URL} rel="noreferrer" target="_blank">GitHub</a></li>
+                    <li>
+                        <a href=${ISSUES_URL} rel="noreferrer" target="_blank">Report an issue</a>
+                    </li>
+                </ul>
             </footer>
+            <pt-about
+                .open=${this.showingAbout}
+                @pt-about-close=${() => {
+                    this.showingAbout = false;
+                }}
+            ></pt-about>
             <div
                 class="panel-space"
                 style="height: ${this.#showsPanel ? this.panelHeight : 0}px"
@@ -314,6 +389,11 @@ export class PtApp extends LitElement {
     get #showsPanel() {
         const room = this.#room.state.room;
         return this.route.name === 'room' && room != null && room.state !== ROOM_STATE.SELECT;
+    }
+
+    /** What the theme button would do, which is its whole name. */
+    get #themeAction() {
+        return this.theme === THEME.DARK ? 'Switch to light theme' : 'Switch to dark theme';
     }
 
     /** Switches theme and remembers it; the attribute on `<html>` does the rest. */

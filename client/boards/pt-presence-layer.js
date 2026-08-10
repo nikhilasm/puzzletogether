@@ -152,9 +152,9 @@ export class PtPresenceLayer extends LitElement {
                                 class="who"
                                 style="background: var(--player-${player.colorIndex});"
                                 title="${player.name}"
-                                aria-label="${player.name} (${PLAYER_COLOR_NAMES[
-                                    player.colorIndex
-                                ]})"
+                                aria-label="${player.name} (${
+                                    PLAYER_COLOR_NAMES[player.colorIndex]
+                                })"
                             ></span>
                         `,
                     )}

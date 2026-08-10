@@ -166,7 +166,9 @@ test.describe('choosing a colour', () => {
         await expect(page.locator('pt-player-chips .palette')).toHaveCount(0);
 
         await page.locator('pt-player-chips button.chip').click();
-        await page.locator('footer p').first().click();
+        // The room code: inert, on screen, and not a control — the footer's prose used to serve
+        // here and the footer no longer has any.
+        await page.locator('.room-code').click();
         await expect(page.locator('pt-player-chips .palette')).toHaveCount(0);
     });
 });
@@ -228,7 +230,8 @@ test.describe('leaving', () => {
         const guest = await secondPlayer(browser, code);
 
         const leave = guest.page.locator('pt-puzzle-select .leave button');
-        await expect(leave).toHaveText('Leave room');
+        await expect(leave).toHaveText('Leave Room');
+        await expect(leave).toHaveClass(/danger/);
         await expect(leave.locator('svg.icon')).toHaveCount(1);
         await leave.click();
 

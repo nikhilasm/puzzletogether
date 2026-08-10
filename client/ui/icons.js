@@ -1,13 +1,16 @@
 /**
  * The icon set: inline SVG, drawn here rather than pulled from a pack.
  *
- * There are sixteen of them, they are all simple geometry, and a dependency would cost more than it
- * saves. Emoji are banned as UI icons (brand.md §1) because they render as somebody else's artwork
- * at somebody else's weight — these instead inherit `currentColor` and the app's line weight, so an
- * icon inside a disabled control greys out with it and the dark theme needs no second asset.
+ * There are seventeen of them, they are all simple geometry, and a dependency would cost more than
+ * it saves. Emoji are banned as UI icons (brand.md §1) because they render as somebody else's
+ * artwork at somebody else's weight — these instead inherit `currentColor` and the app's line
+ * weight, so an icon inside a disabled control greys out with it and the dark theme needs no second
+ * asset.
  *
- * Every icon is decorative: it repeats a label that is already there, so it is `aria-hidden` and
- * the control around it carries the accessible name.
+ * Every icon is `aria-hidden`, and the control around it carries the accessible name. Most of them
+ * used to be decorative in the strict sense — repeating a word that was already on the button. Most
+ * are now the only thing on their button, which changes nothing here and everything about the
+ * `aria-label` and `title` the control owes them (ADR-0011).
  *
  * Geometry lives here; size and weight live in `iconStyle`, which each consuming component composes
  * into its own styles — shadow roots inherit properties, not rules.
@@ -195,6 +198,35 @@ export const backspaceIcon = html`
         <path d="M9 5h10.5A1.5 1.5 0 0 1 21 6.5v11a1.5 1.5 0 0 1-1.5 1.5H9L3 12Z" />
         <path d="m11.5 9.5 5 5" />
         <path d="m16.5 9.5-5 5" />
+    </svg>
+`;
+
+/**
+ * About: the standard information mark, which is the one icon here that is a letterform.
+ *
+ * The rule against lettering in an icon (see `rebus`) is a rule about inventing one. This glyph is
+ * not read as an "i" — it has been the sign for "here is what this thing is" on every interface for
+ * thirty years, and drawing something cleverer would only make it slower to find.
+ */
+export const infoIcon = html`
+    <svg viewBox="0 0 24 24" class="icon" aria-hidden="true">
+        <circle cx="12" cy="12" r="8.5" />
+        <path d="M12 11v5.5" />
+        <path d="M12 7.6v.1" />
+    </svg>
+`;
+
+/**
+ * Starting another puzzle: a play triangle, which is the one shape that means "begin" outright.
+ *
+ * Deliberately not a circular arrow. "Again" would be the more literal reading of *start another*,
+ * but a looping arrow is what `undo` already is at this line weight, and the two sit a modal apart
+ * in the same session — brand.md §4's rule that two icons meaning different things must look
+ * different applies across the app, not only within one row.
+ */
+export const startIcon = html`
+    <svg viewBox="0 0 24 24" class="icon" aria-hidden="true">
+        <path d="M8 5.5 18.5 12 8 18.5Z" />
     </svg>
 `;
 

@@ -12,7 +12,7 @@ import { DEFAULT_SETTINGS } from '../../shared/constants.js';
 import { ROOM_STATE } from '../../shared/protocol.js';
 import { roomStore } from '../store/room-store.js';
 import { StoreController } from '../store/store-controller.js';
-import { controls } from '../styles/controls.js';
+import { controls, dangerButton } from '../styles/controls.js';
 import { iconStyle, leaveIcon } from '../ui/icons.js';
 
 import '../ui/pt-puzzle-picker.js';
@@ -26,6 +26,7 @@ export class PtPuzzleSelect extends LitElement {
 
     static styles = [
         controls,
+        dangerButton,
         iconStyle,
         css`
             :host {
@@ -51,8 +52,12 @@ export class PtPuzzleSelect extends LitElement {
             }
 
             /*
-             * Quiet, and set well apart: leaving is not what you came to this screen to do. Spacing
-             * rather than a rule, because the footer already draws one a little below it.
+             * Set well apart: leaving is not what you came to this screen to do. Spacing rather
+             * than a rule, because the footer already draws one a little below it.
+             *
+             * It is a full-size button here as it is on the game screen — the same control at the
+             * same size in the same place in the reading order, saying what it is with the red
+             * accent rather than by being smaller than everything around it.
              */
             .leave {
                 margin-top: var(--space-8);
@@ -62,8 +67,6 @@ export class PtPuzzleSelect extends LitElement {
                 display: inline-flex;
                 gap: var(--space-2);
                 align-items: center;
-                padding: var(--space-1) var(--space-4);
-                font-size: var(--text-sm);
             }
         `,
     ];
@@ -111,7 +114,9 @@ export class PtPuzzleSelect extends LitElement {
             ${roomStore.isHost ? this.#renderHostControls(isSolved) : this.#renderWaiting()}
             ${this.error ? html`<p class="error" role="alert">${this.error}</p>` : nothing}
             <div class="leave">
-                <button type="button" @click=${this.#onLeave}>${leaveIcon} Leave room</button>
+                <button class="danger" type="button" @click=${this.#onLeave}>
+                    ${leaveIcon} Leave Room
+                </button>
             </div>
         `;
     }

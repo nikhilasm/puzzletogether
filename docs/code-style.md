@@ -266,7 +266,16 @@ review is what enforces it there.
 | Conditional splitting style | everywhere | Prettier does most of it; review catches the rest |
 | **Function, class, and public-method comments** | everywhere | **Review** — a machine can require a JSDoc block's presence, not that it says anything true |
 | No hard-coded design values in components | `client/` | Review, plus the contrast gate in `tokens.test.js` |
+| **No backtick inside a CSS comment** | `client/` | **`css-templates.test.js`** — it ends the `css` template early and the rest of the file is read as code |
 
 `npm run lint && npm run typecheck && npm test && npm run build` is what CI runs and what must pass before merge ([design-spec.md §12](design-spec.md#12-testing-tooling-ci)).
+
+**The backtick check earned its place rather than being designed in.** A backtick in a CSS comment
+ends the `css` template literal, and it had cost the build eight separate times across four phases
+before anyone wrote the scan. Once it did *not* cost the build — the truncated remainder happened to
+parse as valid JavaScript, `npm run build` succeeded, and every browser test failed at once on an
+error pointing nowhere near the CSS. **The build is not the check**, which is why this one is a test:
+it walks each `css` template to the backtick that closes it and fails if that backtick is inside a
+comment.
 
 The comment rules are the ones a machine can't check and the ones that decay first — [ADR-0006](adr/0006-jsdoc-checkjs-for-type-safety.md) already flags un-annotated code silently becoming `any` as this stack's main risk. Treat a missing or stale comment as a blocking review comment, the same as a missing test.

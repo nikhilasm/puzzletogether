@@ -93,7 +93,7 @@ test.describe('kenken', () => {
         );
         expect(idx).toBeGreaterThanOrEqual(0);
 
-        await page.locator('pt-mode-toggle pt-switch button').click();
+        await page.locator('pt-mode-toggle .action').click();
         await page.locator(`pt-cell >> nth=${idx}`).click();
         for (let digit = 0; digit < 6; digit += 1) {
             await page.locator('pt-keypad .digits button').nth(digit).click();
@@ -162,7 +162,7 @@ test.describe('kenken', () => {
 
     test('takes digits on the keypad, like a sudoku', async ({ page }) => {
         await expect(page.locator('pt-keypad .digits button')).toHaveCount(6);
-        await expect(page.locator('pt-mode-toggle pt-switch button')).toHaveText('Notes');
+        await expect(page.locator('pt-mode-toggle .action')).toHaveText('Notes');
 
         await page.locator('pt-cell >> nth=0').click();
         await page.locator('pt-keypad .digits button').first().click();
@@ -210,23 +210,33 @@ test.describe('nonogram', () => {
         expect(Math.abs(geometry.frame.width - geometry.frame.height)).toBeLessThan(2);
     });
 
-    /** Nonogram has no pencil marks — the cross is the note — so it has brushes, not a Notes switch. */
-    test('swaps the Notes switch and digits for three brushes, and keeps Undo', async ({
+    /** Nonogram has no pencil marks — the cross is the note — so it has brushes, not a Notes toggle. */
+    test('swaps the Notes toggle and digits for three brushes, and keeps Undo', async ({
         page,
     }) => {
         await expect(page.locator('pt-mode-toggle')).toHaveCount(0);
         await expect(page.locator('pt-keypad .digits button')).toHaveCount(0);
-        await expect(page.locator('pt-brush-bar button')).toHaveText(['Fill', 'Cross', 'Erase']);
 
-        // Erase belongs to the digits it undoes; Undo belongs to every type.
-        await expect(page.locator('pt-keypad .actions button')).toHaveText(['Undo']);
+        await expect(page.locator('pt-brush-bar .action')).toHaveText(['Fill', 'Cross', 'Erase']);
+
+        // Erase belongs to the digits it undoes; Undo belongs to every type. Four controls in the
+        // bar, and the brushes are the same width as Undo rather than a boxed group beside it.
+        const actions = page.locator('pt-keypad .actions button');
+        await expect(actions).toHaveCount(1);
+        await expect(actions).toHaveText('Undo');
+
+        const widths = await page
+            .locator('pt-keypad .action')
+            .evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().width)));
+        expect(widths).toHaveLength(4);
+        expect(Math.max(...widths) - Math.min(...widths), 'one row, one width').toBeLessThan(2);
     });
 
     test('draws a fill as a block and a cross as a mark, not as their characters', async ({
         page,
     }) => {
         await page.locator('pt-cell >> nth=0').click();
-        await page.locator('pt-brush-bar button', { hasText: 'Cross' }).click();
+        await page.locator('pt-brush-bar .action', { hasText: 'Cross' }).click();
         await page.locator('pt-cell >> nth=1').click();
 
         await expect(page.locator('pt-cell >> nth=0 >> .value.block')).toBeVisible();
@@ -369,12 +379,12 @@ test.describe('nonogram', () => {
         await drag(page, 5, 9);
         expect((await valuesOf(page)).slice(5, 10)).toEqual(['#', '#', '#', '#', '#']);
 
-        await page.locator('pt-keypad .actions button', { hasText: 'Undo' }).click();
+        await page.locator('pt-keypad [aria-label="Undo"]').click();
         expect((await valuesOf(page)).slice(5, 10)).toEqual([null, null, null, null, null]);
     });
 
     test('the cross brush lays the other mark', async ({ page }) => {
-        await page.locator('pt-brush-bar button', { hasText: 'Cross' }).click();
+        await page.locator('pt-brush-bar .action', { hasText: 'Cross' }).click();
         await drag(page, 10, 12);
 
         expect((await valuesOf(page)).slice(10, 13)).toEqual(['x', 'x', 'x']);
@@ -412,11 +422,11 @@ test.describe('nonogram', () => {
         expect(solution).toHaveLength(5);
 
         // Cross a square, then fill it — the cell holds one thing at a time.
-        await page.locator('pt-brush-bar button', { hasText: 'Cross' }).click();
+        await page.locator('pt-brush-bar .action', { hasText: 'Cross' }).click();
         await page.locator('pt-cell >> nth=0').click();
         expect((await valuesOf(page))[0]).toBe('x');
 
-        await page.locator('pt-brush-bar button', { hasText: 'Fill' }).click();
+        await page.locator('pt-brush-bar .action', { hasText: 'Fill' }).click();
         await page.locator('pt-cell >> nth=0').click();
         expect((await valuesOf(page))[0]).toBe('#');
     });
@@ -489,7 +499,9 @@ test.describe('a nonogram on a phone', () => {
 
         // The brushes stay thumb-sized even here.
         for (const label of ['Fill', 'Cross', 'Erase']) {
-            const box = await page.locator('pt-brush-bar button', { hasText: label }).boundingBox();
+            const box = await page
+                .locator('pt-brush-bar .action', { hasText: label })
+                .boundingBox();
             expect(box.height, label).toBeGreaterThanOrEqual(44);
         }
     });

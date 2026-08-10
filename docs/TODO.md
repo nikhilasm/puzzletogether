@@ -6,7 +6,7 @@
 
 **Current phase**: 4 — crossword + bank
 **Branch**: `feature-puzzletogether`
-**Last updated**: 2026-08-05
+**Last updated**: 2026-08-09
 
 Legend: `[ ]` pending · `[x]` done · `[~]` in progress · `[!]` blocked · `[-]` deferred, with a reason
 
@@ -698,6 +698,164 @@ with the room.*
       player colour reads at about 3.5:1. Visible, quieter than it is on paper. A `--paper` backing
       behind the stripe would fix it and would leave a pale notch across any washed cell
 
+### Icons in the panel, words in the page
+
+*The button bar was the one thing [ADR-0010](adr/0010-one-pinned-input-panel.md) left crowded. Fixing
+it meant changing two rules in [brand.md §4](brand.md#icons) that had held since Phase 2, so the
+change is recorded as* → [ADR-0011](adr/0011-icons-in-the-panel-words-in-the-page.md)
+
+- [x] **Every control in the input panel is a wordless 44px square** — Notes, Rebus, the three
+      brushes, Erase, Undo, All clues, Backspace. Each carries `aria-label` *and* `title`. The bar is
+      now one row at 320px in every type; sudoku's three wrapped to two rows before, and nonogram's
+      four to two, each wrap charged against the grid
+- [x] **The puzzle-action row keeps its words.** The rule is not "small things lose their labels", it
+      is *how often you press it* — the panel's controls are learned in the first minute, the row's
+      are pressed once or twice and two of them are destructive
+- [x] **Settings become `aria-pressed` toggle buttons**, styled by one `iconButton` fragment in
+      `controls.js`: accent border plus the 16% accent wash a selected cell carries. This is what the
+      nonogram brush bar had been doing since Phase 3 — the app had two accessibility patterns for
+      one idea sitting side by side in the same bar, and the switch is what gave
+- [x] **`<pt-switch>` deleted.** 150 lines and a second way of saying "on", with no consumers left
+- [x] **Two channels, because the knob is gone.** A sliding knob is a *shape* change and survives
+      losing colour; a pressed button has only paint, so the border and the ground both move. This
+      reverses Phase 2's "the state lives in the track and nowhere else" — that finding was about a
+      control which already had a knob saying it, and brand.md now records why the reversal holds
+- [x] **Leave room joins the puzzle-action row** at the same size as the buttons beside it, marked in
+      a new `--danger` token rather than by being smaller and set apart. It was the only button on
+      the screen at its own size, which read as an afterthought rather than as quiet
+- [x] `--danger` is **its own token and not `--wrong`**, which it matches to the byte today. `--wrong`
+      means *this answer is incorrect* — grid feedback, transient, and already refused for the caution
+      triangle on those grounds. Added to the contrast gate, so it cannot drift below 4.5:1 unnoticed
+- [x] **The footer is the app's own controls**: theme and About as icon buttons on one line, GitHub
+      and Report an issue as small links beneath. A button changes the app, a link leaves it
+- [x] `<pt-about>` — a native-`<dialog>` panel holding what the app is, its version, where the puzzles
+      come from, and the source link. It absorbs the footer's version line, which was the only prose
+      left down there and answered a question almost nobody asks
+- [x] `ISSUES_URL` derived from `GITHUB_URL`, so moving the repository moves both links
+
+**Tests**
+
+- [x] `client/styles/tokens.test.js` — `--danger` in the contrast gate, both themes
+- [x] `tests/game.spec.js` — every `.icon-button` is a 44px square and carries a `title`; the panel is
+      wordless and the action row is not; both channels move on a press; the footer's two links share
+      a row below its two buttons; About opens, states the version, and closes on Escape; the button
+      bar is one row at 320px
+- [x] The selector sweep across `crossword`, `puzzle-types`, `grid`, and `room` specs — text-based
+      locators (`hasText: 'Cross'`) become `aria-label` ones, since the text they matched is gone
+
+**Verify**
+
+- [x] Full gate: **233 unit tests**, lint, typecheck, Prettier, build, **210 browser checks** in
+      Chromium and Firefox
+
+> **Four labelled buttons do not fit the action row, and the measurement is the answer.** With a
+> host's full set they come to ~618px against the board's 480px, so Leave room wraps to its own line
+> beneath the other three. The browser suite caught this as a failure of "all four share a row" — a
+> test written from the intent rather than from a measurement. What matters is that Leave room is the
+> same control at the same size inside the same rule, so that is what the test asserts now, and the
+> wrap is recorded as an accepted cost rather than smoothed over. Widening the row past the grid it
+> sits under would have been the worse answer.
+
+> **The backtick-in-a-CSS-comment trap, seventh occurrence — four of them in one sitting.** Every one
+> was in a comment written for this change, and `node -e "import('./thing.js')"` caught all four
+> before anything else ran, exactly as the Phase 4 note said it would. The check works and the trap
+> keeps being laid. The lint rule is still a Phase 5 item and is now the oldest known-cheap fix in
+> the file.
+
+### The labels come back, and a pass of visual fixes
+
+*[ADR-0011](adr/0011-icons-in-the-panel-words-in-the-page.md) was one day old when it was tried in the
+app and reversed.* → [ADR-0012](adr/0012-a-label-under-every-icon.md)
+
+> **It bought nothing.** The icon-only panel was meant to save a row of vertical space, and the
+> panel's height is set by the rows of keys *below* its button bar — so a shorter bar left a gap
+> rather than a shorter panel. Nobody had checked that. The diagnosis was wrong too: the bar wrapped
+> because each button was shrink-to-fit and took the width of its own word, which is a layout
+> property and not a labelling one. Buttons that share the row fit whatever their labels say.
+
+- [x] **Every panel control carries a one-word label under its icon** — Notes, Rebus, the brushes,
+      Erase, Backspace, Clues, Undo. `flex: 1 1 0` so they share the row; `--text-sm` stepping to
+      `--text-xs` below 30rem. Four fit 236px against the 296px a 320px screen has to give
+- [x] Toggles stay toggles: `aria-pressed`, not a switch. That half of ADR-0011 was right
+- [x] **`<pt-mode-toggle>` and `<pt-brush-bar>` become `display: contents`**, so their buttons are
+      direct flex items of the bar. Boxed, nonogram's three brushes were one flex item against Undo's
+      one and took half the row between them
+- [x] **Crossword's Backspace moves from the pad's corner to the button bar.** A phone keyboard's ⌫
+      is a key among keys; ours clears a square and steps back along the entry. Clues leads the row,
+      being the only control there that does not act on the square you are on
+- [x] The **theme control stops being a toggle** — it does one thing, so it names it ("Switch to dark
+      theme") and wears the icon of the theme it would leave you in. As a toggle the icon was
+      genuinely ambiguous
+- [x] `Leave room` → `Leave Room`
+
+**Visual fixes found in play**
+
+- [x] **A and Z were half-width keys.** `grid-column: span 2` followed by `grid-column-start: 2` on
+      each row's first key overrode the span — `grid-column` sets start *and* end, and naming the
+      start afterwards left the end at `auto`. The letter rows are flex now, which also centres the
+      short rows: a row shorter than the grid could only ever be left-aligned in it, which the bottom
+      row made obvious once Backspace left it
+- [x] **A rebus past five characters bent the whole grid.** Two causes, both the same shape. The
+      board's columns were a bare `1fr` — which is `minmax(auto, 1fr)`, whose auto minimum is the
+      track's *min-content* size — so a column grew to fit an eight-letter word and every row stepped
+      out with it. And `.value` is a flex item, whose `min-width` defaults to its min-content width,
+      which beats the `max-width: 100%` and `overflow: hidden` that were already there for exactly
+      this case and could never fire. The clue gutters had used `minmax(0, 1fr)` since Phase 3; **the
+      grid has caught up with its own gutters**
+- [x] **Sudoku givens read as printed**: 700 against an entry's 400, on a `--given-fill` ground of
+      about 5% `--ink`. Mixed from the ink rather than given a per-theme value, so it darkens cream
+      and lightens charcoal from one declaration. The tint is `background-color` and the cursor washes
+      are `background-image`, so a given square in the cursor's row shows both rather than the tint
+      blinking out every time somebody moves
+- [-] ~~Karla 800 for givens~~ — **added and reverted the same day.** The theory was that 700 against
+      400 does not read across a grid; the practice was a fourth font face bought for a difference
+      nobody could point to once the ground was under it. **The tint was doing the work all along**,
+      which is only visible if you add the two changes separately, and they were added together
+- [x] **The congrats modal arrives.** `--motion-celebrate` — 260ms, 12px, a scale from 0.94, and an
+      easing that overshoots. It was sharing the confirm dialog's 160ms of a 4px drift, which was
+      restrained to the point of being reported as no animation at all. Its buttons are one row now,
+      all three with icons, rather than the host's two and a lone dismiss set apart below
+- [x] **The clue dialog had no padding at all.** Both the head and the columns asked for
+      `var(--space-5)`, and the scale has no `--space-5` — it runs 1, 2, 3, 4, 6, 8, 12. An undefined
+      custom property with no fallback makes the whole declaration invalid at computed-value time, so
+      `padding` fell back to its initial `0`. Nothing warns about this. Also: the three separating
+      rules are gone, the close button is borderless like About's, and clue rows are
+      `align-items: center` — a flex row defaults to `stretch`, so every clue sat at the top of its
+      own box
+
+**Tests**
+
+- [x] `tests/game.spec.js` — every control carries its word; the label is under the icon; the bar is
+      one row at 320px with no overflow; givens are heavier and tinted and keep the tint under the
+      cursor wash; the theme button is an action and renames itself; the congrats modal is one row of
+      three iconed buttons and animates in
+- [x] `tests/crossword.spec.js` — the bar is Clues · Rebus · Undo · Backspace in one row and
+      Backspace is not among the letters; every letter key is one width (A and Z by name) and the
+      short rows are centred; an eight-character rebus leaves every cell one width, every row
+      starting at the same x, and the grid the size it was; the clue dialog is evenly padded,
+      unruled, and vertically centred
+- [x] `tests/grid.spec.js` — the cursor wash is read off `background-image` now, and off both the
+      `color(srgb … / a)` Chromium serialises and the `rgba()` Firefox does
+
+- [x] **`client/css-templates.test.js` — the backtick trap is finally a check.** It has cost the build
+      eight times across four phases, four of them in one sitting writing the comments above, and once
+      it did *not* cost the build: the remainder parsed as valid JavaScript and every browser test
+      failed at once on an error pointing nowhere near the CSS. The scan walks each `css` template to
+      the backtick that closes it and fails if that backtick is inside a comment. Verified against a
+      planted one. [code-style.md §10](code-style.md#10-enforcement) had the rule and was waiting for
+      this
+
+**Verify**
+
+- [x] Full gate: **266 unit tests**, lint, typecheck, Prettier, build, **234 browser checks** in
+      Chromium and Firefox
+
+> **`display: contents` is load-bearing and quiet.** A wrapper component that forgets it silently
+> becomes one flex item holding several buttons, and the row goes uneven rather than broken. It also
+> removes the host's box, so `<pt-mode-toggle>` cannot be measured with `boundingBox()` and
+> `<pt-brush-bar>`'s `role="group"` had to move onto the host in `connectedCallback`. Both surprised
+> a test before they surprised a person, which is the right order.
+
 ---
 
 ## Phase 5 — Hardening
@@ -735,4 +893,5 @@ Carried from [design-spec.md §14](design-spec.md#14-risks-and-open-questions). 
 | 11 | Is our own letter pad better than the phone's keyboard? | Phase 4, early | **Resolved, twice, and the second answer stands.** 2026-08-05: no — people want the layout their thumbs know, so the pad went. 2026-08-06, on an iPhone: the keyboard's letters were fine and the screen around them was unworkable, so **the pad came back in QWERTY and got pinned**. The two findings agree once separated — what solvers wanted was the *arrangement*, not the platform owning the bottom of the screen. → [ADR-0010](adr/0010-one-pinned-input-panel.md) |
 | 12 | Is 8 the right rebus ceiling, and will review hold the per-type value bound? | Phase 4 → 5 | Open. 8 comfortably holds every rebus in ordinary use, but it is a judgement. The larger question is [ADR-0007](adr/0007-rebus-widens-the-cell-value.md)'s stated cost: `schema.js` no longer stops a type from accepting a long value, so a fifth type that forgets gets a bug rather than an error. |
 | 13 | Turning the cursor around has no button on a touch screen — is re-tapping enough? | next playtest | Open, and unchanged by the 4b rework. The clue strip's one press went to *next clue*; flipping Across/Down is the re-tap gesture every crossword app teaches, plus Space and the perpendicular arrow on a keyboard. Discoverable to anyone who has used a crossword app and invisible to anyone who has not. |
-| 14 | Is ~16rem of a phone screen too much to give the input panel? | next playtest | Open. It is more than the platform keyboard and its one-row bar took, and it is the price of a layout that never moves — but unlike the keyboard's share it is a number we chose. A 15×15 still gets 19px squares at 320px. A collapse handle is the obvious lever and was deliberately not built ([ADR-0010](adr/0010-one-pinned-input-panel.md)); it is the first thing to revisit if this proves too much. |
+| 14 | Is ~16rem of a phone screen too much to give the input panel? | next playtest | Open, and **one row smaller than when it was asked**. [ADR-0011](adr/0011-icons-in-the-panel-words-in-the-page.md) took the labels off the button bar, which was wrapping to two rows at 320px in every type; the panel gives that row back to the grid. Still more than the platform keyboard and its one-row bar took, and still a number we chose. A collapse handle remains the obvious next lever and is still deliberately not built. |
+| 15 | Can a solver find an unlabelled Rebus, or Notes, on a touch screen? | Phase 4b | **Closed without needing the playtest — the question was withdrawn rather than answered.** It was the accepted cost of [ADR-0011](adr/0011-icons-in-the-panel-words-in-the-page.md), whose icon-only panel lasted one day: it was meant to buy a row of vertical space and bought none. The lever this row named — *"a small label under the icon rather than a return to the switch"* — is exactly what [ADR-0012](adr/0012-a-label-under-every-icon.md) built, before anybody had to fail to find Rebus to justify it. There is no unlabelled panel control left. |

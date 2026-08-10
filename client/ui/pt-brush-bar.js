@@ -3,17 +3,26 @@
  *
  * This is the keypad's slot, holding what a nonogram has instead of digits (design-spec.md §4). It is
  * a *tri-toggle* rather than three buttons that do something, because picking a brush changes what
- * the grid does next rather than changing the grid — the same reason Notes is a switch and Check is a
- * button (brand.md §4). Three mutually exclusive states is one more than a switch can hold, so it
- * takes the `aria-pressed` option-group pattern the puzzle pickers use.
+ * the grid does next rather than changing the grid — the same reason Notes is a toggle and Check is a
+ * button (brand.md §4).
  *
- * Nonogram has no Notes switch above this: a cross *is* the note, so the thing that would have been a
+ * **This bar is where the app's toggle pattern started**, and as of ADR-0011 it is where every other
+ * setting has arrived: mutually exclusive `aria-pressed` buttons, the pressed one carrying an accent
+ * border and a 16% accent wash. Notes and Rebus were switches with tracks until they were made to
+ * look like these.
+ *
+ * **The host is `display: contents`**, so the three buttons are direct children of the panel's
+ * button bar rather than a box inside it. Boxed, the three brushes were one flex item against Undo's
+ * one and took half the row between them; unboxed, all four are the same width. The group's name
+ * moves onto the host, since the element that carried it no longer draws a box.
+ *
+ * Nonogram has no Notes toggle above this: a cross *is* the note, so the thing that would have been a
  * mode is one of the three brushes instead.
  */
 
 import { LitElement, css, html } from 'lit';
 
-import { controls, optionGroup } from '../styles/controls.js';
+import { actionButton, focusRing } from '../styles/controls.js';
 
 import { closeIcon, eraseIcon, fillIcon, iconStyle } from './icons.js';
 
@@ -31,23 +40,12 @@ export class PtBrushBar extends LitElement {
     };
 
     static styles = [
-        controls,
-        optionGroup,
+        actionButton,
+        focusRing,
         iconStyle,
         css`
             :host {
-                display: block;
-            }
-
-            /* Keypad-sized targets: this is the control a thumb spends the whole puzzle on. */
-            .option {
-                display: inline-flex;
-                gap: var(--space-2);
-                align-items: center;
-                justify-content: center;
-                min-width: 6rem;
-                min-height: 2.75rem;
-                touch-action: manipulation;
+                display: contents;
             }
         `,
     ];
@@ -56,6 +54,17 @@ export class PtBrushBar extends LitElement {
         super();
         this.brush = 'fill';
         this.disabled = false;
+    }
+
+    /**
+     * Names the group on the host, since `display: contents` means this element draws no box for a
+     * `<div role="group">` to be. The role has to reach the light DOM to survive that, which is why
+     * it is set here rather than in the template.
+     */
+    connectedCallback() {
+        super.connectedCallback();
+        this.setAttribute('role', 'group');
+        this.setAttribute('aria-label', 'what a tap draws');
     }
 
     /**
@@ -81,22 +90,20 @@ export class PtBrushBar extends LitElement {
 
     render() {
         return html`
-            <div class="options" role="group" aria-label="what a tap draws">
-                ${BRUSHES.map(
-                    (brush) => html`
-                        <button
-                            type="button"
-                            class="option"
-                            aria-pressed=${this.brush === brush.id}
-                            ?disabled=${this.disabled}
-                            @pointerdown=${this.#onPointerDown}
-                            @click=${() => this.#emit(brush.id)}
-                        >
-                            ${brush.icon} ${brush.label}
-                        </button>
-                    `,
-                )}
-            </div>
+            ${BRUSHES.map(
+                (brush) => html`
+                    <button
+                        type="button"
+                        class="action"
+                        aria-pressed=${this.brush === brush.id}
+                        ?disabled=${this.disabled}
+                        @pointerdown=${this.#onPointerDown}
+                        @click=${() => this.#emit(brush.id)}
+                    >
+                        ${brush.icon}<span class="action-label">${brush.label}</span>
+                    </button>
+                `,
+            )}
         `;
     }
 }

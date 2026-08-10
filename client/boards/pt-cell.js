@@ -89,6 +89,24 @@ export class PtCell extends LitElement {
         }
 
         /*
+         * A square the puzzle came with, rather than one a player filled in.
+         *
+         * The weight of the digit is what carries the distinction (below); this only has to separate
+         * the printed squares from the empty ones at a glance, so it is about 5% of --ink and reads
+         * as paper that has been printed on rather than as a state.
+         *
+         * **background-color, where the washes below are background-image.** They are different
+         * longhands on purpose: a given square that the cursor is in, or that is in the cursor's
+         * row, then shows the tint *and* the wash rather than one replacing the other, and the tint
+         * does not blink out every time somebody moves. A board that wants neither — nonogram and
+         * crossword both override the washes from outside — uses the background shorthand, which
+         * resets both, and neither of those types has givens.
+         */
+        :host([given]) {
+            background-color: var(--given-fill);
+        }
+
+        /*
          * The square this player's cursor is in, in this player's own colour.
          *
          * --focus-color is published by the board from the local player's --player-N, so the cursor
@@ -100,7 +118,9 @@ export class PtCell extends LitElement {
          * touches what is written on it: an entered value is --ink whoever wrote it (brand.md §3).
          */
         :host([selected]) {
-            background: color-mix(in srgb, var(--focus-color) 40%, transparent);
+            background-image: linear-gradient(
+                color-mix(in srgb, var(--focus-color) 40%, transparent) 0 100%
+            );
         }
 
         /*
@@ -114,7 +134,9 @@ export class PtCell extends LitElement {
          * more urgent than context overrides this from outside — see nonogram.
          */
         :host([highlighted]:not([selected])) {
-            background: color-mix(in srgb, var(--focus-color) 12%, transparent);
+            background-image: linear-gradient(
+                color-mix(in srgb, var(--focus-color) 12%, transparent) 0 100%
+            );
         }
 
         /*
@@ -126,11 +148,19 @@ export class PtCell extends LitElement {
          * being legibility and starts being a dare. Beyond the floor the text is clipped rather than
          * wrapped — the whole string is still in the cell's aria-label, and a square that grew a
          * second line would break the grid's geometry for every cell in its row.
+         *
+         * **min-width: 0, or none of that clipping happens.** This is a flex item, and a flex item's
+         * min-width defaults to auto — its min-content width, which for white-space: nowrap
+         * text is the whole unbroken string. min-width beats max-width, so past the font-size
+         * floor the span pushed the cell wider than its neighbours and threw the whole grid out of
+         * alignment: one seven-letter rebus square visibly bent its row and every column crossing it.
+         * The clipping was written for exactly this case and could never fire without it.
          */
         .value {
             position: relative;
             z-index: 1;
             overflow: hidden;
+            min-width: 0;
             max-width: 100%;
             font-size: max(
                 calc(var(--cell-size, 40px) * 0.27),
@@ -161,15 +191,24 @@ export class PtCell extends LitElement {
         }
 
         /*
-         * Givens carry more weight than entries. The difference is weight, never colour: attribution
-         * lives in chips and presence stripes, and an entered digit is always --ink (brand.md §3).
+         * Givens carry more weight than entries. The difference is weight and a faint ground, never
+         * colour: attribution lives in chips and presence stripes, and an entered digit is always
+         * --ink (brand.md §3).
+         *
+         * 700 against 400. Extrabold was tried for one revision, on the theory that 700 was too
+         * close to an entry to read across a grid, and reverted: it needed a fourth Karla face for a
+         * difference nobody could point to, and the faint ground added at the same time turned out
+         * to be what was actually doing the work.
+         *
+         * 400, not 500, for an entry: only 400 and 700 are loaded, so 500 was matched down to 400
+         * anyway. Writing what actually renders.
          */
         .value.given {
             font-weight: 700;
         }
 
         .value.entered {
-            font-weight: 500;
+            font-weight: 400;
         }
 
         /*
@@ -348,7 +387,7 @@ export class PtCell extends LitElement {
      * Publishes the mark grid's shape on the host, where the label can read it too.
      *
      * The label is placed by the same track height as the marks it shares the grid with, and it is
-     * not inside `.marks` — that container only exists when the cell has notes, while a cage clue is
+     * not inside .marks — that container only exists when the cell has notes, while a cage clue is
      * drawn whether it does or not. A custom property on the host is the one place both rules reach.
      *
      * Guarded, because this is the element whose per-update cost decides whether a 25×25 stays
@@ -384,7 +423,7 @@ export class PtCell extends LitElement {
     /**
      * The cell's value, as a character or as a mark.
      *
-     * `glyphs` maps a value to how it is drawn, and a value the map does not mention is drawn as
+     * glyphs maps a value to how it is drawn, and a value the map does not mention is drawn as
      * itself — so a puzzle that supplies no map gets characters, which is every type but nonogram.
      */
     #renderValue() {
