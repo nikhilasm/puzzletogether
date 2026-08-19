@@ -192,8 +192,10 @@ export class PtPuzzlePicker extends LitElement {
                 cursor: pointer;
             }
 
-            .card:hover:not(:disabled) {
-                border-color: var(--accent);
+            @media (hover: hover) {
+                .card:hover:not(:disabled) {
+                    border-color: var(--accent);
+                }
             }
 
             /* Chosen is the same accent wash every other option in the app uses (brand.md §3). */

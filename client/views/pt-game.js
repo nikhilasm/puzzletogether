@@ -12,6 +12,7 @@ import { html as staticHtml } from 'lit/static-html.js';
 import { PUZZLE_TYPE_NAMES } from '../../shared/constants.js';
 import { ROOM_STATE } from '../../shared/protocol.js';
 import { effectiveValue, isEditable } from '../../shared/puzzle-doc.js';
+import { CELEBRATION_MS, prefersReducedMotion } from '../boards/pt-celebration-layer.js';
 import { boardFor } from '../boards/registry.js';
 import { roomStore } from '../store/room-store.js';
 import { StoreController } from '../store/store-controller.js';
@@ -52,6 +53,8 @@ export class PtGame extends LitElement {
         /** The crossword entry under this player's cursor, reported by the board. */
         entry: { state: true },
         showingClues: { state: true },
+        /** Whether the grid is running its solve wave, which the modal waits out. */
+        celebrating: { state: true },
     };
 
     static styles = [
@@ -185,12 +188,62 @@ export class PtGame extends LitElement {
         state.catalog,
     ]);
 
+    /** The wave's timer, and whether the last state we saw already held a result. */
+    #celebrationTimer = null;
+    #wasSolved = false;
+
     constructor() {
         super();
         this.confirmingReveal = false;
         this.busy = false;
         this.entry = null;
         this.showingClues = false;
+        this.celebrating = false;
+        // A screen that opens onto an already-finished puzzle has nothing to celebrate — the room
+        // finished it before this element existed.
+        this.#wasSolved = this.#store.state.solved != null;
+    }
+
+    /**
+     * Starts the wave when a result lands, and holds the congrats modal back until it is over.
+     *
+     * On the transition into a result rather than on the result itself, because dismissing the modal
+     * rewrites `solved` and nobody wants the grid celebrating a second time for the same puzzle.
+     *
+     * **A reveal is not a solve.** The grid was filled in by the room giving up on it, and answering
+     * that with the same colours the room gets for finishing would be the app misreading the moment.
+     * The modal already says "Revealed" rather than "Solved!"; this agrees with it.
+     */
+    willUpdate() {
+        const solved = this.#store.state.solved;
+        const wasSolved = this.#wasSolved;
+        this.#wasSolved = solved != null;
+
+        if (solved == null) {
+            this.#stopCelebrating();
+            return;
+        }
+
+        if (wasSolved || solved.revealed || prefersReducedMotion()) return;
+
+        this.celebrating = true;
+        this.#celebrationTimer = setTimeout(() => {
+            this.#celebrationTimer = null;
+            this.celebrating = false;
+        }, CELEBRATION_MS);
+    }
+
+    /** Ends the wave early — a new puzzle, or this screen going away underneath it. */
+    #stopCelebrating() {
+        clearTimeout(this.#celebrationTimer);
+        this.#celebrationTimer = null;
+        this.celebrating = false;
+    }
+
+    /** Nothing may be waiting on a timer once this screen is gone. */
+    disconnectedCallback() {
+        this.#stopCelebrating();
+        super.disconnectedCallback();
     }
 
     /**
@@ -403,6 +456,7 @@ export class PtGame extends LitElement {
                 .checkResults=${state.checkResults}
                 .interactive=${isPlaying}
                 .brush=${state.brush}
+                .celebrating=${this.celebrating}
             ></${board.tag}>
         `;
     }
@@ -624,7 +678,13 @@ export class PtGame extends LitElement {
         window.location.hash = '#/';
     }
 
-    /** The confirm dialog for Reveal, and the congrats modal every player gets on completion. */
+    /**
+     * The confirm dialog for Reveal, and the congrats modal every player gets on completion.
+     *
+     * The modal is simply handed the result late while the grid is celebrating, rather than being
+     * told to wait: it opens on `solved` arriving and knows nothing about a wave, which keeps the
+     * sequencing in the one place that owns both halves of it.
+     */
     #renderDialogs(state) {
         return html`
             <pt-confirm
@@ -642,7 +702,7 @@ export class PtGame extends LitElement {
             ></pt-confirm>
 
             <pt-congrats-modal
-                .solved=${state.solved}
+                .solved=${this.celebrating ? null : state.solved}
                 .isHost=${roomStore.isHost}
                 .settings=${state.room?.settings ?? null}
                 .catalog=${state.catalog}

@@ -14,6 +14,7 @@ import { effectiveValue, isEditable, toCoords } from '../../shared/puzzle-doc.js
 import { focusRing } from '../styles/controls.js';
 
 import './pt-cell.js';
+import './pt-celebration-layer.js';
 import './pt-presence-layer.js';
 
 /** Arrow keys, as row and column deltas. */
@@ -34,6 +35,8 @@ export class PtBoard extends LitElement {
         selection: { type: Number },
         interactive: { type: Boolean },
         checkResults: { type: Object },
+        /** Whether the room has just solved this puzzle and the grid is saying so. */
+        celebrating: { type: Boolean },
     };
 
     static styles = [
@@ -149,6 +152,7 @@ export class PtBoard extends LitElement {
         this.selection = null;
         this.interactive = true;
         this.checkResults = {};
+        this.celebrating = false;
     }
 
     /**
@@ -339,6 +343,20 @@ export class PtBoard extends LitElement {
     }
 
     /**
+     * Whether a square takes part in the wave of colour that runs across a finished grid.
+     *
+     * Blocked squares do not. A crossword's black squares are not squares anybody solved, and a wave
+     * that steps around them traces the shape of the puzzle rather than drawing a rectangle over the
+     * top of it. No other type has them, so this costs the rest nothing.
+     *
+     * @param {number} idx - Cell index.
+     * @returns {boolean} True to pulse this square.
+     */
+    celebrates(idx) {
+        return !this.doc.cells[idx].block;
+    }
+
+    /**
      * Whether a cell is part of what the player is currently reaching for, as opposed to what they
      * have already written.
      *
@@ -500,8 +518,36 @@ export class PtBoard extends LitElement {
                         .cols=${cols}
                         .selfId=${this.selfId}
                     ></pt-presence-layer>
+                    ${this.celebrating ? this.#renderCelebration(rows, cols) : nothing}
                 </div>
             </div>
+        `;
+    }
+
+    /**
+     * The wave of colour across a finished grid, drawn once and then taken away.
+     *
+     * **Which** squares take part is decided here rather than in the layer, because that is a fact
+     * about the puzzle: the layer knows where a square is, not what it means. Rendered only while
+     * celebrating, so the element's arrival is what starts the animation.
+     *
+     * Hidden from a screen reader outright. It carries nothing that is not already in the congrats
+     * modal a moment later, and it would otherwise announce several hundred empty spans.
+     */
+    #renderCelebration(rows, cols) {
+        const cells = [];
+        for (let idx = 0; idx < rows * cols; idx += 1) {
+            if (this.celebrates(idx)) cells.push(idx);
+        }
+
+        return html`
+            <pt-celebration-layer
+                aria-hidden="true"
+                .cells=${cells}
+                .players=${this.players}
+                .rows=${rows}
+                .cols=${cols}
+            ></pt-celebration-layer>
         `;
     }
 
@@ -519,7 +565,21 @@ export class PtBoard extends LitElement {
         `;
     }
 
-    /** One cell, keyed by index so it is created once and updated by property thereafter. */
+    /**
+     * One cell, keyed by index so it is created once and updated by property thereafter.
+     *
+     * **The cursor's washes stand down while the wave runs**, and come back when it is over. They
+     * answer "where am I working", which is a question about a puzzle in progress; for a second and
+     * a half after the last square lands, the grid belongs to the room rather than to whoever's
+     * cursor happens to be parked on it — and a 62% wash of one player's colour sitting under a
+     * wave of everybody's simply reads as a square the wave missed.
+     *
+     * Withheld here, on the two attributes every type's wash rules key off, rather than overridden
+     * in CSS: crossword and nonogram paint their washes as a background *colour* and the base paints
+     * one as a background *image*, so a rule that covered all three would have to reach into a
+     * shadow root twice over and would take the givens' tint with it. `aria-selected` is untouched —
+     * the selection has not moved, only its wash.
+     */
     #renderCell(idx) {
         const docCell = this.doc.cells[idx];
         const { row, col } = toCoords(idx, this.doc.size);
@@ -541,8 +601,8 @@ export class PtBoard extends LitElement {
                 ?label-row=${this.reservesLabelRow}
                 ?given=${docCell.given != null}
                 ?block=${docCell.block}
-                ?selected=${this.selection === idx}
-                ?highlighted=${this.isHighlighted(idx)}
+                ?selected=${!this.celebrating && this.selection === idx}
+                ?highlighted=${!this.celebrating && this.isHighlighted(idx)}
                 ?circled=${this.isCircled(idx)}
                 ?heavy-right=${this.isHeavyRight(idx)}
                 ?heavy-bottom=${this.isHeavyBottom(idx)}

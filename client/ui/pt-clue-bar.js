@@ -60,10 +60,18 @@ export class PtClueBar extends LitElement {
                 text-align: left;
                 cursor: pointer;
                 touch-action: manipulation;
+                /* Our own :active ground replaces the platform's tap flash — see controls.js. */
+                -webkit-tap-highlight-color: transparent;
             }
 
-            .clue:hover:not(:disabled) {
-                border-color: var(--accent);
+            @media (hover: hover) {
+                .clue:hover:not(:disabled) {
+                    border-color: var(--accent);
+                }
+            }
+
+            .clue:active:not(:disabled) {
+                background: color-mix(in srgb, var(--ink) 10%, var(--paper-raised));
             }
 
             /*

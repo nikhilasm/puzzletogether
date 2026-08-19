@@ -164,10 +164,22 @@ export class PtKeypad extends LitElement {
                 font-variant-numeric: tabular-nums;
                 cursor: pointer;
                 touch-action: manipulation;
+                /* Our own :active ground replaces the platform's tap flash — see controls.js. */
+                -webkit-tap-highlight-color: transparent;
             }
 
-            button:hover:not(:disabled) {
-                border-color: var(--accent);
+            /* Behind the hover gate like every other hover rule in the app — see controls.js.
+               Ungated, a tapped key kept its accent border until the next tap landed. */
+            @media (hover: hover) {
+                button:hover:not(:disabled) {
+                    border-color: var(--accent);
+                }
+            }
+
+            /* What a tap gets instead: a ground under the finger, gone on release. These keys are
+               the most-tapped thing in the app and were the loudest case of the stuck border. */
+            button:active:not(:disabled) {
+                background: color-mix(in srgb, var(--ink) 10%, var(--paper-raised));
             }
 
             /* Placed as often as the grid allows: still pressable, just no longer suggested. */

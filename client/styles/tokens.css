@@ -165,6 +165,19 @@
      * appearing with no animation at all. Longer, and with a scale, so the panel reads as arriving.
      */
     --motion-celebrate: 260ms;
+
+    /*
+     * The grid's own celebration, which runs before that modal opens: every square pulses once in
+     * the room's colours, as a wave travelling from the top-left corner to the bottom-right.
+     *
+     * Two values because the wave is two things — how long the front takes to cross the grid, and
+     * how long one square is lit as it passes. The sweep is divided by the grid's span at the point
+     * of use, so every size takes the same total time; a 25×25 gets a faster wave rather than a
+     * longer wait. Their sum is `CELEBRATION_MS` in pt-celebration-layer.js, which is how long the
+     * modal is held back — change these and change that.
+     */
+    --motion-celebrate-sweep: 900ms;
+    --motion-celebrate-pulse: 600ms;
 }
 
 /*

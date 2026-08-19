@@ -13,7 +13,7 @@
 
 import { css, html } from 'lit';
 
-import { toCoords } from '../../shared/puzzle-doc.js';
+import { effectiveValue, toCoords } from '../../shared/puzzle-doc.js';
 
 import { PtBoard } from './pt-board.js';
 
@@ -144,6 +144,20 @@ export class PtNonogramBoard extends PtBoard {
      */
     isHighlighted(idx) {
         return this.#stroke?.cells.has(idx) ?? false;
+    }
+
+    /**
+     * The finished picture is left alone; the wave runs through the ground around it.
+     *
+     * Every other type celebrates the squares that were filled in, because those are what the room
+     * worked out. A nonogram inverts that — the filled squares *are* the answer, a picture drawn in
+     * --ink — and washing the room's colours across it would be painting over the thing that was
+     * just completed. What is left is the shape of the picture in negative, which is the same wave
+     * saying the same thing about the same puzzle.
+     */
+    celebrates(idx) {
+        if (!super.celebrates(idx)) return false;
+        return effectiveValue(this.doc, this.board, idx) !== this.doc.meta.values.fill;
     }
 
     /** A filled cell is a solid block; a crossed one is the player's note that nothing goes there. */

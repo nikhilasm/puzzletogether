@@ -140,8 +140,10 @@ export class PtAbout extends LitElement {
                 color: var(--graphite);
             }
 
-            .close:hover {
-                color: var(--ink);
+            @media (hover: hover) {
+                .close:hover {
+                    color: var(--ink);
+                }
             }
 
             @keyframes rise {

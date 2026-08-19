@@ -112,8 +112,10 @@ export class PtClueList extends LitElement {
                 color: var(--graphite);
             }
 
-            .close:hover {
-                color: var(--ink);
+            @media (hover: hover) {
+                .close:hover {
+                    color: var(--ink);
+                }
             }
 
             /*
@@ -188,8 +190,10 @@ export class PtClueList extends LitElement {
                 cursor: pointer;
             }
 
-            li button:hover {
-                background: color-mix(in srgb, var(--accent) 10%, transparent);
+            @media (hover: hover) {
+                li button:hover {
+                    background: color-mix(in srgb, var(--accent) 10%, transparent);
+                }
             }
 
             /*

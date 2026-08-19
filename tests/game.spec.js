@@ -8,7 +8,9 @@
 
 import { expect, test } from '@playwright/test';
 
-import { createRoom, firstEditableCell, startPuzzle } from './helpers.js';
+import { createDims, solveFirst } from '../server/puzzles/sudoku/solver.js';
+
+import { boardOf, createRoom, firstEditableCell, startPuzzle } from './helpers.js';
 
 /** `rgb(r, g, b)` as `#rrggbb`, so it can be compared against a token. */
 function toHex(rgb) {
@@ -356,14 +358,17 @@ test.describe('input mode', () => {
     });
 
     /**
-     * The pressed state moves two channels, not one.
+     * The pressed state moves four channels, not one.
      *
      * The switch this replaced showed its state by sliding a knob, which is a shape change and so
      * survives being seen without colour. An `aria-pressed` button has no knob, so the border *and*
      * the ground both have to move — one of them alone would be a hue difference and nothing else,
      * which is what the grayscale check exists to catch (brand.md §3).
+     *
+     * The icon filling and the label thickening are the two that are shape rather than paint, and
+     * they are what a stuck hover border cannot counterfeit — which is the whole reason they exist.
      */
-    test('flips both channels and writes a pencil mark', async ({ page }) => {
+    test('flips all four channels and writes a pencil mark', async ({ page }) => {
         await createRoom(page);
         await startPuzzle(page);
 
@@ -371,16 +376,28 @@ test.describe('input mode', () => {
         const paint = () =>
             notes.evaluate((el) => {
                 const style = getComputedStyle(el);
-                return { border: style.borderTopColor, background: style.backgroundColor };
+                return {
+                    border: style.borderTopColor,
+                    background: style.backgroundColor,
+                    iconFill: getComputedStyle(el.querySelector('.icon')).fill,
+                    iconStroke: getComputedStyle(el.querySelector('.icon')).stroke,
+                    labelWeight: getComputedStyle(el.querySelector('.action-label')).fontWeight,
+                };
             });
 
         const before = await paint();
+        expect(before.iconFill, 'the resting icon is an outline').toBe('none');
         await notes.click();
         await expect(notes).toHaveAttribute('aria-pressed', 'true');
 
         const after = await paint();
         expect(after.border, 'the border takes the accent').not.toBe(before.border);
         expect(after.background, 'the ground takes the accent wash').not.toBe(before.background);
+        expect(after.iconFill, 'the icon fills').not.toBe('none');
+        expect(after.iconStroke, 'the icon strokes in the accent').not.toBe(before.iconStroke);
+        expect(Number(after.labelWeight), 'the label thickens').toBeGreaterThan(
+            Number(before.labelWeight),
+        );
 
         const cell = await firstEditableCell(page);
         await page.locator(`pt-cell >> nth=${cell}`).click();
@@ -391,6 +408,56 @@ test.describe('input mode', () => {
                 page.locator(`pt-cell >> nth=${cell}`).evaluate((el) => (el.marks ?? []).length),
             )
             .toBeGreaterThan(0);
+    });
+});
+
+/**
+ * Hover is a *pointer* state, and a touch screen has no pointer.
+ *
+ * A touch browser emulates hover on whatever was tapped last and holds it there until something else
+ * is tapped, so an ungated `:hover` becomes a state that outlives the tap. Here that was
+ * `border-color: var(--accent)` — an accent frame left sitting on an unfocused control, which brand
+ * §4 says reads as a stuck focus ring, and which on a *setting* is a pressed button missing only its
+ * wash. Every hover rule in the app is now behind `@media (hover: hover)`.
+ *
+ * It was never the focus ring, and could not have been: `:focus-visible` does not match a touch
+ * activation, and the panel's controls `preventDefault()` on `pointerdown` to keep the grid focused,
+ * so they take no focus from a tap at all. That is asserted here too, because the fix would look
+ * just as green if focus had quietly started landing on the keys instead.
+ */
+test.describe('on a touch screen', () => {
+    test.use({ hasTouch: true });
+
+    test('a tap leaves no state behind on the control it landed on', async ({ page }) => {
+        await createRoom(page);
+        await startPuzzle(page);
+
+        const resting = await page
+            .locator('pt-keypad .digits button')
+            .nth(1)
+            .evaluate((el) => getComputedStyle(el).borderTopColor);
+        const borderOf = (locator) => locator.evaluate((el) => getComputedStyle(el).borderTopColor);
+
+        // The app must agree there is no hover here, or the gate below proves nothing.
+        expect(await page.evaluate(() => matchMedia('(hover: hover)').matches)).toBe(false);
+
+        const key = page.locator('pt-keypad .digits button').first();
+        await key.tap();
+        expect(await borderOf(key), 'the tapped key keeps no hover border').toBe(resting);
+        expect(
+            await key.evaluate((el) => el.matches(':focus-visible')),
+            'and takes no focus ring either',
+        ).toBe(false);
+
+        // A setting is the case that mattered: on, then off again, with nothing left over.
+        const notes = page.locator('pt-mode-toggle .action');
+        await notes.tap();
+        await expect(notes).toHaveAttribute('aria-pressed', 'true');
+        await notes.tap();
+        await expect(notes).toHaveAttribute('aria-pressed', 'false');
+        expect(await borderOf(notes), 'a toggle switched back off looks switched off').toBe(
+            resting,
+        );
     });
 });
 
@@ -615,5 +682,197 @@ test.describe('the congrats modal', () => {
             .locator('pt-congrats-modal dialog')
             .evaluate((el) => getComputedStyle(el).animationName);
         expect(animation).toBe('celebrate');
+    });
+});
+
+/**
+ * The wave of colour that crosses a finished grid before the modal opens (brand.md §5).
+ *
+ * Two of these need a genuinely solved puzzle, which is the one thing a client cannot arrange for
+ * itself: the solution never leaves the server, and completion is decided there. So the test works
+ * one out in Node from the givens the browser already has, and types it in.
+ */
+test.describe('the solve celebration', () => {
+    /** A CSS duration in milliseconds, whichever unit the engine serialised it in. */
+    function toMs(duration) {
+        return duration.trim().endsWith('ms')
+            ? Number.parseFloat(duration)
+            : Number.parseFloat(duration) * 1000;
+    }
+
+    /**
+     * Whether the grid is waving and whether the modal is open, read at one instant.
+     *
+     * One `evaluate` rather than two locators, because what is being tested is that the two never
+     * overlap — sampling them a round trip apart would be sampling two different moments. It reaches
+     * through the shadow roots by hand for the same reason: Playwright's engine pierces them, but
+     * only one selector at a time.
+     */
+    function celebrationState(page) {
+        return page.locator('pt-game').evaluate((game) => {
+            const board = game.renderRoot.querySelector('.board')?.firstElementChild;
+            const dialog = game.renderRoot
+                .querySelector('pt-congrats-modal')
+                ?.renderRoot?.querySelector('dialog');
+            return {
+                waving: board?.renderRoot?.querySelector('pt-celebration-layer') != null,
+                modal: dialog?.open === true,
+            };
+        });
+    }
+
+    /**
+     * Fills in the sudoku on screen, solved in Node from the givens the client holds.
+     *
+     * The generator only ships puzzles with a unique solution, so the first one the solver finds is
+     * the one the server will accept.
+     */
+    async function solveSudoku(page) {
+        const { side, givens } = await boardOf(page).evaluate((board) => ({
+            side: board.doc.size.rows,
+            givens: board.doc.cells.map((cell) => Number(cell.given ?? 0)),
+        }));
+
+        const solution = solveFirst(Uint8Array.from(givens), createDims(side));
+        expect(solution, 'the puzzle on screen is solvable').not.toBeNull();
+
+        for (const [idx, value] of solution.entries()) {
+            if (givens[idx] !== 0) continue;
+            await page.locator(`pt-cell >> nth=${idx}`).click();
+            await page.keyboard.press(String(value));
+        }
+    }
+
+    /**
+     * The shape of the wave, driven against the layer on its own: a straight front travelling corner
+     * to corner, in the colours of the people in the room.
+     *
+     * Every square on one anti-diagonal shares a delay and a colour, which is what makes the room's
+     * palette read as bands chasing each other down the grid rather than as confetti.
+     */
+    test('sweeps corner to corner in the room’s colours', async ({ page }) => {
+        await createRoom(page);
+        await page.evaluate(() => {
+            const layer = document.createElement('pt-celebration-layer');
+            layer.rows = 3;
+            layer.cols = 3;
+            layer.cells = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+            layer.players = [
+                { id: 'a', colorIndex: 0, connected: true },
+                { id: 'b', colorIndex: 3, connected: true },
+                // Gone from the room, so not one of its colours.
+                { id: 'c', colorIndex: 5, connected: false },
+            ];
+            document.body.append(layer);
+        });
+
+        const tokens = await page.evaluate(() => {
+            const style = getComputedStyle(document.documentElement);
+            return {
+                sweep: style.getPropertyValue('--motion-celebrate-sweep'),
+                first: style.getPropertyValue('--player-0').trim(),
+                second: style.getPropertyValue('--player-3').trim(),
+            };
+        });
+
+        const pulses = await page.locator('pt-celebration-layer .pulse').evaluateAll((els) =>
+            els.map((el) => ({
+                delay: getComputedStyle(el).animationDelay,
+                color: getComputedStyle(el).backgroundColor,
+            })),
+        );
+        expect(pulses).toHaveLength(9);
+
+        const delay = (idx) => toMs(pulses[idx].delay);
+
+        // The top-left square goes first and the bottom-right last, one whole sweep later.
+        expect(delay(0)).toBe(0);
+        expect(delay(8)).toBeCloseTo(toMs(tokens.sweep), 1);
+        expect(delay(0)).toBeLessThan(delay(1));
+        expect(delay(1)).toBeLessThan(delay(2));
+
+        // A diagonal is one front: (0,1) and (1,0) are the same moment, and so are the three cells
+        // of the diagonal after it.
+        expect(delay(1)).toBe(delay(3));
+        expect(delay(2)).toBe(delay(4));
+        expect(delay(4)).toBe(delay(6));
+
+        // Two players in the room, so two colours, alternating by diagonal — the third seat left.
+        expect(toHex(pulses[0].color)).toBe(tokens.first);
+        expect(toHex(pulses[1].color)).toBe(tokens.second);
+        expect(toHex(pulses[4].color)).toBe(tokens.first);
+        expect(new Set(pulses.map((pulse) => pulse.color)).size).toBe(2);
+    });
+
+    /**
+     * The wave and the modal are one sequence, not two things happening at once: the grid says the
+     * room finished, and only then does the modal say what that was worth.
+     */
+    test('runs before the modal, and leaves nothing behind', async ({ page }) => {
+        await createRoom(page);
+        await startPuzzle(page);
+        await solveSudoku(page);
+
+        await expect
+            .poll(() => celebrationState(page), {
+                // A fixed, fast interval. The default backs off to a second between samples, which
+                // is longer than the wave — the test would be timing its own polling, not the app.
+                intervals: [50],
+                timeout: 15_000,
+            })
+            .toEqual({ waving: true, modal: false });
+
+        await expect(page.locator('pt-congrats-modal dialog')).toBeVisible({ timeout: 15_000 });
+        await expect(page.locator('pt-celebration-layer')).toHaveCount(0);
+    });
+
+    /**
+     * A reveal is the room giving up on a puzzle, and it gets the modal it already had — no wave.
+     * Celebrating it in the colours of the people who did not solve it would be the app misreading
+     * the moment, and the heading it sits under says "Revealed" for exactly that reason.
+     */
+    test('does not run for a reveal', async ({ page }) => {
+        await createRoom(page);
+        await startPuzzle(page);
+
+        await page.locator('pt-game .puzzle-actions button', { hasText: 'Reveal' }).click();
+        await page.locator('pt-game pt-confirm button', { hasText: 'Reveal' }).click();
+
+        await expect(page.locator('pt-congrats-modal dialog')).toBeVisible({ timeout: 15_000 });
+        await expect(page.locator('pt-congrats-modal h2')).toHaveText('Revealed');
+        await expect(page.locator('pt-celebration-layer')).toHaveCount(0);
+    });
+
+    /**
+     * Under reduced motion the wave is skipped outright rather than run at 0ms.
+     *
+     * Collapsing the durations is what every other animation in the app does, and it is the wrong
+     * answer here: the modal is held back by a timer, so a 0ms wave would leave the pause with
+     * nothing happening in it. Sampled all the way to the modal opening, because "it was skipped"
+     * cannot be checked after the fact — a wave that had already finished looks identical to one
+     * that never ran.
+     */
+    test('is skipped under reduced motion', async ({ page }) => {
+        await createRoom(page);
+        // Emulated on the page rather than declared as a context option, which this Playwright
+        // version does not apply to the media query the app actually reads. Order does not matter:
+        // the query is read when the puzzle is solved, not when it is loaded.
+        await page.emulateMedia({ reducedMotion: 'reduce' });
+        await startPuzzle(page);
+        await solveSudoku(page);
+
+        let waved = false;
+        await expect
+            .poll(
+                async () => {
+                    const state = await celebrationState(page);
+                    waved ||= state.waving;
+                    return state.modal;
+                },
+                { intervals: [50], timeout: 15_000 },
+            )
+            .toBe(true);
+
+        expect(waved, 'no wave ran at any point').toBe(false);
     });
 });

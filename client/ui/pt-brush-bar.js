@@ -8,8 +8,11 @@
  *
  * **This bar is where the app's toggle pattern started**, and as of ADR-0011 it is where every other
  * setting has arrived: mutually exclusive `aria-pressed` buttons, the pressed one carrying an accent
- * border and a 16% accent wash. Notes and Rebus were switches with tracks until they were made to
- * look like these.
+ * border, a 16% accent wash, a filled accent icon, and a bold label. Notes and Rebus were switches
+ * with tracks until they were made to look like these.
+ *
+ * Cross is the one brush whose icon cannot fill, being two crossed lines with no interior — the
+ * other three channels carry it, and `actionButton` has the reasoning.
  *
  * **The host is `display: contents`**, so the three buttons are direct children of the panel's
  * button bar rather than a box inside it. Boxed, the three brushes were one flex item against Undo's

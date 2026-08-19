@@ -65,9 +65,11 @@ export class PtLanding extends LitElement {
                 margin-bottom: -1.5px;
             }
 
-            .tab:hover:not([aria-selected='true']) {
-                border-bottom-color: var(--rule);
-                color: var(--ink);
+            @media (hover: hover) {
+                .tab:hover:not([aria-selected='true']) {
+                    border-bottom-color: var(--rule);
+                    color: var(--ink);
+                }
             }
 
             .tab[aria-selected='true'] {

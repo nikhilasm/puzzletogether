@@ -858,6 +858,76 @@ app and reversed.* → [ADR-0012](adr/0012-a-label-under-every-icon.md)
 
 ---
 
+### The grid celebrates a solve
+
+*The room finishing a puzzle was two hundred milliseconds of a modal sliding up. The grid itself,
+which is the thing they finished, said nothing at all.*
+
+- [x] **A wave of colour crosses the finished grid before the modal opens.** Every square pulses once
+      — up to 32% of a player's colour and back to nothing — delayed by `row + col`, so the front
+      travels as a straight diagonal from the top-left corner to the bottom-right. The palette cycles
+      on the same number, which turns the room's colours into bands chasing each other down the grid
+      rather than into a colour per square. `--motion-celebrate-sweep` is **divided by the grid's own
+      span at the point of use**, so a 4×4 mini and a 25×25 crossword take the same 1.5s end to end:
+      a bigger grid gets a faster wave rather than a longer wait in front of the modal
+- [x] **The cursor's washes stand down while it runs**, and come back when it ends. They answer
+      "where am I working", which is a question about a puzzle in progress — and a crossword's 62%
+      wash of one player's colour sitting under a wave of everybody's reads as a square the wave
+      missed. Withheld at the two attributes every type's wash rules key off rather than overridden
+      in CSS, because crossword and nonogram paint theirs as a background *colour* and the base
+      paints one as a background *image*: a rule covering all three would reach into a shadow root
+      twice over and take the givens' tint with it. `aria-selected` is untouched — the selection has
+      not moved, only its wash
+- [x] **A separate layer, `<pt-celebration-layer>`, on the same argument as presence.** The
+      alternative is a property on `<pt-cell>`, and that is the element whose per-update cost decides
+      whether a 25×25 stays smooth ([architecture.md §6](architecture.md)) — a celebration is not a
+      good enough reason for the grid's hot path to grow a branch. It is mounted for the length of
+      the wave and then removed, so **mounting is the trigger** and there is no class to add, remove,
+      and re-add to restart an animation
+- [x] **A reveal never celebrates.** The grid was filled in by the room giving up on it, and the
+      modal above it already says "Revealed" rather than "Solved!" — answering that with the colours
+      of the people who did not solve it would be the app misreading the moment
+- [x] **Which squares take part is the board's business, not the layer's.** `celebrates(idx)` on
+      `<pt-board>` skips blocked squares, so a crossword's wave traces the shape of the puzzle
+      instead of drawing a rectangle over the top of it; nonogram overrides it to skip *filled*
+      squares too, because there the filled squares **are** the answer and washing colour over the
+      finished picture would be painting over the thing that was just completed
+- [x] **The modal is handed its result late rather than told to wait.** `<pt-congrats-modal>` still
+      opens on `solved` arriving and knows nothing about a wave; `<pt-game>` owns both halves of the
+      sequence, which is the same place that already owns which dialog is open
+- [x] **Reduced motion skips the wave outright rather than running it at 0ms.** Collapsing the
+      durations is what every other animation does and it is the wrong answer here: the modal is held
+      back by a timer, so a 0ms wave would leave the pause with nothing happening in it. This is the
+      one motion in the app that has to read `prefers-reduced-motion` in JavaScript as well as in CSS
+
+**Tests**
+
+- [x] `tests/game.spec.js` — the wave is a straight diagonal front (one delay and one colour per
+      anti-diagonal, zero at the top-left corner and a full sweep at the bottom-right) drawn in the
+      colours of the *connected* players; a real solve runs it **before** the modal and leaves
+      nothing behind on the grid; a reveal gets the modal and no wave; reduced motion gets no wave at
+      any point on the way to the modal
+- [x] The two solve tests work the puzzle out in Node from the givens the browser holds, since the
+      solution never leaves the server — which is the property `tests/crossword.spec.js` already
+      asserts about the socket
+
+**Verify**
+
+- [x] Full gate: **267 unit tests**, lint, Prettier, **244 browser checks** in Chromium and Firefox
+
+> **A transient has to be sampled, not inspected.** Both ordering tests read "is the wave running"
+> and "is the modal open" in **one** `evaluate`, because the claim is that the two never overlap and
+> two locator calls are two different moments. They also pin `intervals: [50]` — Playwright's default
+> polling backs off to a second between samples, which is longer than the wave, so the test would
+> have been measuring its own polling.
+
+> **`test.use({ reducedMotion: 'reduce' })` did not reach `matchMedia` in this Playwright version.**
+> The CSS side collapsed and `window.matchMedia('(prefers-reduced-motion: reduce)').matches` stayed
+> `false`, so the test failed against working code. `page.emulateMedia()` sets both. Worth knowing
+> before the next feature that asks the query in JavaScript.
+
+---
+
 ## Phase 5 — Hardening
 
 *Done when: CI is green and the production build survives a load test.*

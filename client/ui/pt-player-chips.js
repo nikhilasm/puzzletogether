@@ -98,8 +98,10 @@ export class PtPlayerChips extends LitElement {
                 touch-action: manipulation;
             }
 
-            button.chip:hover {
-                border-color: var(--accent);
+            @media (hover: hover) {
+                button.chip:hover {
+                    border-color: var(--accent);
+                }
             }
 
             /* Room for the remove control, so a long name cannot run underneath it. The chip's
@@ -146,8 +148,10 @@ export class PtPlayerChips extends LitElement {
                 touch-action: manipulation;
             }
 
-            .kick:hover {
-                color: var(--wrong);
+            @media (hover: hover) {
+                .kick:hover {
+                    color: var(--wrong);
+                }
             }
 
             li {
