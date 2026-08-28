@@ -5,8 +5,8 @@ import { describe, expect, it } from 'vitest';
 import { PLAYER_COLOR_COUNT } from '../../shared/constants.js';
 
 /**
- * The contrast gate from brand.md §7. It runs in `npm test` specifically so the palette cannot
- * regress quietly — the player colours in the spec were candidate values, and several of them
+ * The contrast gate from brand.md §7. It runs in npm test specifically so the palette cannot
+ * regress quietly: the player colours in the spec were candidate values, and several of them
  * failed this check before they were tuned.
  */
 
@@ -16,7 +16,7 @@ function channelLuminance(value) {
     return scaled <= 0.03928 ? scaled / 12.92 : ((scaled + 0.055) / 1.055) ** 2.4;
 }
 
-/** WCAG relative luminance of a `#rrggbb` colour. */
+/** WCAG relative luminance of a #rrggbb colour. */
 function luminance(hex) {
     const packed = Number.parseInt(hex.slice(1), 16);
     return (
@@ -65,8 +65,8 @@ describe.each(Object.entries(THEMES))('%s theme', (_name, tokens) => {
     });
 
     /**
-     * `--accent` is exempt at 3:1 because it is only used for the wordmark, borders, and focus
-     * rings — never body-size text, which is what `--accent-text` exists for (brand.md §3).
+     * --accent is exempt at 3:1 because it is only used for the wordmark, borders, and focus
+     * rings, never body-size text, which is what --accent-text exists for (brand.md §3).
      */
     it('clears 3:1 for --accent on paper', () => {
         expect(contrast(tokens.accent, tokens.paper)).toBeGreaterThanOrEqual(3);

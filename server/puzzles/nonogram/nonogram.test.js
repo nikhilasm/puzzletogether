@@ -61,7 +61,7 @@ describe('the nonogram line-solver', () => {
     });
 
     /**
-     * A 2×2 with every line clued `[1]` has two answers — the two diagonals — and is exactly the
+     * A 2×2 with every line clued [1] has two answers, the two diagonals, and is exactly the
      * ambiguity generation exists to reject. The solver has to fail to finish it rather than pick one.
      */
     it('stops short of a puzzle that has more than one answer', () => {
@@ -93,7 +93,7 @@ describe('nonogram generation', () => {
 
     /**
      * The label always tells the truth about the puzzle. Density steers the search, but what comes
-     * back is the rating the puzzle earned from the solver — the same rule sudoku follows, and the
+     * back is the rating the puzzle earned from the solver, the same rule sudoku follows, and the
      * reason nonogram measures its difficulty where kenken parameterises it.
      */
     it.each(['easy', 'medium', 'hard'])(
@@ -143,7 +143,7 @@ describe('nonogram generation', () => {
     });
 
     /**
-     * The clues *are* the puzzle, so they necessarily describe the picture — but the cell list the
+     * The clues *are* the puzzle, so they necessarily describe the picture; the cell list the
      * client renders must give nothing away beyond them.
      */
     it('sends a document with every cell blank and editable', () => {

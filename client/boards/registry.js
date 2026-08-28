@@ -3,17 +3,17 @@
  *
  * The game screen has to know two things about a puzzle it has never heard of: what to render it
  * with, and what to put in the control slot beneath it. Both are declared here so that adding a type
- * is one entry rather than a branch inside `<pt-game>` — a type check there would be exactly the cost
+ * is one entry rather than a branch inside <pt-game>; a type check there would be exactly the cost
  * design-spec.md §7 says a new type must not have.
  *
- * `input` is a small closed vocabulary, not a type name. It groups puzzles by the question "how does
+ * input is a small closed vocabulary, not a type name. It groups puzzles by the question "how does
  * a player put something in a cell?", which has far fewer answers than there are puzzle types:
- * sudoku and kenken share `digits` despite having nothing else in common.
+ * sudoku and kenken share digits despite having nothing else in common.
  *
- * Crossword is `letters`: a pad of our own, which is where this landed after trying the platform
+ * Crossword is letters: a pad of our own, which is where this landed after trying the platform
  * keyboard on a real phone. The keyboard's letters were fine; everything around them was not. Half
  * the actions a solver takes dismiss it, and a control bar pinned above it has to be positioned off
- * `visualViewport` and still drifts. A pad we draw costs a share of the screen and gives back a
+ * visualViewport and still drifts. A pad we draw costs a share of the screen and gives back a
  * layout that does not move (ADR-0010, reversing ADR-0008).
  */
 
@@ -35,7 +35,7 @@ export const BOARDS = {
 /**
  * The board entry for a puzzle type.
  *
- * @param {string} type - The `doc.type` of the puzzle being rendered.
+ * @param {string} type - The doc.type of the puzzle being rendered.
  * @returns {{ tag: unknown, input: string }} The element to render it with and its input style.
  * @throws {RangeError} If the build has no board for the type, which means a server module shipped
  *   without its client half.

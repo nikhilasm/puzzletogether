@@ -1,8 +1,8 @@
 /**
  * Process entry point: one Express app, one Socket.IO server, one room store (architecture.md §1).
  *
- * In development Vite serves the client on 5173 and proxies `/socket.io` here; in production this
- * process also serves `client/dist`. There is no gameplay REST API — all of it is Socket.IO.
+ * In development Vite serves the client on 5173 and proxies /socket.io here; in production this
+ * process also serves client/dist. There is no gameplay REST API; all of it is Socket.IO.
  */
 
 import { existsSync } from 'node:fs';
@@ -59,16 +59,16 @@ const banked = loadBankFrom(config.bankDirs);
 httpServer.listen(config.port, () => {
     const mode = config.isDev ? 'development' : 'production';
     console.info(`PuzzleTogether server listening on :${config.port} (${mode})`);
-    // Zero is a normal state, not a failure — a build with no licensed bank simply offers three
-    // puzzle types (ADR-0004). Said out loud so it is never a silent surprise.
+    // Zero is a normal state, not a failure: a build with no licensed bank offers three puzzle
+    // types (ADR-0004). Said out loud so it is never a silent surprise.
     console.info(
         banked > 0
             ? `crossword bank: ${banked} puzzle${banked === 1 ? '' : 's'}`
-            : 'crossword bank: empty — the type is not offered',
+            : 'crossword bank: empty, the type is not offered',
     );
 });
 
-// Releases the generator worker and the GC interval so `node --watch` and Docker stop cleanly.
+// Releases the generator worker and the GC interval so node --watch and Docker stop cleanly.
 async function shutdown() {
     stopGc();
     await closeProvider();

@@ -35,8 +35,8 @@ function normalizeMarks(marks) {
 /**
  * Applies one op to a board and returns a new board.
  *
- * Conflicts resolve by per-cell last-writer-wins, ordered by the server-assigned `seq`: a write
- * carrying a lower `seq` than the cell already holds is dropped. That makes application
+ * Conflicts resolve by per-cell last-writer-wins, ordered by the server-assigned seq: a write
+ * carrying a lower seq than the cell already holds is dropped. That makes application
  * order-independent, which is the invariant that lets a client apply ops as they arrive and still
  * match the server's snapshot.
  *
@@ -75,12 +75,12 @@ function nextCellState(current, op, meta) {
     switch (op.t) {
         case OP_TYPE.SET:
         case OP_TYPE.FILL:
-            // Entering a value clears that cell's pencil marks — they were notes toward it.
+            // Entering a value clears that cell's pencil marks; they were notes toward it.
             return { value: op.value ?? null, marks: [], ...stamp };
         case OP_TYPE.MARKS:
             // A cell holds a value or marks, never both. That is how a cell renders, how players
-            // think about it, and — because it makes a cell's whole state expressible in one op —
-            // what lets undo restore any earlier state with a single write.
+            // think about it, and what lets undo restore any earlier state with a single write,
+            // since it makes a cell's whole state expressible in one op.
             return { value: null, marks: normalizeMarks(op.marks ?? []), ...stamp };
         case OP_TYPE.CLEAR:
             return { value: null, marks: [], ...stamp };
@@ -92,7 +92,7 @@ function nextCellState(current, op, meta) {
 /**
  * Toggles one pencil mark in a cell's mark set.
  *
- * Marks are set semantics, so Notes-mode input is a toggle rather than an append — pressing `4`
+ * Marks are set semantics, so Notes-mode input is a toggle rather than an append: pressing 4
  * twice leaves the cell as it started.
  *
  * @param {number[]} marks - The cell's current marks.

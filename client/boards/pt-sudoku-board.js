@@ -1,8 +1,8 @@
 /**
  * The sudoku grid: region borders and digit input.
  *
- * Everything else — cell DOM, selection, presence, op emission — comes from `<pt-board>`. This is
- * the whole client-side cost of a puzzle type.
+ * Everything else (cell DOM, selection, presence, op emission) comes from <pt-board>. This is the
+ * whole client-side cost of a puzzle type.
  */
 
 import { PtBoard } from './pt-board.js';
@@ -13,7 +13,7 @@ export class PtSudokuBoard extends PtBoard {
         return Math.ceil(Math.sqrt(this.doc?.meta.alphabet.length ?? 9));
     }
 
-    /** Enough rows to hold the whole alphabet at that width — 2 for a 6×6, 3 for a 9×9. */
+    /** Enough rows to hold the whole alphabet at that width: 2 for a 6×6, 3 for a 9×9. */
     get markRows() {
         return Math.ceil((this.doc?.meta.alphabet.length ?? 9) / this.markColumns);
     }
@@ -25,7 +25,7 @@ export class PtSudokuBoard extends PtBoard {
         return (col + 1) % regionCols === 0 && col + 1 < this.doc.size.cols;
     }
 
-    /** As `isHeavyRight`, for the bottom edge of a region. */
+    /** As isHeavyRight, for the bottom edge of a region. */
     isHeavyBottom(idx) {
         const { regionRows } = this.doc.meta;
         const row = Math.floor(idx / this.doc.size.cols);

@@ -57,7 +57,7 @@ describe('sudoku generation', () => {
 
     /**
      * The label always tells the truth about the puzzle. Difficulty targeting is a search that can
-     * miss; mislabelling would be a bug, so `doc.difficulty` is the measured rating and never the
+     * miss; mislabelling would be a bug, so doc.difficulty is the measured rating and never the
      * requested one.
      */
     it.each(['easy', 'medium', 'hard'])(

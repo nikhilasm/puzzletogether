@@ -1,8 +1,8 @@
 /**
  * Bitmask sudoku solver, used for both generation and the uniqueness proof.
  *
- * Grids are flat `Uint8Array`s of length `n * n` holding 1..n, with 0 for empty. Everything here
- * is a hot path — plain loops, no allocation inside the recursion (code-style.md §7).
+ * Grids are flat Uint8Arrays of length n * n holding 1..n, with 0 for empty. Everything here
+ * is a hot path: plain loops, no allocation inside the recursion (code-style.md §7).
  */
 
 /**
@@ -11,7 +11,7 @@
  * @property {number} regionRows - Region height in cells.
  * @property {number} regionCols - Region width in cells.
  * @property {Uint8Array} boxOf - Region index for each cell.
- * @property {number} full - Bitmask with the low `n` bits set.
+ * @property {number} full - Bitmask with the low n bits set.
  */
 
 /** Region shape for each supported grid size. */
@@ -22,11 +22,11 @@ const REGION_SHAPES = {
 };
 
 /**
- * Builds the derived dimensions a solver needs for an `n × n` grid.
+ * Builds the derived dimensions a solver needs for an n × n grid.
  *
  * @param {number} n - Grid side length; must be a supported sudoku size.
  * @returns {Dims} Region shape, per-cell region lookup, and the full candidate mask.
- * @throws {RangeError} If `n` is not a supported size.
+ * @throws {RangeError} If n is not a supported size.
  */
 export function createDims(n) {
     const shape = REGION_SHAPES[n];
@@ -67,7 +67,7 @@ function buildMasks(cells, dims) {
  * Recursive search over the grid. Picks the empty cell with the fewest candidates first, which is
  * what keeps both generation and uniqueness checking fast enough to run per dig.
  *
- * Returns the number of solutions found, stopping once `limit` is reached.
+ * Returns the number of solutions found, stopping once limit is reached.
  */
 function search(cells, dims, masks, limit, order, found) {
     const { n, boxOf, full } = dims;
@@ -135,14 +135,14 @@ function maskValues(mask) {
 }
 
 /**
- * Counts how many ways a grid can be completed, stopping early once `limit` is hit.
+ * Counts how many ways a grid can be completed, stopping early once limit is hit.
  *
- * Uniqueness is proved by calling this with `limit = 2` — the whole generator rests on it.
+ * Uniqueness is proved by calling this with limit = 2; the whole generator rests on it.
  *
  * @param {Uint8Array} cells - Grid with 0 for empty cells; restored before returning.
- * @param {Dims} dims - Dimensions from `createDims`.
+ * @param {Dims} dims - Dimensions from createDims.
  * @param {number} [limit] - Stop counting at this many solutions. Defaults to 2.
- * @returns {number} Solution count, capped at `limit`.
+ * @returns {number} Solution count, capped at limit.
  */
 export function countSolutions(cells, dims, limit = 2) {
     const working = Uint8Array.from(cells);
@@ -154,7 +154,7 @@ export function countSolutions(cells, dims, limit = 2) {
  * Solves a grid, returning the first solution found.
  *
  * @param {Uint8Array} cells - Grid with 0 for empty cells; not mutated.
- * @param {Dims} dims - Dimensions from `createDims`.
+ * @param {Dims} dims - Dimensions from createDims.
  * @returns {Uint8Array|null} The completed grid, or null if it cannot be solved.
  */
 export function solveFirst(cells, dims) {
@@ -167,7 +167,7 @@ export function solveFirst(cells, dims) {
 /**
  * Produces a random completed grid by solving an empty one with the candidate order shuffled.
  *
- * @param {Dims} dims - Dimensions from `createDims`.
+ * @param {Dims} dims - Dimensions from createDims.
  * @param {import('../rng.js').Rng} rng - Seeded generator; the only source of randomness.
  * @returns {Uint8Array} A valid, fully populated grid.
  * @throws {Error} If no solution is found, which would mean the solver is broken.

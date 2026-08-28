@@ -2,7 +2,7 @@
  * The game screen: puzzle header, timer, the shared grid, and every control that acts on it.
  *
  * Owns no board state. It reads the store, hands the board and keypad what they need, and turns
- * their events back into store calls — which is what keeps physical keyboard, on-screen keypad, and
+ * their events back into store calls, which is what keeps physical keyboard, on-screen keypad, and
  * touch on one input path (design-spec.md §11). The only local state is which dialog is open.
  */
 
@@ -104,15 +104,13 @@ export class PtGame extends LitElement {
              * Erase and Undo live on the keypad because they act on the cell you are in; Puzzle
              * Select, Check, Reveal, and Leave room act on the room's puzzle or on your seat in it,
              * and two of them are host-only. Keeping them apart is what stops a player reaching for
-             * Undo and finding Reveal. The rule is the separation — a border, not a shadow
+             * Undo and finding Reveal. The rule is the separation: a border, not a shadow
              * (brand.md §1).
              *
-             * **Leave room is the last of them rather than a block of its own.** It used to sit
-             * below at a smaller size, on the argument that leaving is not what you came here to do
-             * — but a control set apart and shrunk reads as an afterthought rather than as a quiet
-             * one, and it was the only button on the screen at its own size. It keeps its place at
-             * the end of the reading order and says what it is with colour instead, which is the
-             * channel that does not cost it a tap target.
+             * **Leave room is the last of them rather than a block of its own.** Set apart and
+             * shrunk it read as an afterthought rather than as a quiet one, and it was the only
+             * button on the screen at its own size. It keeps the end of the reading order and says
+             * what it is with colour, the channel that does not cost it a tap target.
              */
             .puzzle-actions {
                 display: flex;
@@ -140,9 +138,9 @@ export class PtGame extends LitElement {
             /*
              * Sits under the grid, which is what the actions it reports on happened to.
              *
-             * It stays in the DOM empty rather than being rendered conditionally — a live region
-             * has to exist before the text arrives or the announcement is missed — and takes no
-             * height at all in that state: an empty block has no line box, and the margins are
+             * It stays in the DOM empty rather than being rendered conditionally, since a live
+             * region has to exist before the text arrives or the announcement is missed, and takes
+             * no height at all in that state: an empty block has no line box, and the margins are
              * hung off :not(:empty) so they arrive with the words.
              */
             .notice {
@@ -169,7 +167,7 @@ export class PtGame extends LitElement {
         `,
     ];
 
-    // Everything this screen passes down, and nothing else — the roster changing does not need to
+    // Everything this screen passes down, and nothing else: the roster changing does not need to
     // re-render a grid.
     #store = new StoreController(this, roomStore, (state) => [
         state.doc,
@@ -199,7 +197,7 @@ export class PtGame extends LitElement {
         this.entry = null;
         this.showingClues = false;
         this.celebrating = false;
-        // A screen that opens onto an already-finished puzzle has nothing to celebrate — the room
+        // A screen that opens onto an already-finished puzzle has nothing to celebrate: the room
         // finished it before this element existed.
         this.#wasSolved = this.#store.state.solved != null;
     }
@@ -208,7 +206,7 @@ export class PtGame extends LitElement {
      * Starts the wave when a result lands, and holds the congrats modal back until it is over.
      *
      * On the transition into a result rather than on the result itself, because dismissing the modal
-     * rewrites `solved` and nobody wants the grid celebrating a second time for the same puzzle.
+     * rewrites solved and nobody wants the grid celebrating a second time for the same puzzle.
      *
      * **A reveal is not a solve.** The grid was filled in by the room giving up on it, and answering
      * that with the same colours the room gets for finishing would be the app misreading the moment.
@@ -233,7 +231,7 @@ export class PtGame extends LitElement {
         }, CELEBRATION_MS);
     }
 
-    /** Ends the wave early — a new puzzle, or this screen going away underneath it. */
+    /** Ends the wave early: a new puzzle, or this screen going away underneath it. */
     #stopCelebrating() {
         clearTimeout(this.#celebrationTimer);
         this.#celebrationTimer = null;
@@ -250,8 +248,8 @@ export class PtGame extends LitElement {
      * The board element, for the few things only it knows: where the cursor goes next, and which
      * way it is pointing.
      *
-     * Reached by query rather than by ref because the tag varies per puzzle type — `boardFor` hands
-     * back a `literal`, so there is one element in that slot and its name is not known here.
+     * Reached by query rather than by ref because the tag varies per puzzle type: boardFor hands
+     * back a literal, so there is one element in that slot and its name is not known here.
      */
     get #board() {
         return this.renderRoot.querySelector('.board')?.firstElementChild ?? null;
@@ -261,7 +259,7 @@ export class PtGame extends LitElement {
      * Moves the cursor along after a value lands, if this puzzle type advances at all.
      *
      * Called from both input paths rather than from inside the board, so that the physical keyboard
-     * and the on-screen pad cannot drift apart — which is the whole point of the one-input-path rule
+     * and the on-screen pad cannot drift apart, which is the whole point of the one-input-path rule
      * (design-spec.md §11). Sudoku and kenken return null here and nothing moves.
      */
     #advance(cell) {
@@ -355,8 +353,8 @@ export class PtGame extends LitElement {
      * The panel's Backspace, which only a crossword has.
      *
      * Asked of the board rather than done here, because backspacing a crossword is a rule about
-     * *entries* — take a letter out, then step back along the word without ever leaving it — and the
-     * board is the only thing that knows where the word goes.
+     * *entries*, namely take a letter out then step back along the word without ever leaving it,
+     * and the board is the only thing that knows where the word goes.
      */
     #onKeypadBackspace() {
         this.#board?.backspace();
@@ -440,8 +438,8 @@ export class PtGame extends LitElement {
     /**
      * The grid itself, whichever element this puzzle type renders with.
      *
-     * A static template so the tag can vary while lit still caches one template per board type —
-     * `boardFor` hands back a `literal`, not a string, which is what keeps this from re-parsing the
+     * A static template so the tag can vary while lit still caches one template per board type:
+     * boardFor hands back a literal, not a string, which is what keeps this from re-parsing the
      * template on every render.
      */
     #renderBoard(board, doc, state, isPlaying) {
@@ -465,11 +463,11 @@ export class PtGame extends LitElement {
      * The pinned input panel: this puzzle's keys, its one setting, and its clue if it has one.
      *
      * It comes straight after the grid in the DOM even though it is drawn at the foot of the screen,
-     * because that is the order it is *used* in — a keyboard or screen-reader user reaching past the
+     * because that is the order it is *used* in: a keyboard or screen-reader user reaching past the
      * grid should meet the keys next, not Check and Reveal.
      *
      * Everything type-specific about it is slotted from here rather than branched inside the panel,
-     * which is what keeps `<pt-keypad>` from knowing there is such a thing as a crossword.
+     * which is what keeps <pt-keypad> from knowing there is such a thing as a crossword.
      */
     #renderPanel(board, doc, state, isPlaying) {
         const letters = board.input === 'letters';
@@ -509,7 +507,7 @@ export class PtGame extends LitElement {
      * digit puzzles, a brush for nonogram, Rebus for crossword. The slot is the same, so the shape of
      * the screen never changes between types even though its contents do (design-spec.md §4).
      *
-     * Crossword adds one thing on top of its setting — the way into the clue list — because it is the
+     * Crossword adds one thing on top of its setting, the way into the clue list, because it is the
      * only type whose puzzle is partly written somewhere other than the grid.
      */
     #renderSetting(board, state, isPlaying) {
@@ -524,8 +522,8 @@ export class PtGame extends LitElement {
 
         if (board.input === 'letters') {
             // Clues leads the row. It is the only control here that does not change or clear a
-            // square — it opens the puzzle's other half — so it reads as the way *in* rather than as
-            // one more thing to do to the square you are on, and putting it first says so. Rebus,
+            // square, since it opens the puzzle's other half, so it reads as the way *in* rather
+            // than as one more thing to do to the square you are on. Rebus,
             // Backspace, and Undo follow, in the order the other types put their setting and their
             // two corrections.
             return html`
@@ -585,7 +583,7 @@ export class PtGame extends LitElement {
      * Picking a clue moves the cursor to that entry and closes the list.
      *
      * It lands on the entry's first *empty* square rather than its first square, because arriving on
-     * a letter somebody has already filled in makes the next keystroke overwrite their work — which
+     * a letter somebody has already filled in makes the next keystroke overwrite their work, which
      * in a room solving together is somebody else's.
      */
     #onCluePick(event) {
@@ -604,10 +602,9 @@ export class PtGame extends LitElement {
     /**
      * The row of actions on the puzzle and on the room, under its rule.
      *
-     * The row renders only the actions this player actually has — a non-host in a room with
-     * checking switched off gets Leave room and nothing else. It no longer disappears, because
-     * Leave room is in it and every player has that: the rule is now always drawn, and it is always
-     * drawn around something.
+     * The row renders only the actions this player actually has: a non-host in a room with checking
+     * switched off gets Leave room and nothing else. Every player has Leave room, so the rule is
+     * always drawn and always drawn around something.
      */
     #renderControls(state, isPlaying) {
         const settings = state.room?.settings ?? {};
@@ -671,7 +668,7 @@ export class PtGame extends LitElement {
     /**
      * Gives up the seat and returns to the landing screen, mid-puzzle as well as between them.
      *
-     * Navigating is the whole implementation: `<pt-app>` releases the seat whenever the route
+     * Navigating is the whole implementation: <pt-app> releases the seat whenever the route
      * leaves a room, so this button and the browser's back button cannot drift apart.
      */
     #onLeave() {
@@ -682,7 +679,7 @@ export class PtGame extends LitElement {
      * The confirm dialog for Reveal, and the congrats modal every player gets on completion.
      *
      * The modal is simply handed the result late while the grid is celebrating, rather than being
-     * told to wait: it opens on `solved` arriving and knows nothing about a wave, which keeps the
+     * told to wait: it opens on solved arriving and knows nothing about a wave, which keeps the
      * sequencing in the one place that owns both halves of it.
      */
     #renderDialogs(state) {

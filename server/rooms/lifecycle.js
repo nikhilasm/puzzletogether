@@ -87,7 +87,7 @@ export function restorePlayer(room, token, socketId) {
 /**
  * Marks a player disconnected and schedules their drop once the grace period expires.
  *
- * The player keeps their seat, colour, and host status throughout — that is what makes a refresh
+ * The player keeps their seat, colour, and host status throughout, which is what makes a refresh
  * mid-solve a non-event (ADR-0005).
  *
  * @param {Room} room - The room.
@@ -148,7 +148,7 @@ export function dropPlayer(room, playerId) {
  * Reassigns a player's colour, provided nobody else in the room holds it.
  *
  * Uniqueness is the whole point: colour is an identity here, and two players sharing one would make
- * the presence stripes ambiguous — the one channel the roster cannot fall back on a name for
+ * the presence stripes ambiguous, the one channel the roster cannot fall back on a name for
  * (brand.md §3). Re-picking the colour you already have is a no-op that succeeds.
  *
  * @param {Room} room - The room.
@@ -227,7 +227,7 @@ export function toRoomView(room) {
 /**
  * The current puzzle state for a joining or resyncing client.
  *
- * Carries `doc` but never `solution` — that is the whole reason Check and Reveal are server RPCs
+ * Carries doc but never solution, which is the whole reason Check and Reveal are server RPCs
  * (architecture.md §5).
  *
  * @param {Room} room - The room.

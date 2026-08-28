@@ -1,5 +1,5 @@
 /*
- * Global styles. Everything else is scoped inside a component's `static styles` (code-style.md §9).
+ * Global styles. Everything else is scoped inside a component's static styles (code-style.md §9).
  */
 
 *,
@@ -58,7 +58,7 @@ pt-app {
         --motion-celebrate: 0ms;
         /*
          * Collapsed for consistency, but the grid's wave is skipped outright rather than run at
-         * 0ms — see `prefersReducedMotion` in pt-celebration-layer.js. A duration this rule cannot
+         * 0ms; see prefersReducedMotion in pt-celebration-layer.js. A duration this rule cannot
          * reach holds the congrats modal back, and a silent pause is not a reduced animation.
          */
         --motion-celebrate-sweep: 0ms;

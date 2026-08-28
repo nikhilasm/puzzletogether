@@ -2,7 +2,7 @@
  * The two types Phase 3 added, in a real browser: kenken's cages and nonogram's gutters, marks, and
  * drag-painting.
  *
- * The point of this file is the claim in design-spec.md §7 — that a puzzle type costs one server
+ * The point of this file is the claim in design-spec.md §7: that a puzzle type costs one server
  * module and one board subclass. Most of what is checked here is therefore *shared* machinery being
  * driven by a new type rather than new machinery: the same heavy-rule hook drawing cages, the same
  * cell element drawing a block instead of a digit, the same undo walking back a batched op.
@@ -51,8 +51,8 @@ test.describe('kenken', () => {
     });
 
     /**
-     * The cage borders come from the same `isHeavyRight` / `isHeavyBottom` hook sudoku uses for its
-     * regions — asking a different question of a different `meta`. This is the test of that claim:
+     * The cage borders come from the same isHeavyRight / isHeavyBottom hook sudoku uses for its
+     * regions, asking a different question of a different meta. This is the test of that claim:
      * a heavy edge appears exactly where two cages meet, and nowhere inside one.
      */
     test('draws a heavy rule exactly where two cages meet', async ({ page }) => {
@@ -84,7 +84,7 @@ test.describe('kenken', () => {
 
     /**
      * A cage clue and the note "1" both belong in the cell's top-left corner, and the marks paint
-     * after the label — so a cell with a full set of notes used to hide the clue it was solving.
+     * after the label, so a cell with a full set of notes used to hide the clue it was solving.
      * The clue now has a row of the mark grid to itself.
      */
     test('keeps the cage clue clear of the notes under it', async ({ page }) => {
@@ -130,7 +130,7 @@ test.describe('kenken', () => {
     /**
      * The clue was drawn and never said, so the whole puzzle's constraints were missing for anyone
      * not looking at the screen. It is spoken as arithmetic rather than as its symbols: at the usual
-     * verbosity a screen reader skips punctuation, which would say "12" for a clue meaning `12+`.
+     * verbosity a screen reader skips punctuation, which would say "12" for a clue meaning 12+.
      */
     test('says the cage clue, as arithmetic rather than as symbols', async ({ page }) => {
         const clued = await boardOf(page).evaluate((board) =>
@@ -210,7 +210,7 @@ test.describe('nonogram', () => {
         expect(Math.abs(geometry.frame.width - geometry.frame.height)).toBeLessThan(2);
     });
 
-    /** Nonogram has no pencil marks — the cross is the note — so it has brushes, not a Notes toggle. */
+    /** Nonogram has no pencil marks, since the cross is the note, so it has brushes not Notes. */
     test('swaps the Notes toggle and digits for three brushes, and keeps Undo', async ({
         page,
     }) => {
@@ -264,7 +264,7 @@ test.describe('nonogram', () => {
     });
 
     test('a drag paints the run it crosses and stays on that line', async ({ page }) => {
-        // Across the second row, then down onto the third — the descent must not paint.
+        // Across the second row, then down onto the third: the descent must not paint.
         const first = await page.locator('pt-cell >> nth=5').boundingBox();
         const across = await page.locator('pt-cell >> nth=9').boundingBox();
         const below = await page.locator('pt-cell >> nth=14').boundingBox();
@@ -303,12 +303,12 @@ test.describe('nonogram', () => {
     });
 
     /**
-     * The reason a drag is one `fill` op rather than five `set` ops: it is also one thing to undo.
+     * The reason a drag is one fill op rather than five set ops: it is also one thing to undo.
      * Five presses of Undo to walk back one gesture would make the control useless on a 20×20.
      */
     /**
      * A drag commits on release, so without a preview the grid says nothing until the gesture is
-     * over — and laying a run of a particular length against a clue is the whole reason to drag.
+     * over, and laying a run of a particular length against a clue is the whole reason to drag.
      */
     test('washes the squares a drag has covered, before it commits', async ({ page }) => {
         const start = await page.locator('pt-cell >> nth=5').boundingBox();
@@ -335,7 +335,7 @@ test.describe('nonogram', () => {
     });
 
     /**
-     * A nonogram's bands divide nothing — they exist to be counted against. Drawn in --ink they read
+     * A nonogram's bands divide nothing; they exist to be counted against. Drawn in --ink they read
      * as filled squares that happen to be thin, competing with the picture they are there to measure.
      */
     test('bands the grid in the hairline colour, thicker, not in the fill colour', async ({
@@ -391,7 +391,7 @@ test.describe('nonogram', () => {
     });
 
     /**
-     * Completion counts filled squares only — a cross is a note about where the picture is not. So
+     * Completion counts filled squares only: a cross is a note about where the picture is not. So
      * the room solves the puzzle with the blanks marked, and it would solve it with them left alone.
      */
     test('solving the picture ends the puzzle, crosses and all', async ({ page }) => {
@@ -421,7 +421,7 @@ test.describe('nonogram', () => {
         const solution = await boardOf(page).evaluate((board) => board.doc.meta.rowClues);
         expect(solution).toHaveLength(5);
 
-        // Cross a square, then fill it — the cell holds one thing at a time.
+        // Cross a square, then fill it: the cell holds one thing at a time.
         await page.locator('pt-brush-bar .action', { hasText: 'Cross' }).click();
         await page.locator('pt-cell >> nth=0').click();
         expect((await valuesOf(page))[0]).toBe('x');
@@ -434,7 +434,7 @@ test.describe('nonogram', () => {
 
 /**
  * A 20×20 nonogram is a good puzzle on a laptop and a cramped one on a phone. It stays on offer, and
- * says so — the host choosing it is often the one person in the room who cannot see the problem.
+ * says so: the host choosing it is often the one person in the room who cannot see the problem.
  */
 test.describe('the size caution', () => {
     test.beforeEach(async ({ page }) => {

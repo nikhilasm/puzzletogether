@@ -1,8 +1,8 @@
 /**
  * The bank loader, against the real tracked bank and against deliberately broken fixtures.
  *
- * Two jobs, and the second is the interesting one. Loading `data/crosswords/` proves the seed minis
- * are sound — the tracked content is checked by the same suite as the code, which is the point of
+ * Two jobs, and the second is the interesting one. Loading data/crosswords/ proves the seed minis
+ * are sound: the tracked content is checked by the same suite as the code, which is the point of
  * having the loader re-derive numbering at boot. Everything after that feeds it files that are
  * wrong in a specific way and asks it to notice.
  */

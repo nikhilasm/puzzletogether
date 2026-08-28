@@ -1,8 +1,8 @@
 /**
  * A modal confirm, used for the one destructive action in the app: Reveal.
  *
- * Built on the native `<dialog>` so focus trapping, Escape, and the inert backdrop come from the
- * platform rather than from hand-written key handling — which is the part of a custom modal that
+ * Built on the native <dialog> so focus trapping, Escape, and the inert backdrop come from the
+ * platform rather than from hand-written key handling, which is the part of a custom modal that
  * is usually subtly wrong.
  */
 
@@ -79,7 +79,7 @@ export class PtConfirm extends LitElement {
         this.confirmLabel = 'Confirm';
     }
 
-    /** Opens and closes the real dialog element to match the `open` property. */
+    /** Opens and closes the real dialog element to match the open property. */
     updated(changed) {
         if (!changed.has('open')) return;
 
@@ -89,7 +89,7 @@ export class PtConfirm extends LitElement {
         if (!this.open && dialog.open) dialog.close();
     }
 
-    /** Reports the player's answer. The opener owns `open`, so this only announces. */
+    /** Reports the player's answer. The opener owns open, so this only announces. */
     #answer(accepted) {
         this.dispatchEvent(
             new CustomEvent(accepted ? 'pt-confirm-accept' : 'pt-confirm-cancel', {

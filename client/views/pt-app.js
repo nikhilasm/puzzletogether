@@ -1,7 +1,7 @@
 /**
  * Root element and router: the wordmark, the room header, the current screen, and the footer.
  *
- * The router is a hash router by design — `#/room/kqjy` is a link you can send someone, and it
+ * The router is a hash router by design: #/room/kqjy is a link you can send someone, and it
  * needs no server-side route table (design-spec.md §11).
  */
 
@@ -83,7 +83,7 @@ export class PtApp extends LitElement {
              * they belonged to each other, and the roster in particular read as a second screen
              * above the real one.
              *
-             * Subtle on purpose — a rule and nothing else. It takes the page's own background rather
+             * Subtle on purpose: a rule and nothing else. It takes the page's own background rather
              * than the raised paper: a filled box reads as a card to be dealt with, and this is a
              * caption on the room. The puzzle under it is what the page is about, and it sits close
              * enough underneath to be read as the next thing rather than the next screen.
@@ -127,7 +127,7 @@ export class PtApp extends LitElement {
              * The seat count, unlabelled.
              *
              * It sits at the top of the roster it counts, so a word saying so would be saying it
-             * twice — and "2/8" is not ambiguous in a box whose other half is a room code.
+             * twice, and "2/8" is not ambiguous in a box whose other half is a room code.
              * Screen readers get the sentence the sighted reading gets from the layout.
              */
             .count {
@@ -144,7 +144,7 @@ export class PtApp extends LitElement {
              * The app's own controls, and the two links out of it.
              *
              * Everything above the footer belongs to a room or a puzzle. What is left down here is
-             * the handful of things that are true of the *app* — how it looks, what it is — so they
+             * the handful of things that are true of the *app*, how it looks and what it is, so they
              * are drawn as the app's controls rather than as sentences about it: two icon buttons on
              * one line, and the links that leave the app set smaller underneath them.
              *
@@ -171,7 +171,7 @@ export class PtApp extends LitElement {
             /*
              * Side by side, divided by a middot rather than by a gap alone.
              *
-             * They are two links and not two buttons because they leave the app — the rule the whole
+             * They are two links and not two buttons because they leave the app, the rule the whole
              * footer turns on. Set at --text-xs, which puts them a step below the smallest thing
              * on the page above: they are the last thing anyone needs and should read that way.
              */
@@ -209,8 +209,8 @@ export class PtApp extends LitElement {
              * Room at the very foot of the page for the game screen's pinned input panel.
              *
              * It belongs here rather than inside the game screen because the panel is fixed to the
-             * viewport and covers *everything* the page ends with — and the page does not end with
-             * the game screen, it ends with the footer and the theme switch in it. A spacer inside
+             * viewport and covers *everything* the page ends with, and the page does not end with
+             * the game screen: it ends with the footer and the theme switch in it. A spacer inside
              * the game screen reserved room above the footer and left the switch underneath the
              * keys, unclickable at every scroll position.
              *
@@ -287,10 +287,10 @@ export class PtApp extends LitElement {
      * Applies the current hash: entering a room URL without a live seat attempts a token restore,
      * and falls back to the landing screen when there is no token to restore from.
      *
-     * Navigating *away* from a room — the browser's back button, mostly — gives up the seat. The
+     * Navigating *away* from a room, most often with the browser's back button, gives up the seat. The
      * alternative is a player sitting on the landing screen while the room still lists them as
      * present, which is the ghost-player bug in a new costume. A reload is not this path: it never
-     * fires `hashchange`, so a refresh mid-solve still restores from the token.
+     * fires hashchange, so a refresh mid-solve still restores from the token.
      */
     #applyRoute() {
         this.route = parseHash();
@@ -323,7 +323,7 @@ export class PtApp extends LitElement {
                       An action, not a toggle. "Dark theme, pressed" was a state to be read; this is
                       a button that does one thing, so it says which thing and wears the icon of the
                       theme it would leave you in. That also settles which of the two icons to draw,
-                      which as a toggle was genuinely ambiguous — the sun could as easily have meant
+                      which as a toggle was genuinely ambiguous: the sun could as easily have meant
                       "you are in light" as "press for light", and it meant the first.
                     -->
                     <button
@@ -379,7 +379,7 @@ export class PtApp extends LitElement {
     }
 
     /**
-     * Whether a panel is on screen at all — which is to say, whether the game screen is.
+     * Whether a panel is on screen at all, which is to say whether the game screen is.
      *
      * Asked rather than remembered, because a panel that leaves takes its last measurement with it:
      * it is removed from the page before it could report a height of zero, and an element already
@@ -396,7 +396,7 @@ export class PtApp extends LitElement {
         return this.theme === THEME.DARK ? 'Switch to light theme' : 'Switch to dark theme';
     }
 
-    /** Switches theme and remembers it; the attribute on `<html>` does the rest. */
+    /** Switches theme and remembers it; the attribute on <html> does the rest. */
     #onToggleTheme() {
         this.theme = toggleTheme();
     }
@@ -428,10 +428,10 @@ export class PtApp extends LitElement {
     }
 
     /**
-     * The room panel — code, seat count, roster — shown on every screen inside a room, and on none
+     * The room panel (code, seat count, roster), shown on every screen inside a room and on none
      * outside one, so navigating away cannot leave a roster stranded above the landing form.
      *
-     * The count is drawn here rather than by `<pt-player-chips>`, where it used to live as a
+     * The count is drawn here rather than by <pt-player-chips>, where it used to live as a
      * heading. It is a fact about the *room* (how many seats are taken of how many there are), it
      * belongs on the same line as the room code, and the roster below it is now free to be nothing
      * but the roster.

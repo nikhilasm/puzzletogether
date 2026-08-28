@@ -1,14 +1,14 @@
 /**
  * The kenken grid: cage borders and digit input.
  *
- * Everything else — cell DOM, selection, presence, op emission — comes from `<pt-board>`. The cage
- * labels need no rendering code: `DocCell.label` already draws in a cell's top-left corner, which is
+ * Everything else (cell DOM, selection, presence, op emission) comes from <pt-board>. The cage
+ * labels need no rendering code: DocCell.label already draws in a cell's top-left corner, which is
  * where a cage clue goes, so the server writes the label and this file only says where it sits
  * relative to the notes.
  *
  * The heavy rules are the same hook sudoku uses, asking a different question. Sudoku asks "is this
  * the edge of a region", which it computes from the region shape; kenken asks "is my neighbour in a
- * different cage", which it reads off the cage map. Neither needed a change to `<pt-board>` — this
+ * different cage", which it reads off the cage map. Neither needed a change to <pt-board>; this
  * is the abstraction doing what design-spec.md §7 says it does.
  */
 
@@ -17,9 +17,9 @@ import { PtBoard } from './pt-board.js';
 /**
  * Cage operators as words.
  *
- * The drawn symbols are typographic rather than ASCII — `−` is a true minus sign, not a hyphen —
- * and how a screen reader handles them is a verbosity setting rather than a promise: at the usual
- * one, punctuation is skipped, so `12+` and `12` say the same thing while meaning nothing alike.
+ * The drawn symbols are typographic rather than ASCII, since − is a true minus sign and not a
+ * hyphen, and how a screen reader handles them is a verbosity setting rather than a promise: at the
+ * one, punctuation is skipped, so 12+ and 12 say the same thing while meaning nothing alike.
  */
 const SPOKEN_OP = { '+': 'plus', '−': 'minus', '×': 'times', '÷': 'divided by' };
 
@@ -38,8 +38,8 @@ export class PtKenkenBoard extends PtBoard {
      * The cage clue gets a row of the mark grid to itself.
      *
      * Kenken is the one type so far whose cells carry both a clue and notes, and both are drawn in
-     * the top-left corner — the clue because that is where a kenken clue goes, the note "1" because
-     * a mark's position is what says which digit it is. The marks paint after the label, so a cell
+     * the top-left corner, the clue because that is where a kenken clue goes and the note "1"
+     * because a mark's position is what says which digit it is. The marks paint after the label, so a cell
      * with a full set of notes hid its own clue. Giving the clue a row costs the notes one row of
      * height and settles it for good.
      */
@@ -48,11 +48,11 @@ export class PtKenkenBoard extends PtBoard {
     }
 
     /**
-     * The cage clue said as arithmetic: `12+` becomes "cage 12 plus".
+     * The cage clue said as arithmetic: 12+ becomes "cage 12 plus".
      *
      * Named as a cage, because otherwise the clue and the digit written in the cell arrive as two
      * bare numbers in a row and nothing says which is which. A single-cell cage is drawn as its
-     * target alone and is spoken the same way — there is no operator to name.
+     * target alone and is spoken the same way, since there is no operator to name.
      *
      * @param {string} label - The cage clue as drawn.
      * @returns {string} The clue as a screen reader should say it.
@@ -65,7 +65,7 @@ export class PtKenkenBoard extends PtBoard {
     /**
      * Cage membership by cell index, built once per document rather than searched per cell.
      *
-     * `isHeavyRight` and `isHeavyBottom` are called for every cell on every board render, and a
+     * isHeavyRight and isHeavyBottom are called for every cell on every board render, and a
      * linear scan of the cage list inside them would make drawing the grid quadratic in its cells.
      */
     get #cageOf() {
@@ -88,7 +88,7 @@ export class PtKenkenBoard extends PtBoard {
         return this.#cageOf[idx] !== this.#cageOf[idx + 1];
     }
 
-    /** As `isHeavyRight`, for the bottom edge of a cage. */
+    /** As isHeavyRight, for the bottom edge of a cage. */
     isHeavyBottom(idx) {
         const { rows, cols } = this.doc.size;
         const row = Math.floor(idx / cols);

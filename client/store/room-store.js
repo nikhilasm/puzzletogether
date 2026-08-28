@@ -1,11 +1,11 @@
 /**
  * Single source of truth for room, board, presence, and input state on the client.
  *
- * Owns the socket; components never touch one directly. Holds optimistic `pendingOps` and exposes
- * `serverState + pendingOps` as `view`, so there is no rollback machinery — re-deriving is cheap
+ * Owns the socket; components never touch one directly. Holds optimistic pendingOps and exposes
+ * serverState + pendingOps as view, so there is no rollback machinery; re-deriving is cheap
  * (ADR-0001). Every input source lands on the same few methods here, which is where the Notes/Solve
  * branch happens once rather than in each component. Does not own routing or rendering; see
- * `<pt-app>` for those.
+ * <pt-app> for those.
  */
 
 import { io } from 'socket.io-client';
@@ -29,12 +29,12 @@ import {
 import { clearOp, fillOp, opForDigit, opResult, restoreOp, setOp } from './ops.js';
 import { UndoStack, sameCell, snapshotCell } from './undo-stack.js';
 
-/** `localStorage` key holding the reconnect token for one room. */
+/** localStorage key holding the reconnect token for one room. */
 function tokenKey(code) {
     return `pt:token:${code}`;
 }
 
-/** Reads a stored reconnect token, tolerating a `localStorage` that refuses to answer. */
+/** Reads a stored reconnect token, tolerating a localStorage that refuses to answer. */
 function readToken(code) {
     try {
         return window.localStorage.getItem(tokenKey(code));
@@ -79,7 +79,7 @@ function initialState() {
         // Whether a crossword keystroke appends to the square instead of replacing it (ADR-0007).
         // Off by default because a rebus square is the exception in any grid that has one at all.
         rebus: false,
-        // What this build can serve, from the join ack. Null until seated — Puzzle Select is only
+        // What this build can serve, from the join ack. Null until seated: Puzzle Select is only
         // ever reached from inside a room, so it never renders without one.
         catalog: null,
         checkResults: {},
@@ -99,7 +99,7 @@ export class RoomStore {
     #undo = new UndoStack();
 
     /**
-     * The current state. Treated as immutable by callers — every mutation goes through a method.
+     * The current state. Treated as immutable by callers; every mutation goes through a method.
      *
      * @returns {object} The current state object.
      */
@@ -177,7 +177,7 @@ export class RoomStore {
      * Asks the server to start a puzzle, from Puzzle Select or from the congrats modal. Host-only;
      * a non-host call is rejected server-side.
      *
-     * @param {object} spec - Puzzle specification: `type`, `difficulty`, and `size`.
+     * @param {object} spec - Puzzle specification: type, difficulty, and size.
      * @returns {Promise<void>} Resolves once the server has accepted.
      * @throws {Error} If the caller is not the host or a puzzle is already running.
      */
@@ -186,7 +186,7 @@ export class RoomStore {
     }
 
     /**
-     * Handles a digit from any input source — keyboard, keypad, or touch — branching on the
+     * Handles a digit from any input source (keyboard, keypad, or touch), branching on the
      * Notes/Solve mode.
      *
      * @param {number} cell - Cell index.
@@ -229,9 +229,9 @@ export class RoomStore {
     }
 
     /**
-     * Writes one value across a run of cells — what a nonogram drag produces.
+     * Writes one value across a run of cells: what a nonogram drag produces.
      *
-     * The undo entries are written here rather than left to `#sendOp`, because they are per cell
+     * The undo entries are written here rather than left to #sendOp, because they are per cell
      * while the op is not: they carry a shared group id so the whole stroke walks back together.
      *
      * @param {number[]} cells - Cell indices the stroke covered.
@@ -253,7 +253,7 @@ export class RoomStore {
     /**
      * Switches between entering values and entering pencil marks.
      *
-     * @param {string} mode - One of `INPUT_MODE`.
+     * @param {string} mode - One of INPUT_MODE.
      * @returns {void}
      */
     setInputMode(mode) {
@@ -265,10 +265,10 @@ export class RoomStore {
      * Switches which mark a nonogram tap or drag lays down.
      *
      * Client-side only, like the Notes mode: the op says what it writes, so the server never needs to
-     * know which brush produced it. It is also **per player** — two people can be painting and
+     * know which brush produced it. It is also **per player**: two people can be painting and
      * crossing the same picture at once without fighting over one setting.
      *
-     * @param {string} brush - One of `'fill'`, `'cross'`, or `'erase'`.
+     * @param {string} brush - One of 'fill', 'cross', or 'erase'.
      * @returns {void}
      */
     setBrush(brush) {
@@ -279,9 +279,9 @@ export class RoomStore {
     /**
      * Switches a crossword between one letter per square and a whole word in one.
      *
-     * The same shape of setting as Notes and the brush — client-side, per player, and it changes
-     * what a keypress *means* rather than changing the grid. Every puzzle type now has exactly one
-     * of these above its keys (design-spec.md §4).
+     * The same shape of setting as Notes and the brush: client-side, per player, and it changes
+     * what a keypress *means* rather than changing the grid. Every puzzle type has exactly one of
+     * these above its keys (design-spec.md §4).
      *
      * @param {boolean} rebus - True to append letters rather than replace them.
      * @returns {void}
@@ -293,7 +293,7 @@ export class RoomStore {
     /**
      * Writes a letter into a crossword square, appending when the square is being built into a word.
      *
-     * Every keystroke sends the **whole** value the square now holds, never an "append" — which is
+     * Every keystroke sends the **whole** value the square now holds, never an "append", which is
      * what keeps a rebus off the op vocabulary entirely (ADR-0007). Per-cell last-writer-wins, undo
      * pre-images, and gap-recovery snapshots all keep working on a value that is simply longer.
      *
@@ -343,7 +343,7 @@ export class RoomStore {
      * rewinding over their work would be the greater surprise (design-spec.md §6).
      *
      * A drag walks back as one action, and one cell of it having moved on does not strand the other
-     * nineteen — the cells still holding what this player left there are restored, and the notice
+     * nineteen: the cells still holding what this player left there are restored, and the notice
      * says the rest were not.
      *
      * @returns {void}
@@ -360,24 +360,24 @@ export class RoomStore {
         if (restorable.length === 0) {
             this.#notice(
                 entries.length === 1
-                    ? 'that cell has changed since — undo skipped'
-                    : 'those squares have changed since — undo skipped',
+                    ? 'undo skipped: that cell has changed since'
+                    : 'undo skipped: those squares have changed since',
             );
             return;
         }
 
         this.#restore(restorable);
         if (restorable.length < entries.length) {
-            this.#notice('some squares had changed since — those were left as they are');
+            this.#notice('some squares had changed since, so they were left as they are');
         }
     }
 
     /**
      * Puts a set of cells back the way their undo entries remember them.
      *
-     * Cells that were left in the same state travel together as one `fill`, so undoing a
-     * twenty-cell drag is one write rather than twenty — which matters because twenty ops in a burst
-     * is most of a player's rate-limit allowance (`OP_RATE_LIMIT`) spent walking something back.
+     * Cells that were left in the same state travel together as one fill, so undoing a
+     * twenty-cell drag is one write rather than twenty, which matters because twenty ops in a burst
+     * is most of a player's rate-limit allowance (OP_RATE_LIMIT) spent walking something back.
      */
     #restore(entries) {
         const byValue = new Map();
@@ -403,8 +403,8 @@ export class RoomStore {
     }
 
     /**
-     * Asks the server to grade every filled cell. Free — it never touches the streak — but it does
-     * count against the room's assists, and the result goes to everyone.
+     * Asks the server to grade every filled cell. Free, since it never touches the streak, but it
+     * does count against the room's assists, and the result goes to everyone.
      *
      * @returns {Promise<void>} Resolves once the server has accepted.
      */
@@ -413,7 +413,7 @@ export class RoomStore {
     }
 
     /**
-     * Asks the server to fill in the whole grid. Host-only, destructive, and resets the streak —
+     * Asks the server to fill in the whole grid. Host-only, destructive, and resets the streak, so
      * always behind a confirm dialog.
      *
      * @returns {Promise<void>} Resolves once the server has accepted.
@@ -458,7 +458,7 @@ export class RoomStore {
 
     /**
      * Shows a short-lived line of feedback, for the cases a component notices rather than the
-     * socket — "pick a square first" and the like.
+     * socket: "pick a square first" and the like.
      *
      * @param {string} text - What to say. Replaces whatever notice is on screen.
      * @returns {void}
@@ -561,7 +561,7 @@ export class RoomStore {
     }
 
     /**
-     * Emits an event whose failure is worth a line on screen rather than a thrown error — the
+     * Emits an event whose failure is worth a line on screen rather than a thrown error: the
      * assist controls, where "give it a moment" is the whole story.
      */
     async #requestOrNotice(event, payload) {
@@ -589,7 +589,7 @@ export class RoomStore {
     }
 
     /**
-     * Records a new room view. Returning to `select` also drops what belonged to the finished
+     * Records a new room view. Returning to select also drops what belonged to the finished
      * puzzle, so a dismissed modal or stale check marks cannot survive into the next one.
      */
     #acceptRoom(room) {
@@ -601,7 +601,7 @@ export class RoomStore {
         });
     }
 
-    /** Replaces board state wholesale — the gap-recovery path, and how every puzzle starts. */
+    /** Replaces board state wholesale: the gap-recovery path, and how every puzzle starts. */
     #acceptSnapshot(snapshot, isNewPuzzle) {
         const board = snapshot.board ?? emptyBoard();
         if (isNewPuzzle) this.#undo.clear();
@@ -623,7 +623,7 @@ export class RoomStore {
     }
 
     /**
-     * Applies a server-stamped op. A `seq` gap means ops were missed, which is answered with a
+     * Applies a server-stamped op. A seq gap means ops were missed, which is answered with a
      * full snapshot rather than a replay (ADR-0001).
      */
     #acceptOp(stamped) {
@@ -654,7 +654,7 @@ export class RoomStore {
 
         const graded = Object.values(result.cells ?? {});
         const wrong = graded.filter((state) => state === CHECK_STATE.WRONG).length;
-        this.#notice(wrong === 0 ? 'checked — nothing wrong so far' : `checked — ${wrong} wrong`);
+        this.#notice(wrong === 0 ? 'checked: nothing wrong so far' : `checked: ${wrong} wrong`);
     }
 
     /** Records a server-verified solve, or a reveal. The time shown is the server's, never ours. */
@@ -676,8 +676,8 @@ export class RoomStore {
         }
 
         // Being removed is not a failed request but the end of a seat, so it clears the room the
-        // same way leaving does — keeping only the message, which is the only reason the player
-        // has to understand why the screen changed under them.
+        // same way leaving does, keeping only the message, which is the only reason the player has
+        // to understand why the screen changed under them.
         if (error.code === ERROR.KICKED) {
             const code = this.#state.code;
             if (code) writeToken(code, null);
@@ -694,8 +694,8 @@ export class RoomStore {
     }
 
     /**
-     * Applies an op locally, queues it as pending, sends it, and — unless this op *is* an undo —
-     * remembers what the cell held so it can be walked back.
+     * Applies an op locally, queues it as pending, sends it, and remembers what the cell held so it
+     * can be walked back, unless this op *is* an undo.
      */
     #sendOp(op, current, { record = true } = {}) {
         if (this.#state.room?.state !== ROOM_STATE.PLAYING) return;
@@ -717,7 +717,7 @@ export class RoomStore {
         });
     }
 
-    /** Drops the check marks on any cell an op touches — a graded cell that changed is not graded. */
+    /** Drops the check marks on any cell an op touches: a graded cell that changed is not graded. */
     #retireCheckResults(op) {
         const cells = op.cells ?? (op.cell == null ? [] : [op.cell]);
         if (cells.length === 0) return;
@@ -749,7 +749,7 @@ export class RoomStore {
     /**
      * Stores a new board and pending list, re-deriving the rendered view.
      *
-     * Pending ops are stamped above the server's `seq` so they win locally until their echo lands,
+     * Pending ops are stamped above the server's seq so they win locally until their echo lands,
      * which is what makes typing feel instant without a rollback path.
      */
     #setBoard(board, pendingOps) {

@@ -1,9 +1,9 @@
 /**
  * One grid cell: label, value, pencil marks, and check feedback.
  *
- * Created once per cell and updated by property assignment, never re-created — this is the element
+ * Created once per cell and updated by property assignment, never re-created: this is the element
  * whose update cost decides whether a 25×25 grid stays smooth (design-spec.md §11). Everything in
- * `render()` here runs `rows * cols` times, so it stays allocation-free.
+ * render() here runs rows * cols times, so it stays allocation-free.
  */
 
 import { LitElement, css, html, nothing } from 'lit';
@@ -33,7 +33,7 @@ export class PtCell extends LitElement {
             /*
              * Border-box, and every cell keeps the same 1px hairlines whatever its region borders
              * are. Under content-box, aspect-ratio measured the content box, so a cell carrying a
-             * 2.5px region border came out shorter than its neighbours — which is the 1px vertical
+             * 2.5px region border came out shorter than its neighbours, which is the 1px vertical
              * misalignment Firefox showed and Chromium mostly rounded away.
              */
             box-sizing: border-box;
@@ -56,7 +56,7 @@ export class PtCell extends LitElement {
         /*
          * Region rules are drawn *over* the hairlines rather than replacing them. As borders they
          * mitred with the same cell's hairline on the adjoining edge, which cut a pale notch across
-         * the heavy rule at every crossing — the subdivision showing through the major division.
+         * the heavy rule at every crossing: the subdivision showing through the major division.
          * A positioned pseudo-element paints after the element's own borders, so it covers that
          * corner, and it costs the cell no geometry.
          */
@@ -98,9 +98,9 @@ export class PtCell extends LitElement {
          * **background-color, where the washes below are background-image.** They are different
          * longhands on purpose: a given square that the cursor is in, or that is in the cursor's
          * row, then shows the tint *and* the wash rather than one replacing the other, and the tint
-         * does not blink out every time somebody moves. A board that wants neither — nonogram and
-         * crossword both override the washes from outside — uses the background shorthand, which
-         * resets both, and neither of those types has givens.
+         * does not blink out every time somebody moves. A board that wants neither uses the
+         * background shorthand, which resets both: nonogram and crossword override the washes from
+         * outside, and neither has givens.
          */
         :host([given]) {
             background-color: var(--given-fill);
@@ -111,8 +111,8 @@ export class PtCell extends LitElement {
          *
          * --focus-color is published by the board from the local player's --player-N, so the cursor
          * answers "where am I" in the same hue the roster and everyone else's presence stripes
-         * already use — and two people looking over one screen can tell whose cursor is whose. It
-         * falls back to --accent, which is what every cursor was before.
+         * already use, so two people looking over one screen can tell whose cursor is whose. It
+         * falls back to --accent.
          *
          * This is the one place a player's colour touches the grid's *surface*. It still never
          * touches what is written on it: an entered value is --ink whoever wrote it (brand.md §3).
@@ -124,14 +124,14 @@ export class PtCell extends LitElement {
         }
 
         /*
-         * The squares the cursor implies — a sudoku's row and column, a crossword's entry, the run a
-         * nonogram drag has covered so far.
+         * The squares the cursor implies: a sudoku's row and column, a crossword's entry, the run
+         * a nonogram drag has covered so far.
          *
          * Much lighter than the cursor, and :not([selected]) so it cannot paint over it. The two
          * are one idea at two strengths: this wash answers "what am I working within", and it only
          * has to be distinguishable from *no wash at all* to do that, while the cursor has to be
          * findable at a glance in a fifteen-square run. A board whose highlight means something
-         * more urgent than context overrides this from outside — see nonogram.
+         * more urgent than context overrides this from outside; see nonogram.
          */
         :host([highlighted]:not([selected])) {
             background-image: linear-gradient(
@@ -145,12 +145,12 @@ export class PtCell extends LitElement {
          *
          * Read outward: min() shrinks the text as it lengthens, so HAND fits the same box H did;
          * max() puts a floor under that, because past about five characters shrinking to fit stops
-         * being legibility and starts being a dare. Beyond the floor the text is clipped rather than
-         * wrapped — the whole string is still in the cell's aria-label, and a square that grew a
-         * second line would break the grid's geometry for every cell in its row.
+         * being legibility and starts being a dare. Beyond the floor the text is clipped rather
+         * than wrapped: the whole string is still in the cell's aria-label, and a square that grew
+         * a second line would break the grid's geometry for every cell in its row.
          *
          * **min-width: 0, or none of that clipping happens.** This is a flex item, and a flex item's
-         * min-width defaults to auto — its min-content width, which for white-space: nowrap
+         * min-width defaults to auto, its min-content width, which for white-space: nowrap
          * text is the whole unbroken string. min-width beats max-width, so past the font-size
          * floor the span pushed the cell wider than its neighbours and threw the whole grid out of
          * alignment: one seven-letter rebus square visibly bent its row and every column crossing it.
@@ -178,7 +178,7 @@ export class PtCell extends LitElement {
          * A circled square: an annotation, not a rule.
          *
          * Themed crosswords hide a bonus answer in these, so they have to be visible, but they play
-         * exactly like every other square — which is why this is a thin --graphite ring rather than
+         * exactly like every other square, which is why this is a thin --graphite ring rather than
          * anything in --ink or --accent. Both of those already mean something here: --ink is a value
          * the player entered, and --accent is where the cursor is.
          */
@@ -195,10 +195,8 @@ export class PtCell extends LitElement {
          * colour: attribution lives in chips and presence stripes, and an entered digit is always
          * --ink (brand.md §3).
          *
-         * 700 against 400. Extrabold was tried for one revision, on the theory that 700 was too
-         * close to an entry to read across a grid, and reverted: it needed a fourth Karla face for a
-         * difference nobody could point to, and the faint ground added at the same time turned out
-         * to be what was actually doing the work.
+         * 700 against 400, not 800: an extrabold face buys a difference nobody could point to, and
+         * the faint ground is what does the work.
          *
          * 400, not 500, for an entry: only 400 and 700 are loaded, so 500 was matched down to 400
          * anyway. Writing what actually renders.
@@ -225,7 +223,7 @@ export class PtCell extends LitElement {
 
         /*
          * A value drawn as a mark rather than as a character, for puzzles whose cells are not
-         * lettered — nonogram's filled squares and crosses. Which value draws as which is the
+         * lettered: nonogram's filled squares and crosses. Which value draws as which is the
          * board's business, via its glyphs map; what each one looks like is this element's.
          *
          * The colours are the ones the app already uses for the same ideas: a fill is an answer, so
@@ -233,7 +231,7 @@ export class PtCell extends LitElement {
          * not, so it is --pencil like every other note.
          *
          * A fill takes the whole square rather than sitting inside it. Adjacent fills then meet, so
-         * a run reads as one bar the length of its clue — which is the thing a solver is counting.
+         * a run reads as one bar the length of its clue, which is the thing a solver is counting.
          * Inset blocks read as a row of separate dots and have to be counted one at a time. The
          * hairlines stay visible over the top, so the grid is still a grid.
          */
@@ -271,15 +269,13 @@ export class PtCell extends LitElement {
         /*
          * The entry number, sized and placed by the square it sits in rather than by the page.
          *
-         * It used to be a flat --text-sm at a flat 2px inset, which is fine at the 40px cells a
-         * mini gets and wrong everywhere else — a 15×15 on a phone is 19px squares, where 12.8px of
-         * number is two thirds the height of the cell. It swamped the letter underneath and, because
-         * a fixed 2px inset is a different *proportion* in every grid, the numbers stopped reading as
-         * a column down the left edge and started looking scattered. Both complaints were really one
-         * measurement.
+         * A flat size and a flat inset are fine at the 40px cells a mini gets and wrong everywhere
+         * else: a 15×15 on a phone is 19px squares, where 12.8px of number is two thirds the height
+         * of the cell and swamps the letter underneath, and a fixed 2px inset is a different
+         * *proportion* in every grid, so the numbers stop reading as a column down the left edge.
          *
-         * Read outward: it scales with the cell, floors at 7px so a 25×25 does not lose its numbering
-         * altogether, and is capped at the old size so no grid gets a number *larger* than before.
+         * Read outward: it scales with the cell, floors at 7px so a 25×25 does not lose its
+         * numbering altogether, and is capped so no grid gets a number larger than --text-sm.
          */
         .label {
             position: absolute;
@@ -293,8 +289,8 @@ export class PtCell extends LitElement {
         /*
          * A label with a row of the mark grid to itself.
          *
-         * A cage clue and the note "1" both want the cell's top-left corner — the clue because that
-         * is where a clue goes, the note because a mark's position *is* its digit — and the marks
+         * A cage clue and the note "1" both want the cell's top-left corner, the clue because that
+         * is where a clue goes and the note because a mark's position *is* its digit, and the marks
          * paint last, so a full set of notes simply covered the clue. Stacking them was never going
          * to work at cell sizes this small, so the board can instead reserve the grid's first row:
          * the clue takes it, the notes start one row lower, and the two can no longer meet whatever
@@ -317,7 +313,7 @@ export class PtCell extends LitElement {
          * is what makes a grid of notes scannable. Size derives from the cell, like the value does.
          *
          * Both axes are declared. With only the columns named, the rows were implicit and sized to
-         * whatever happened to be in them, so adding or removing a mark re-laid out the others —
+         * whatever happened to be in them, so adding or removing a mark re-laid out the others,
          * exactly the shifting the fixed positions exist to prevent.
          *
          * --mark-rows counts the grid's rows, which is one more than the rows of *marks* when a
@@ -387,8 +383,8 @@ export class PtCell extends LitElement {
      * Publishes the mark grid's shape on the host, where the label can read it too.
      *
      * The label is placed by the same track height as the marks it shares the grid with, and it is
-     * not inside .marks — that container only exists when the cell has notes, while a cage clue is
-     * drawn whether it does or not. A custom property on the host is the one place both rules reach.
+     * not inside .marks, which only exists when the cell has notes, while a cage clue is drawn
+     * whether it does or not. A custom property on the host is the one place both rules reach.
      *
      * Guarded, because this is the element whose per-update cost decides whether a 25×25 stays
      * smooth: the grid's shape is fixed by the puzzle, so it is written once and then never again.
@@ -424,7 +420,7 @@ export class PtCell extends LitElement {
      * The cell's value, as a character or as a mark.
      *
      * glyphs maps a value to how it is drawn, and a value the map does not mention is drawn as
-     * itself — so a puzzle that supplies no map gets characters, which is every type but nonogram.
+     * itself, so a puzzle that supplies no map gets characters, which is every type but nonogram.
      */
     #renderValue() {
         const glyph = this.glyphs?.[this.value];

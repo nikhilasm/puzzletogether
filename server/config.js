@@ -24,7 +24,7 @@ function intFromEnv(name, fallback) {
 }
 
 /**
- * Development is signalled by the `--dev` flag that `npm run dev:server` passes, so it works
+ * Development is signalled by the --dev flag that npm run dev:server passes, so it works
  * identically on Windows and Linux without an env-var prefix.
  */
 const isDev = process.argv.includes('--dev') || process.env.NODE_ENV === 'development';
@@ -33,18 +33,16 @@ const isDev = process.argv.includes('--dev') || process.env.NODE_ENV === 'develo
  * Where banked puzzles are read from, in order.
  *
  * Two directories rather than one, and the split is a licensing control rather than a technical
- * convenience (ADR-0004). `data/crosswords/` is **tracked**, and nothing reaches it without somebody
- * having answered what may legally be served. `data/crosswords-local/` is **gitignored wholesale**,
- * and is where the freely-distributed `.puz` files the importer is developed against end up — so a
- * 15×15 is playable while building, and no copyrighted grid can enter git history by accident, which
- * is the failure that cannot be undone.
+ * convenience (ADR-0004). data/crosswords/ is **tracked**, and nothing reaches it without somebody
+ * having answered what may legally be served. data/crosswords-local/ is **gitignored wholesale**,
+ * and holds the freely-distributed .puz files the importer is developed against: a 15×15 is
+ * playable while building, and no copyrighted grid can enter git history by accident.
  *
- * **Overridable by `PT_BANK_DIRS`**, a delimited list resolved against the working directory, and the
+ * **Overridable by PT_BANK_DIRS**, a delimited list resolved against the working directory; the
  * browser suite sets it to the tracked directory alone. The local overlay is a scratch space that
- * differs from machine to machine — whichever `.puz` files somebody happened to import last — so a
- * test that asserts anything about what the bank *holds* passes or fails on which developer ran it.
- * Pinning it is the same reasoning as the lifecycle timings above: the environment names what the
- * run is about, and the default stays the one a real deployment wants.
+ * differs from machine to machine, so a test asserting anything about what the bank *holds* would
+ * pass or fail on which developer ran it. Same reasoning as the lifecycle timings above: the
+ * environment names what the run is about, and the default stays the one a deployment wants.
  */
 const bankDirs = process.env.PT_BANK_DIRS
     ? process.env.PT_BANK_DIRS.split(delimiter)

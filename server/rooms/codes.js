@@ -1,9 +1,9 @@
 /**
  * Room code generation.
  *
- * Four characters from a 24-letter alphabet is ~330k combinations — plenty for concurrent rooms,
+ * Four characters from a 24-letter alphabet is ~330k combinations: plenty for concurrent rooms,
  * small enough that collision checking is mandatory. The prototype's version tested
- * `code in Object.keys(rooms)`, which checks array *indices* and so never detected a collision
+ * code in Object.keys(rooms), which checks array *indices* and so never detected a collision
  * (design-spec.md §9).
  */
 

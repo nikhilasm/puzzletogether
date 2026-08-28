@@ -2,11 +2,10 @@
  * The provider seam: the only entry point the rest of the server uses to obtain a puzzle.
  *
  * Whether a puzzle was generated in a worker or read off disk is invisible past this line
- * (ADR-0004). Phase 4 put that claim to the test by adding the second kind, and it held: `bank.js`
- * joined the map below and nothing that asks for a puzzle changed.
+ * (ADR-0004): bank.js is one entry in the map below, and nothing that asks for a puzzle knows.
  *
- * What the second kind *did* add is `catalog()`. A generator can make any size it offers, so a
- * constant could state them; a bank offers whatever files it was given, which no constant can know.
+ * What the banked kind adds is catalog(). A generator can make any size it offers, so a constant
+ * could state them; a bank offers whatever files it was given, which no constant can know.
  */
 
 import { SIZES_BY_TYPE, DIFFICULTIES, PUZZLE_TYPES } from '../../shared/constants.js';
@@ -21,7 +20,7 @@ import sudoku from './sudoku/index.js';
 /** Puzzle modules by type. A fifth type is one import and one entry. */
 const MODULES = { sudoku, kenken, nonogram, crossword };
 
-/** Which producer serves each type — the whole of what `getPuzzle` has to decide. */
+/** Which producer serves each type, the whole of what getPuzzle has to decide. */
 const PROVIDER_BY_TYPE = {
     sudoku: 'generator',
     kenken: 'generator',
@@ -51,7 +50,7 @@ export function loadBankFrom(dirs) {
  * @param {string} [spec.puzzleId] - A specific puzzle the host chose off the catalog. Only a bank
  *   can honour it; a generator has no list to choose from, so it ignores it (ADR-0009).
  * @param {Iterable<string>} [spec.exclude] - Puzzle ids the asking room has already been served, so
- *   a finite bank does not hand back the puzzle just solved. Generators ignore it — they do not
+ *   a finite bank does not hand back the puzzle just solved. Generators ignore it; they do not
  *   repeat.
  * @returns {Promise<{ doc: import('../../shared/protocol.js').PuzzleDoc, solution: string[] }>}
  *   The client-safe document and the solution, which the room keeps and never serialises.
@@ -112,10 +111,10 @@ export function getPuzzleModule(type) {
  * Warms the pool for a specification at boot, so the first puzzle of a process is as fast as the
  * rest.
  *
- * A banked type is already warm — it is a map in memory — so this is a no-op for crossword rather
+ * A banked type is already warm, being a map in memory, so this is a no-op for crossword rather
  * than something every call site has to remember not to ask for.
  *
- * @param {object} spec - Puzzle specification, as for `getPuzzle`.
+ * @param {object} spec - Puzzle specification, as for getPuzzle.
  * @returns {void}
  */
 export function prewarm(spec) {

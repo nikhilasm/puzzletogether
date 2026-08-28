@@ -2,7 +2,7 @@
  * The brand system as custom properties (brand.md).
  *
  * Every colour, font, radius, and spacing value in the app comes from here. A literal hex in a
- * component is a review failure — that is what keeps the dark theme a token swap rather than an
+ * component is a review failure; that is what keeps the dark theme a token swap rather than an
  * audit (code-style.md §9).
  */
 
@@ -24,7 +24,7 @@
     --text-sm: 0.8rem;
     --text-xs: 0.64rem;
 
-    /* Colour — light, "paper" */
+    /* Colour: light, "paper" */
     --paper: #fbf8f3;
     --paper-raised: #fffdf9;
     --ink: #1f1d1a;
@@ -37,10 +37,10 @@
     --wrong: #c4442e;
 
     /*
-     * A control that takes something away — Leave room, and nothing else yet.
+     * A control that takes something away: Leave room, and nothing else yet.
      *
-     * Deliberately its own token rather than `--wrong`, which it currently matches to the byte.
-     * `--wrong` means *this answer is incorrect*: it is grid feedback, it is transient, and
+     * Deliberately its own token rather than --wrong, which it currently matches to the byte.
+     * --wrong means *this answer is incorrect*: it is grid feedback, it is transient, and
      * brand.md §4 already refuses it for the caution triangle on the same grounds. Leaving a room
      * is not a mistake, so borrowing the colour that says "mistake" would make the two indivisible
      * the first time either wants to move. One of them will.
@@ -65,9 +65,9 @@
     /*
      * The colour the local player's own cursor is drawn in.
      *
-     * A board publishes its player's `--player-N` here, so the cell you are in is washed in the
-     * colour that is already *you* everywhere else in the room. It falls back to `--accent` — which
-     * is what every cursor was before — so a grid with no seat behind it still draws one.
+     * A board publishes its player's --player-N here, so the cell you are in is washed in the
+     * colour that is already *you* everywhere else in the room. It falls back to --accent, so a
+     * grid with no seat behind it still draws one.
      *
      * Only the cursor. A player's colour still never touches an entered value (brand.md §3).
      */
@@ -76,18 +76,18 @@
     /*
      * The wash behind a square the puzzle came with, rather than one a player filled in.
      *
-     * Mixed from `--ink`, which means it needs no per-theme value to do the right thing: on cream
-     * `--ink` is near-black so the square goes very slightly darker, and on charcoal `--ink` is the
+     * Mixed from --ink, which means it needs no per-theme value to do the right thing: on cream
+     * --ink is near-black so the square goes very slightly darker, and on charcoal --ink is the
      * warm off-white so it goes very slightly lighter. Both readings are "this one was printed".
      *
-     * It carries no meaning on its own — the weight of the digit is what says "given" (brand.md §3),
+     * It carries no meaning on its own: the weight of the digit is what says "given" (brand.md §3),
      * and this only has to separate the printed squares from the empty ones at a glance.
      */
     --given-fill: color-mix(in srgb, var(--ink) 5%, transparent);
 
     /*
-     * Shape and line. Chrome is a softened rectangle and the puzzle is square — `--radius-round` is
-     * for things that are actually round (presence dots, a switch track), not for boxes.
+     * Shape and line. Chrome is a softened rectangle and the puzzle is square; --radius-round is
+     * for things that are actually round, like the presence stripe's capsule ends, not for boxes.
      */
     --radius-control: 6px;
     --radius-grid: 0;
@@ -101,7 +101,7 @@
      *
      * Region rules are painted *over* the hairlines rather than replacing them, so a translucent
      * heavy rule would show the hairline through its middle as a darker core. Any board that wants a
-     * heavy rule in the hairline's colour uses the solid mix instead — the same colour to the eye,
+     * heavy rule in the hairline's colour uses the solid mix instead: the same colour to the eye,
      * with nothing to accumulate underneath it.
      */
     --grid-rule: color-mix(in srgb, var(--graphite) 30%, transparent);
@@ -110,7 +110,7 @@
 
     /*
      * The frame around the whole grid. Its width is also the offset every gutter aligns itself by,
-     * so it is deliberately *not* the same token as the rules inside — a board that wants heavier
+     * so it is deliberately *not* the same token as the rules inside: a board that wants heavier
      * internal rules must not silently move its own clue columns half a pixel.
      */
     --grid-frame-width: 2.5px;
@@ -130,8 +130,8 @@
     /*
      * How tall a cell's presence stripe is, as a fraction of the cell.
      *
-     * A fraction rather than a length, because the arithmetic has to happen where `--cell-size` is
-     * known — a custom property resolves its `var()`s on the element that declares it, so a length
+     * A fraction rather than a length, because the arithmetic has to happen where --cell-size is
+     * known: a custom property resolves its var()s on the element that declares it, so a length
      * computed here would be a 40px cell's stripe on every grid. The layer clamps it at both ends.
      */
     --presence-stripe: 0.09;
@@ -151,7 +151,7 @@
 
     --column-width: 640px;
 
-    /* Motion — collapsed to 0ms under prefers-reduced-motion, in base.css */
+    /* Motion: collapsed to 0ms under prefers-reduced-motion, in base.css */
     --motion-mark: 90ms;
     --motion-presence: 120ms;
     --motion-modal: 160ms;
@@ -159,7 +159,7 @@
     /*
      * The one arrival that is allowed to be seen.
      *
-     * Every other modal in the app opens as quietly as it can — a confirm dialog is an interruption
+     * Every other modal in the app opens as quietly as it can: a confirm dialog is an interruption
      * and should not celebrate itself. The congrats modal is the opposite: it is the room finishing
      * something together, and 160ms of a 4px drift was so restrained that people reported it as
      * appearing with no animation at all. Longer, and with a scale, so the panel reads as arriving.
@@ -170,19 +170,19 @@
      * The grid's own celebration, which runs before that modal opens: every square pulses once in
      * the room's colours, as a wave travelling from the top-left corner to the bottom-right.
      *
-     * Two values because the wave is two things — how long the front takes to cross the grid, and
+     * Two values because the wave is two things: how long the front takes to cross the grid, and
      * how long one square is lit as it passes. The sweep is divided by the grid's span at the point
      * of use, so every size takes the same total time; a 25×25 gets a faster wave rather than a
-     * longer wait. Their sum is `CELEBRATION_MS` in pt-celebration-layer.js, which is how long the
-     * modal is held back — change these and change that.
+     * longer wait. Their sum is CELEBRATION_MS in pt-celebration-layer.js, which is how long the
+     * modal is held back; change these and change that.
      */
     --motion-celebrate-sweep: 900ms;
     --motion-celebrate-pulse: 600ms;
 }
 
 /*
- * Dark — "evening desk". Staged here so Phase 2 adds only the toggle, not a palette hunt. No
- * `prefers-color-scheme` rule yet: the theme ships when its toggle and review do.
+ * Dark: "evening desk". Selected by data-theme on <html>, which theme.js sets from the stored
+ * choice or the OS preference. No prefers-color-scheme rule here; the attribute is the one switch.
  */
 :root[data-theme='dark'] {
     --paper: #1a1815;

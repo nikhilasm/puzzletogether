@@ -1,9 +1,9 @@
 /**
  * Seeded pseudo-random number generation for puzzle creation.
  *
- * Generators never call `Math.random()` — every one takes an injected `rng`, which is what makes a
+ * Generators never call Math.random(); every one takes an injected rng, which is what makes a
  * puzzle reproducible from its seed and generator tests deterministic (code-style.md §7). The
- * shuffle is carried over from the prototype's `js/server/utils.js`, seeded rather than global.
+ * shuffle is carried over from the prototype's js/server/utils.js, seeded rather than global.
  */
 
 import { randomInt } from 'node:crypto';
@@ -11,14 +11,14 @@ import { randomInt } from 'node:crypto';
 /**
  * @typedef {object} Rng
  * @property {number} seed - The seed this generator was created from.
- * @property {() => number} next - Next float in `[0, 1)`.
- * @property {(maxExclusive: number) => number} int - Next integer in `[0, maxExclusive)`.
+ * @property {() => number} next - Next float in [0, 1).
+ * @property {(maxExclusive: number) => number} int - Next integer in [0, maxExclusive).
  * @property {<T>(items: T[]) => T[]} shuffle - Fisher-Yates shuffle, in place.
  */
 
 /**
- * Creates a seeded random generator (mulberry32 — small, fast, and good enough for puzzle
- * layout; not for anything security-relevant).
+ * Creates a seeded random generator (mulberry32: small, fast, and good enough for puzzle
+ * layout, not for anything security-relevant).
  *
  * @param {number} seed - 32-bit seed. The same seed always produces the same sequence.
  * @returns {Rng} A generator carrying its seed.

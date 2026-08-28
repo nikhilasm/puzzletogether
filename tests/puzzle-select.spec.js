@@ -3,8 +3,8 @@
  *
  * Two kinds of test here, and the split is deliberate. The **list** is checked against the app a host
  * actually sees, driven by the tracked bank. The **filters** cannot be: they only appear once a bank
- * carries more than one size or more than one difficulty, and `data/crosswords/` is four minis that
- * are all 5×5 and all easy — which is exactly the case the filters are meant to stay out of the way
+ * carries more than one size or more than one difficulty, and data/crosswords/ is four minis that
+ * are all 5×5 and all easy, which is exactly the case the filters are meant to stay out of the way
  * of. So they are driven against a picker mounted on its own behind a catalog standing in for a
  * fuller bank. It is still a real element in a real engine; only its input is invented, and inventing
  * it is the point.
@@ -16,7 +16,7 @@ import { createRoom } from './helpers.js';
 
 /**
  * A bank with something to filter: two sizes sharing a difficulty, three difficulties, and one size
- * that exists only at `hard` — which is what makes an unreachable pair possible to test for.
+ * that exists only at hard, which is what makes an unreachable pair possible to test for.
  *
  * Listed out of order on both axes on purpose. A catalog arrives in whatever order the bank's files
  * loaded in, and both filter rows are supposed to impose their own.
@@ -57,7 +57,7 @@ const BANK = [
 ];
 
 /**
- * Puts a lone picker on the landing page with `puzzles` behind its crossword entry.
+ * Puts a lone picker on the landing page with puzzles behind its crossword entry.
  *
  * The landing screen renders no picker of its own, so the one appended here is the only one in the
  * document and the specs below can address it by tag.
@@ -88,9 +88,9 @@ function titlesOn(page) {
 }
 
 /**
- * The spec the picker has resolved to — what Start would be handed right now.
+ * The spec the picker has resolved to: what Start would be handed right now.
  *
- * Read off the element rather than by listening for `pt-spec-change`, because the two are the same
+ * Read off the element rather than by listening for pt-spec-change, because the two are the same
  * thing: the picker announces exactly what it holds, which is the property that stops the list
  * showing one card as chosen while Start still carries another.
  */
@@ -194,7 +194,7 @@ test.describe('filtering the list', () => {
      * Disabling the pairs that match nothing is what keeps the list from ever coming up empty: an
      * option is pressable only if something is behind it *given the other filter*, so every pair a
      * host can reach holds at least one card. Greyed rather than hidden, the way a colour another
-     * player holds is — a row that changes length as it is used is harder to read than a fixed one.
+     * player holds is: a row that changes length as it is used is harder to read than a fixed one.
      */
     test('greys out a pair with nothing behind it rather than emptying the list', async ({
         page,
@@ -221,7 +221,7 @@ test.describe('filtering the list', () => {
     });
 
     /**
-     * The selection cannot be left pointing at a card that is no longer on screen — that is the bug
+     * The selection cannot be left pointing at a card that is no longer on screen: that is the bug
      * where the list highlights one puzzle and Start begins a different one, which the picker already
      * had to answer once for the settings a room remembers.
      */

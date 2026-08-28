@@ -6,8 +6,9 @@
  * entirely normal and is discovered by a room mid-solve. So every refusal gets a test, built on a
  * crafted file rather than waiting for one to turn up.
  *
- * `.puz` files are assembled here byte by byte instead of read off disk. The four real ones are
- * gitignored — free to download is not free to redistribute — so a test that depended on them would
+ * .puz files are assembled here byte by byte instead of read off disk. The four real ones are
+ * gitignored, since free to download is not free to redistribute, so a test that depended on them
+ * would
  * pass on this machine and fail on every other.
  */
 
@@ -16,15 +17,15 @@ import { describe, expect, it } from 'vitest';
 import { ImportError, readIpuz, readPuz, toBankFile } from './import-crossword.js';
 
 /**
- * Builds a `.puz` file from a solution picture, so a test can state a grid and get bytes.
+ * Builds a .puz file from a solution picture, so a test can state a grid and get bytes.
  *
  * @param {object} options - What the file should contain.
- * @returns {Buffer} A complete `.puz`.
+ * @returns {Buffer} A complete .puz.
  */
 function buildPuz({ rows, clues, scrambled = 0, extensions = {}, notes = '' }) {
     const cols = rows[0].length;
-    // The pictures here use `#` for a black square because that is what `.ipuz` and the human eye
-    // use; `.puz` spells the same thing `.`, so the fixture translates rather than the reader.
+    // The pictures here use # for a black square because that is what .ipuz and the human eye
+    // use; .puz spells the same thing ., so the fixture translates rather than the reader.
     const solution = rows.join('').replaceAll('#', '.');
     const player = solution.replace(/[^.]/g, '-');
 
@@ -76,7 +77,7 @@ describe('readPuz', () => {
     /**
      * The notes string sits *after* the clues and before the extension sections. Stopping the string
      * scan one short leaves the section scan starting inside somebody's prose, where it finds
-     * nothing — and reports a puzzle with no rebus and no circles rather than failing. That is
+     * nothing, and reports a puzzle with no rebus and no circles rather than failing. That is
      * exactly the bug this file was written after.
      */
     it('finds the extensions even when the puzzle carries notes', () => {
@@ -172,7 +173,7 @@ describe('readIpuz', () => {
     };
 
     /**
-     * `0` means an open square with no number, not a block. Reading it as a block turns most of the
+     * 0 means an open square with no number, not a block. Reading it as a block turns most of the
      * grid black and leaves a puzzle of disconnected single letters.
      */
     it('treats a zero as an open square rather than a black one', () => {

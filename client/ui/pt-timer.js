@@ -1,7 +1,7 @@
 /**
  * The live solve timer, counting up in mm:ss.
  *
- * Ticks are local. The server sends `startedAt` and its own clock once, the client computes an
+ * Ticks are local. The server sends startedAt and its own clock once, the client computes an
  * offset, and no timer traffic ever crosses the wire (design-spec.md §6). The number in the
  * completion modal is the server's, not this one.
  */

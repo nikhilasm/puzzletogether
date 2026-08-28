@@ -3,16 +3,16 @@
  *
  * It exists because the footer stopped being able to say those things. Once the theme control became
  * an icon button and the links moved onto one line, a version number sitting under them was the only
- * prose left down there — and a version number on its own answers a question almost nobody asks
+ * prose left down there, and a version number on its own answers a question almost nobody asks
  * while the questions people *do* ask (what is this, who made the puzzles, can I look at the code)
  * had nowhere to be answered at all.
  *
- * Built on the native `<dialog>` for the same reason `<pt-confirm>` is: focus trapping, Escape, and
+ * Built on the native <dialog> for the same reason <pt-confirm> is: focus trapping, Escape, and
  * an inert backdrop come from the platform rather than from hand-written key handling, which is the
  * part of a custom modal that is usually subtly wrong.
  *
- * Nothing here is live. It is the one screen in the app with no room, no socket, and no state — so
- * it takes its facts from `shared/constants.js` and holds none of its own beyond whether it is open,
+ * Nothing here is live. It is the one screen in the app with no room, no socket, and no state, so
+ * it takes its facts from shared/constants.js and holds none of its own beyond whether it is open,
  * which its owner sets.
  */
 
@@ -34,7 +34,7 @@ export class PtAbout extends LitElement {
             /*
              * No position here, deliberately.
              *
-             * A modal dialog is centred by the UA's own dialog:modal rule — position: fixed against
+             * A modal dialog is centred by the UA's own dialog:modal rule: position: fixed against
              * the viewport, with inset: 0 and auto margins. Setting position: relative to hang the
              * close button off overrode that, which took the panel out of the viewport and put it in
              * the document: on a phone with the page scrolled it opened wherever the top of the
@@ -69,7 +69,7 @@ export class PtAbout extends LitElement {
             /*
              * The wordmark, at the dialog's own scale rather than the page's.
              *
-             * It is the heading here, so it is set as one — --text-xl and Fraunces with the same
+             * It is the heading here, so it is set as one: --text-xl and Fraunces with the same
              * WONK the page's wordmark carries, which is what makes the dialog read as part of this
              * app rather than as a browser-standard about box.
              */
@@ -110,8 +110,9 @@ export class PtAbout extends LitElement {
                 color: var(--accent-text);
             }
 
-            /* The version, set in the mono face every other machine-readable string in the app uses
-               — the room code above all. It is a fact to be quoted back in a bug report, not prose. */
+            /* The version, set in the mono face every other machine-readable string in the app
+               uses, the room code above all. It is a fact to be quoted back in a bug report, not
+               prose. */
             .version {
                 font-family: var(--font-mono);
                 font-size: var(--text-sm);
@@ -164,7 +165,7 @@ export class PtAbout extends LitElement {
         this.open = false;
     }
 
-    /** Opens and closes the real dialog element to match the `open` property. */
+    /** Opens and closes the real dialog element to match the open property. */
     updated(changed) {
         if (!changed.has('open')) return;
 
@@ -174,7 +175,7 @@ export class PtAbout extends LitElement {
         if (!this.open && dialog.open) dialog.close();
     }
 
-    /** Reports that it should be closed. The opener owns `open`, so this only announces. */
+    /** Reports that it should be closed. The opener owns open, so this only announces. */
     #close() {
         this.dispatchEvent(new CustomEvent('pt-about-close', { bubbles: true, composed: true }));
     }
@@ -197,8 +198,8 @@ export class PtAbout extends LitElement {
 
                     <p>
                         A room you can send someone, and a puzzle you solve in it together.
-                        Everybody sees the same grid as it fills in — sudoku, KenKen, nonograms, and
-                        crosswords — and nobody needs an account to join.
+                        Everybody sees the same grid as it fills in: sudoku, KenKen, nonograms, and
+                        crosswords. Nobody needs an account to join.
                     </p>
                     <p class="version">v${APP_VERSION}</p>
 

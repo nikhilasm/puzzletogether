@@ -1,7 +1,7 @@
 /**
  * Worker-thread entry point for puzzle generation.
  *
- * Generation — and specifically uniqueness verification — is CPU-bound, so it runs here rather
+ * Generation, and specifically uniqueness verification, is CPU-bound, so it runs here rather
  * than on the event loop where it would stall every socket in every room (architecture.md §1).
  */
 
@@ -12,7 +12,7 @@ import nonogram from './nonogram/index.js';
 import { createRng } from './rng.js';
 import sudoku from './sudoku/index.js';
 
-/** Every type this worker can generate, keyed by `doc.type`. */
+/** Every type this worker can generate, keyed by doc.type. */
 const MODULES = { sudoku, kenken, nonogram };
 
 /** Generates one puzzle and posts it back, converting a thrown error into a reply. */

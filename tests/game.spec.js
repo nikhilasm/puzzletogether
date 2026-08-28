@@ -1,7 +1,7 @@
 /**
  * The game screen's chrome: the keypad, the Notes toggle, the assist controls, and the way out.
  *
- * Also the app-wide styling rules that only a browser can confirm — one focus colour and one
+ * Also the app-wide styling rules that only a browser can confirm: one focus colour and one
  * control radius, both of which are distributed into every shadow root by hand and so can only be
  * checked where they land.
  */
@@ -12,7 +12,7 @@ import { createDims, solveFirst } from '../server/puzzles/sudoku/solver.js';
 
 import { boardOf, createRoom, firstEditableCell, startPuzzle } from './helpers.js';
 
-/** `rgb(r, g, b)` as `#rrggbb`, so it can be compared against a token. */
+/** rgb(r, g, b) as #rrggbb, so it can be compared against a token. */
 function toHex(rgb) {
     const [r, g, b] = rgb.match(/\d+/g).map(Number);
     return `#${[r, g, b].map((v) => v.toString(16).padStart(2, '0')).join('')}`;
@@ -69,8 +69,8 @@ test.describe('shape and focus', () => {
     /**
      * The footer's two wordless controls are 44px squares.
      *
-     * They are the only icon-only controls left in the app — the panel's went back to carrying
-     * words. Nothing in the CSS fails loudly if a future one forgets its size; it would simply
+     * They are the only icon-only controls left in the app; the panel's carry words. Nothing in
+     * the CSS fails loudly if a future one forgets its size; it would simply
      * shrink to its icon and still work for anyone with a mouse.
      */
     test('every icon-only control is a 44px square', async ({ page }) => {
@@ -88,7 +88,7 @@ test.describe('shape and focus', () => {
     /**
      * Panel controls are at least as tall as a thumb, whatever their label does.
      *
-     * `pt-keypad .action` and not `.actions button`: the setting is slotted, so it is a light-DOM
+     * pt-keypad .action and not .actions button: the setting is slotted, so it is a light-DOM
      * child of the panel rather than a descendant of the bar it is laid out in. The class is what
      * every one of them shares whichever side of that line it falls on.
      */
@@ -153,7 +153,7 @@ test.describe('shape and focus', () => {
     });
 
     /**
-     * Every control in the app carries its word — the panel's under its icon, the action row's
+     * Every control in the app carries its word: the panel's under its icon, the action row's
      * beside it.
      *
      * ADR-0011 took the panel's labels off to buy vertical space and bought none: the panel's height
@@ -173,7 +173,7 @@ test.describe('shape and focus', () => {
         await expect(actions).toHaveText(['Puzzle Select', 'Check', 'Reveal', 'Leave Room']);
     });
 
-    /** The label sits under the icon, not beside it — which is what makes four fit a phone. */
+    /** The label sits under the icon, not beside it, which is what makes four fit a phone. */
     test('the panel stacks its label under its icon', async ({ page }) => {
         const box = await page
             .locator('pt-keypad .action')
@@ -201,7 +201,7 @@ test.describe('shape and focus', () => {
      * The three puzzle actions share a line; Leave room wraps below them.
      *
      * Four labelled buttons come to about 618px and the row is the board's 480px, so with a host's
-     * full set they cannot fit one line — and widening the row past the grid it sits under would be
+     * full set they cannot fit one line, and widening the row past the grid it sits under would be
      * a worse answer than a second line. What the wrap must not do is make Leave room a different
      * *control*: it stays inside the same rule, at the same height and the same type size as the
      * three above it, which is the whole of what "same size as the other buttons" asked for. That is
@@ -240,7 +240,7 @@ test.describe('shape and focus', () => {
     });
 
     /**
-     * Leave room is in the row and is still marked out — by colour alone, which is the one channel
+     * Leave room is in the row and is still marked out by colour alone, which is the one channel
      * it now has. Worth asserting precisely because it is a single channel: nothing else about the
      * button differs from the three beside it any more.
      */
@@ -280,7 +280,7 @@ test.describe('shape and focus', () => {
 
     /**
      * ...and because it is out of the flow, the page has to make its own room for it. Without the
-     * spacer the last control on the page — Leave room — sits underneath the keys at every scroll
+     * spacer the last control on the page, Leave room, sits underneath the keys at every scroll
      * position, which is to say it cannot be pressed at all.
      */
     test('nothing is stranded underneath the panel', async ({ page }) => {
@@ -341,7 +341,7 @@ test.describe('input mode', () => {
         await expect(notes).toHaveAttribute('aria-pressed', 'false');
         await expect(notes).toHaveText('Notes');
 
-        // In the panel's button bar, above the digits it changes the meaning of — and below nothing
+        // In the panel's button bar, above the digits it changes the meaning of, and below nothing
         // else, since the bar is the top of the panel for a type with no clue to show.
         const bottomOf = async (selector) => {
             const box = await page.locator(selector).boundingBox();
@@ -350,7 +350,7 @@ test.describe('input mode', () => {
         const topOf = async (selector) =>
             Math.round((await page.locator(selector).boundingBox()).y);
 
-        // `.action`, not the host: `<pt-mode-toggle>` is `display: contents` so its button can share
+        // .action, not the host: <pt-mode-toggle> is display: contents so its button can share
         // the bar's row directly, which means the host element itself has no box to measure.
         const mode = await bottomOf('pt-mode-toggle .action');
         expect(mode).toBeLessThanOrEqual(await topOf('pt-keypad .digits'));
@@ -361,12 +361,12 @@ test.describe('input mode', () => {
      * The pressed state moves four channels, not one.
      *
      * The switch this replaced showed its state by sliding a knob, which is a shape change and so
-     * survives being seen without colour. An `aria-pressed` button has no knob, so the border *and*
-     * the ground both have to move — one of them alone would be a hue difference and nothing else,
+     * survives being seen without colour. An aria-pressed button has no knob, so the border *and*
+     * the ground both have to move: one of them alone would be a hue difference and nothing else,
      * which is what the grayscale check exists to catch (brand.md §3).
      *
      * The icon filling and the label thickening are the two that are shape rather than paint, and
-     * they are what a stuck hover border cannot counterfeit — which is the whole reason they exist.
+     * they are what a stuck hover border cannot counterfeit, which is the whole reason they exist.
      */
     test('flips all four channels and writes a pencil mark', async ({ page }) => {
         await createRoom(page);
@@ -415,13 +415,13 @@ test.describe('input mode', () => {
  * Hover is a *pointer* state, and a touch screen has no pointer.
  *
  * A touch browser emulates hover on whatever was tapped last and holds it there until something else
- * is tapped, so an ungated `:hover` becomes a state that outlives the tap. Here that was
- * `border-color: var(--accent)` — an accent frame left sitting on an unfocused control, which brand
+ * is tapped, so an ungated :hover becomes a state that outlives the tap. Here that was
+ * border-color: var(--accent), an accent frame left sitting on an unfocused control, which brand
  * §4 says reads as a stuck focus ring, and which on a *setting* is a pressed button missing only its
- * wash. Every hover rule in the app is now behind `@media (hover: hover)`.
+ * wash. Every hover rule in the app is now behind @media (hover: hover).
  *
- * It was never the focus ring, and could not have been: `:focus-visible` does not match a touch
- * activation, and the panel's controls `preventDefault()` on `pointerdown` to keep the grid focused,
+ * It was never the focus ring, and could not have been: :focus-visible does not match a touch
+ * activation, and the panel's controls preventDefault() on pointerdown to keep the grid focused,
  * so they take no focus from a tap at all. That is asserted here too, because the fix would look
  * just as green if focus had quietly started landing on the keys instead.
  */
@@ -465,8 +465,8 @@ test.describe('the footer', () => {
     /**
      * The theme control is an action, not a toggle.
      *
-     * It was `aria-pressed` on "Dark theme" for one revision, which made it a state to be read. It
-     * does one thing, so it names that thing — and the name flips with the theme, which is also what
+     * It was aria-pressed on "Dark theme" for one revision, which made it a state to be read. It
+     * does one thing, so it names that thing, and the name flips with the theme, which is also what
      * settles which of the two icons to draw.
      */
     test('the theme button switches, names the switch, and remembers it', async ({ page }) => {
@@ -509,7 +509,7 @@ test.describe('the footer', () => {
 
     /**
      * About holds the version, which is the only reason it had to exist rather than being a nice
-     * idea — the footer used to say it and now nothing else does.
+     * idea: the footer used to say it and now nothing else does.
      */
     test('About opens, states the version, and closes', async ({ page }) => {
         await createRoom(page);
@@ -589,7 +589,7 @@ test.describe('on a phone', () => {
 test.describe('given squares', () => {
     /**
      * A square the puzzle came with reads as printed rather than written: heavier, and on a faintly
-     * tinted ground. Two channels, neither of them colour — attribution is what colour means here.
+     * tinted ground. Two channels, neither of them colour: attribution is what colour means here.
      */
     test('are heavier than an entry and sit on a tinted ground', async ({ page }) => {
         await createRoom(page);
@@ -617,7 +617,7 @@ test.describe('given squares', () => {
     /**
      * The tint survives the cursor's wash rather than being replaced by it.
      *
-     * They are `background-color` and `background-image` precisely so a given square in the cursor's
+     * They are background-color and background-image precisely so a given square in the cursor's
      * row shows both. As one shorthand, the tint blinked out every time anybody moved.
      */
     test('keep their tint under the cursor wash', async ({ page }) => {
@@ -703,8 +703,8 @@ test.describe('the solve celebration', () => {
     /**
      * Whether the grid is waving and whether the modal is open, read at one instant.
      *
-     * One `evaluate` rather than two locators, because what is being tested is that the two never
-     * overlap — sampling them a round trip apart would be sampling two different moments. It reaches
+     * One evaluate rather than two locators, because what is being tested is that the two never
+     * overlap; sampling them a round trip apart would be sampling two different moments. It reaches
      * through the shadow roots by hand for the same reason: Playwright's engine pierces them, but
      * only one selector at a time.
      */
@@ -797,7 +797,7 @@ test.describe('the solve celebration', () => {
         expect(delay(2)).toBe(delay(4));
         expect(delay(4)).toBe(delay(6));
 
-        // Two players in the room, so two colours, alternating by diagonal — the third seat left.
+        // Two players in the room, so two colours, alternating by diagonal; the third seat left.
         expect(toHex(pulses[0].color)).toBe(tokens.first);
         expect(toHex(pulses[1].color)).toBe(tokens.second);
         expect(toHex(pulses[4].color)).toBe(tokens.first);
@@ -816,7 +816,7 @@ test.describe('the solve celebration', () => {
         await expect
             .poll(() => celebrationState(page), {
                 // A fixed, fast interval. The default backs off to a second between samples, which
-                // is longer than the wave — the test would be timing its own polling, not the app.
+                // is longer than the wave, so the test would time its own polling, not the app.
                 intervals: [50],
                 timeout: 15_000,
             })
@@ -827,7 +827,7 @@ test.describe('the solve celebration', () => {
     });
 
     /**
-     * A reveal is the room giving up on a puzzle, and it gets the modal it already had — no wave.
+     * A reveal is the room giving up on a puzzle, and it gets the modal it already had, no wave.
      * Celebrating it in the colours of the people who did not solve it would be the app misreading
      * the moment, and the heading it sits under says "Revealed" for exactly that reason.
      */
@@ -849,7 +849,7 @@ test.describe('the solve celebration', () => {
      * Collapsing the durations is what every other animation in the app does, and it is the wrong
      * answer here: the modal is held back by a timer, so a 0ms wave would leave the pause with
      * nothing happening in it. Sampled all the way to the modal opening, because "it was skipped"
-     * cannot be checked after the fact — a wave that had already finished looks identical to one
+     * cannot be checked after the fact: a wave that had already finished looks identical to one
      * that never ran.
      */
     test('is skipped under reduced motion', async ({ page }) => {

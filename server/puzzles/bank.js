@@ -10,7 +10,7 @@
  *   hand-edited, half-merged, or written by an importer with a bug. Every file is validated on the
  *   way in, including re-deriving its numbering from its own grid.
  * - **Its content repeats.** Thirty puzzles run out, and a room that is handed the puzzle it just
- *   solved will read the button as broken, so `take` is told what a room has already seen.
+ *   solved will read the button as broken, so take is told what a room has already seen.
  *
  * Loaded once at boot and held in memory. The bank is a few hundred KB at the sizes involved, and
  * re-reading it per puzzle would put file I/O in the path of a host pressing "start".
@@ -24,13 +24,13 @@ import { MAX_CELL_VALUE_LENGTH } from '../../shared/constants.js';
 import { ALPHABET, DOC_VERSION } from './crossword/index.js';
 import { checkNumbering } from './crossword/numbering.js';
 
-/** Largest grid the client renders, mirroring `schema.js`. */
+/** Largest grid the client renders, mirroring schema.js. */
 const MAX_SIDE = 25;
 
-/** Every loaded puzzle, by id, as `{ doc, solution, meta }`. Populated by `loadBank`. */
+/** Every loaded puzzle, by id, as { doc, solution, meta }. Populated by loadBank. */
 const puzzles = new Map();
 
-/** Whether `loadBank` has run, so a second call is a no-op rather than a double load. */
+/** Whether loadBank has run, so a second call is a no-op rather than a double load. */
 let loaded = false;
 
 /**
@@ -92,8 +92,8 @@ function validatePuzzle(file) {
 /**
  * Reads one bank directory, skipping it entirely when it does not exist.
  *
- * A missing directory is the normal state of a fresh clone — `data/crosswords-local/` is gitignored,
- * so nobody else's checkout has one — and is not worth a warning.
+ * A missing directory is the normal state of a fresh clone, since data/crosswords-local/ is
+ * gitignored, so it is not worth a warning.
  *
  * @param {string} dir - Absolute path to a bank directory.
  * @returns {{ id: string, doc: object, solution: (string|null)[], meta: object }[]} Sound puzzles.
@@ -103,7 +103,7 @@ function readDir(dir) {
 
     const manifestPath = join(dir, 'index.json');
     if (!existsSync(manifestPath)) {
-        console.warn(`[bank] ${dir} has no index.json — skipping the directory`);
+        console.warn(`[bank] ${dir} has no index.json: skipping the directory`);
         return [];
     }
 
@@ -129,16 +129,16 @@ function readDir(dir) {
         try {
             parsed = JSON.parse(readFileSync(file, 'utf8'));
         } catch (error) {
-            console.warn(`[bank] ${entry.id}: not valid JSON — ${error.message}`);
+            console.warn(`[bank] ${entry.id}: not valid JSON: ${error.message}`);
             continue;
         }
 
-        // One bad file is refused; the rest of the bank still loads. A bank is content, and a single
-        // malformed puzzle taking the whole app down would be a worse failure than serving 29 of 30
-        // — but it is said out loud, because a bank quietly one puzzle short is how this rots.
+        // One bad file is refused; the rest of the bank still loads. A single malformed puzzle
+        // taking the whole app down is a worse failure than serving 29 of 30. Said out loud,
+        // because a bank quietly one puzzle short is how this rots.
         const problem = validatePuzzle(parsed);
         if (problem) {
-            console.warn(`[bank] ${entry.id}: refused — ${problem}`);
+            console.warn(`[bank] ${entry.id}: refused: ${problem}`);
             continue;
         }
 
@@ -183,9 +183,9 @@ export function loadBank(dirs) {
 /**
  * What the bank can actually serve, as Puzzle Select needs to offer it.
  *
- * **`puzzles` is the part that matters, and it is what a generator can never supply.** A bank's
- * content is finite and knowable, so the host picks a *puzzle* — by title, by whoever wrote it, by
- * where it came from — rather than describing one and hoping (ADR-0009). Sizes and difficulties are
+ * **puzzles is the part that matters, and it is what a generator can never supply.** A bank's
+ * content is finite and knowable, so the host picks a *puzzle* by title, by whoever wrote it, or by
+ * where it came from, rather than describing one and hoping (ADR-0009). Sizes and difficulties are
  * still published beside it: they are what the room's settings record, and what "start another"
  * falls back to when the named puzzle has since gone.
  *
@@ -195,7 +195,7 @@ export function loadBank(dirs) {
  * @returns {{ sizes: { rows: number, cols: number }[], difficulties: string[],
  *   puzzles: { id: string, title: string|null, author: string|null, source: string|null,
  *   size: { rows: number, cols: number }, difficulty: string }[] }|null} What is on offer, or null
- *   when the bank holds nothing — in which case the type is not offered at all.
+ *   when the bank holds nothing, in which case the type is not offered at all.
  */
 export function bankCatalog() {
     if (puzzles.size === 0) return null;
@@ -237,8 +237,8 @@ export function bankCatalog() {
 /**
  * Picks a puzzle matching a request, preferring one the room has not seen.
  *
- * **A named `id` wins outright**, because the host picked that puzzle off a list rather than
- * describing one — honouring the description instead would hand back a different crossword than the
+ * **A named id wins outright**, because the host picked that puzzle off a list rather than
+ * describing one; honouring the description instead would hand back a different crossword from the
  * one whose title they pressed. It falls back to the description when the id names nothing, which is
  * a client holding a catalog older than the bank rather than a mistake worth failing a start over.
  *

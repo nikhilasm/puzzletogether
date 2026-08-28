@@ -1,5 +1,5 @@
 /**
- * The completion modal: solve time, streak, and — for the host — what to play next.
+ * The completion modal: solve time, streak, and, for the host, what to play next.
  *
  * Every player sees it and every player can dismiss it; dismissing leaves the finished grid on
  * screen. Only the host gets the start controls, and non-hosts are told plainly that they are
@@ -13,7 +13,7 @@ import { closeIcon, iconStyle, puzzlesIcon, startIcon } from '../ui/icons.js';
 
 import '../ui/pt-puzzle-picker.js';
 
-/** Turns `elapsedMs` into the `m:ss` the modal shows. */
+/** Turns elapsedMs into the m:ss the modal shows. */
 function formatElapsed(elapsedMs) {
     const totalSeconds = Math.floor(elapsedMs / 1000);
     return `${Math.floor(totalSeconds / 60)}:${String(totalSeconds % 60).padStart(2, '0')}`;
@@ -55,7 +55,7 @@ export class PtCongratsModal extends LitElement {
              *
              * Everything else opens as quietly as it can, because a confirm dialog is an
              * interruption. This one is the room finishing something together, and it was sharing
-             * the confirm dialog's 160ms of a 4px drift — restrained to the point that people
+             * the confirm dialog's 160ms of a 4px drift, restrained to the point that people
              * reported it as appearing with no animation at all.
              *
              * It now rises further, scales up from just under full size, and takes --motion-celebrate
@@ -101,11 +101,10 @@ export class PtCongratsModal extends LitElement {
             /*
              * Every way out of this modal, in one row.
              *
-             * They were two rows — the host's two choices, then "See the grid" set apart below on
-             * the reasoning that dismissing is what you do *after* deciding. True of the order, not
-             * of the placement: three buttons under one picker are three answers to one question,
-             * and the odd one out sitting alone read as a footer to a dialog that has no footer.
-             * The order still carries the argument, since it is last.
+             * Not two rows with "See the grid" set apart below: three buttons under one picker are
+             * three answers to one question, and the odd one out sitting alone read as a footer to
+             * a dialog that has no footer. Dismissing is still what you do *after* deciding, and
+             * the order carries that, since it is last.
              *
              * It wraps rather than shrinking, because the modal is as narrow as 320px on a phone and
              * three labelled buttons do not fit that.
@@ -167,7 +166,7 @@ export class PtCongratsModal extends LitElement {
         if (!shouldShow && dialog.open) dialog.close();
     }
 
-    /** Announces intent; `<pt-game>` owns the store calls and the busy state around them. */
+    /** Announces intent; <pt-game> owns the store calls and the busy state around them. */
     #emit(name, detail) {
         this.dispatchEvent(new CustomEvent(name, { detail, bubbles: true, composed: true }));
     }
@@ -231,7 +230,7 @@ export class PtCongratsModal extends LitElement {
     /**
      * The host's two choices, which share the button row with everybody's way out.
      *
-     * The icons are the ones these actions already wear on the game screen — Puzzle Select is the
+     * The icons are the ones these actions already wear on the game screen: Puzzle Select is the
      * same four squares in both places, because it is the same action.
      */
     #renderHostButtons() {

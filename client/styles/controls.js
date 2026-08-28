@@ -1,8 +1,8 @@
 /**
- * Shared control styling — the focus ring, buttons, inputs, and the loading line.
+ * Shared control styling: the focus ring, buttons, inputs, and the loading line.
  *
- * A `css` fragment rather than a global stylesheet, so it composes into each component's
- * `static styles` and stays inside their shadow roots (code-style.md §9).
+ * A css fragment rather than a global stylesheet, so it composes into each component's
+ * static styles and stays inside their shadow roots (code-style.md §9).
  */
 
 import { css } from 'lit';
@@ -11,9 +11,9 @@ import { css } from 'lit';
  * The one focus ring in the app.
  *
  * It has to be repeated into every shadow root that holds something focusable: the rule in
- * `base.css` reaches the light DOM only, so a component that omits this silently falls back to the
- * browser's own ring and the app ends up with two different focus colours. Compose this — or
- * `controls`, which includes it — wherever anything can take focus.
+ * base.css reaches the light DOM only, so a component that omits this silently falls back to the
+ * browser's own ring and the app ends up with two different focus colours. Compose this, or
+ * controls which includes it, wherever anything can take focus.
  */
 export const focusRing = css`
     :focus-visible {
@@ -23,23 +23,23 @@ export const focusRing = css`
 `;
 
 /**
- * Every hover rule in the app sits behind `@media (hover: hover)`, and this is why.
+ * Every hover rule in the app sits behind @media (hover: hover), and this is why.
  *
  * A touch browser has no pointer that can leave an element, so it emulates hover on whatever was
  * tapped last and holds it there until something else is tapped. Ungated, that turned every hover
- * rule into a state that outlived the tap — and since hover here is `border-color: var(--accent)`,
+ * rule into a state that outlived the tap, and since hover here is border-color: var(--accent),
  * what a solver was left looking at was an accent frame on an unfocused control, which is the exact
  * thing §4 says reads as a stuck focus ring. On a setting it was worse than ambiguous: an accent
  * border over a darkened label is a pressed button missing only its wash.
  *
- * It is not the focus ring, and could not have been. `:focus-visible` does not match a touch
- * activation, and every control in the input panel calls `preventDefault()` on `pointerdown` to keep
+ * It is not the focus ring, and could not have been. :focus-visible does not match a touch
+ * activation, and every control in the input panel calls preventDefault() on pointerdown to keep
  * the grid focused, so those buttons never take focus from a tap at all.
  *
- * `hover: hover` is true only where a pointer can rest on something without pressing it, so a phone
- * gets no hover state and a mouse keeps every one it had. What answers a tap instead is `:active`,
- * which the browser clears on release — the panel's controls would otherwise have no press feedback
- * whatsoever, since the sticky hover had been quietly providing it.
+ * hover: hover is true only where a pointer can rest on something without pressing it, so a phone
+ * gets no hover state and a mouse keeps every one it had. What answers a tap instead is :active,
+ * which the browser clears on release; the panel's controls would otherwise have no press feedback
+ * at all, since the sticky hover had been quietly providing it.
  */
 
 export const controls = css`
@@ -101,29 +101,28 @@ export const controls = css`
  * A control in the input panel: an icon over a one-word label, and the pressed state a toggle draws
  * on top of it.
  *
- * One fragment for both because they are one control — `.action` is the box, and adding
- * `aria-pressed` is what makes it a setting rather than an action. That is the whole of the
+ * One fragment for both because they are one control: .action is the box, and adding
+ * aria-pressed is what makes it a setting rather than an action. That is the whole of the
  * difference in the markup and the whole of the difference on screen.
  *
  * **The label is under the icon, not beside it.** Side by side, four of these come to about 330px
- * and the narrowest screen we support has 296px to give — the row would wrap, which is the thing
+ * and the narrowest screen we support has 296px to give, so the row wraps, which is the thing
  * the panel cannot afford. Stacked, the same four fit in 236px and the button gets *taller* rather
  * than wider, which it can be: the panel's height is set by the keys underneath.
  *
- * **The buttons share the row equally** (`flex: 1 1 0`), capped so they do not stretch into paddles
- * on a desktop. A row of identical boxes is also what makes the label legible at `--text-xs`: you
+ * **The buttons share the row equally** (flex: 1 1 0), capped so they do not stretch into paddles
+ * on a desktop. A row of identical boxes is also what makes the label legible at --text-xs: you
  * are reading a word you already half-know from the icon above it.
  *
  * **The pressed state moves four channels, and never fills.** The border takes the accent, the
  * ground takes the same 16% accent wash a selected cell carries, the icon fills and goes accent, and
- * the label goes bold. The ground is still a wash and not a fill — colour belongs to people
- * (brand.md §3) — and the wash is the same value `optionGroup` gives a chosen option, so "this is
+ * the label goes bold. The ground is still a wash and not a fill, since colour belongs to people
+ * (brand.md §3), and the wash is the same value optionGroup gives a chosen option, so "this is
  * switched on" and "this is the one you picked" go on looking alike deliberately.
  *
- * It was two channels through Phase 5, which was enough to carry the grayscale check but not enough
- * on a phone, where the only other accent-bordered thing a solver ever saw was a control they had
- * just tapped. Two of the four are now shape rather than paint — a glyph that fills and a word that
- * thickens both survive losing colour outright, which is the job the switch's knob used to do — and
+ * Two channels carried the grayscale check but not a phone, where the only other accent-bordered
+ * thing a solver ever saw was a control they had just tapped. Two of the four are shape rather than
+ * paint, since a glyph that fills and a word that thickens both survive losing colour outright, and
  * all four live *inside* the button. That is what separates them from focus, which is one ring
  * outside the box at a 2px offset and touches none of these.
  */
@@ -150,12 +149,12 @@ export const actionButton = css`
          * The platform's tap flash is off wherever this file draws an :active state of its own.
          *
          * Chrome's is a saturated blue rectangle over the whole control, which on a *setting* is a
-         * near-miss for the pressed wash — the same confusion the stuck hover caused, briefly rather
+         * near-miss for the pressed wash: the same confusion the stuck hover caused, briefly rather
          * than indefinitely. It also fades on its own schedule in a colour the OS picked, over a
          * button whose whole pressed vocabulary is 16% accent. The :active ground below replaces it.
          *
          * Only here. A control with no :active of its own keeps the platform flash, which is the
-         * right fallback — silence on a tap is worse than a flash in the wrong blue.
+         * right fallback: silence on a tap is worse than a flash in the wrong blue.
          */
         -webkit-tap-highlight-color: transparent;
     }
@@ -164,7 +163,7 @@ export const actionButton = css`
      * A fixed 1rem, not iconStyle's 1.25em.
      *
      * An em-sized icon takes the font-size of whatever button it lands in, and these buttons are in
-     * four different shadow roots with four different inherited sizes — the keypad's own rule sets
+     * four different shadow roots with four different inherited sizes: the keypad's own rule sets
      * --text-lg, pt-game's sets --text-base, and the two slotted wrappers set nothing and inherit
      * from the page. The same icon came out 25px, 20px, and 17px in one row. Nothing here wants to
      * scale with type: the row is a fixed strip of controls, and its icons should match each other
@@ -202,13 +201,13 @@ export const actionButton = css`
     /*
      * The third channel: the glyph fills, and goes accent while it does.
      *
-     * Setting color rather than stroke moves both at once — iconStyle strokes with currentColor, and
+     * Setting color rather than stroke moves both at once: iconStyle strokes with currentColor, and
      * the fill icon's rect paints with it too, so the one solid icon in the set goes accent along
      * with the outlined ones instead of staying ink.
      *
      * The fill is a wash and not the flat accent, which is what keeps this working across a set of
-     * icons drawn to be outlines. A solid fill closes the rebus icon into a plain blue box — losing
-     * the three strokes inside it that are the entire point of it — and makes it the twin of the
+     * icons drawn to be outlines. A solid fill closes the rebus icon into a plain blue box, losing
+     * the three strokes inside it that are the entire point of it, and makes it the twin of the
      * fill icon, which really is a solid block. At 35% over the button's own 16% the glyph reads
      * unmistakably filled and every interior stroke still shows through it.
      *
@@ -221,7 +220,7 @@ export const actionButton = css`
         fill: color-mix(in srgb, var(--accent) 35%, transparent);
     }
 
-    /* The fourth: the word thickens. Costs no width — the buttons flex 1 1 0 and share the row
+    /* The fourth: the word thickens. Costs no width: the buttons flex 1 1 0 and share the row
        equally whatever is written in them. */
     .action[aria-pressed='true'] .action-label {
         font-weight: 700;
@@ -241,7 +240,7 @@ export const actionButton = css`
         cursor: default;
     }
 
-    /* Where the digits already drop to fewer columns, the labels drop a step too — this is the
+    /* Where the digits already drop to fewer columns, the labels drop a step too: this is the
        width at which four of them and their gaps stop clearing 296px comfortably. */
     @media (max-width: 30rem) {
         .action-label {
@@ -251,16 +250,15 @@ export const actionButton = css`
 `;
 
 /**
- * A wordless, thumb-sized square — the footer's theme and About controls, and nothing else.
+ * A wordless, thumb-sized square: the footer's theme and About controls, and nothing else.
  *
- * The panel used every control in the app on this for one revision and it was reverted: dropping
- * the words there saved no vertical space, because the panel's height is set by the rows of keys
- * below and a shorter button bar simply left a gap. See `actionButton`, which is what the panel
+ * Not the panel's controls: dropping the words there saves no vertical space, because the panel's
+ * height is set by the rows of keys below it and a shorter button bar only leaves a gap. See actionButton, which is what the panel
  * uses now.
  *
  * It survives here because the footer's two controls are genuinely peripheral, they sit on a line
  * of their own with nothing to align to, and a sun and an ⓘ are about as legible as an icon gets.
- * Both carry `aria-label` and `title`.
+ * Both carry aria-label and title.
  */
 export const iconButton = css`
     .icon-button {
@@ -305,18 +303,18 @@ export const iconButton = css`
 `;
 
 /**
- * The accent for a control that gives something up — Leave room, and nothing else.
+ * The accent for a control that gives something up: Leave room, and nothing else.
  *
  * Outlined rather than filled, like every other button in the app: the red is in the border, the
  * word, and the icon, and the ground stays paper until the pointer is on it. A solid red button
  * would be the loudest thing on a screen whose subject is a puzzle, and it sits in a row with three
- * ordinary actions that it must not shout over — it has to read as *different*, not as *urgent*.
+ * ordinary actions that it must not shout over: it has to read as *different*, not as *urgent*.
  *
- * `--danger`, never `--wrong`: see the token for why the two are kept apart.
+ * --danger, never --wrong: see the token for why the two are kept apart.
  *
  * **The focus ring stays accent.** There is one focus ring in this app (brand.md §4) and it is the
- * accent, everywhere, because accent-on-the-outside is what "focused" means in every other control
- * — a red ring here would be a second vocabulary for the same idea, and the resting border already
+ * accent, everywhere, because accent-on-the-outside is what "focused" means in every other
+ * control. A red ring here would be a second vocabulary for the same idea, and the resting border already
  * says everything the colour has to say.
  */
 export const dangerButton = css`
@@ -341,7 +339,7 @@ export const dangerButton = css`
 `;
 
 /**
- * A row of mutually exclusive options — the puzzle pickers.
+ * A row of mutually exclusive options: the puzzle pickers.
  *
  * The chosen option is washed with the accent rather than filled with it: colour belongs to people,
  * so a selected control borrows the same 16% wash the selected grid cell uses (brand.md §3).

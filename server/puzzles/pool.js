@@ -1,8 +1,8 @@
 /**
  * Pre-warmed puzzle pools, generated in a worker thread.
  *
- * Keeps a small stock of ready puzzles per (type, difficulty, size) so `getPuzzle` is a pop rather
- * than a computation — which is what makes the host pressing "new puzzle" feel instant
+ * Keeps a small stock of ready puzzles per (type, difficulty, size) so getPuzzle is a pop rather
+ * than a computation, which is what makes the host pressing "new puzzle" feel instant
  * (design-spec.md §8). Falls back to in-process generation when the pool is dry or the worker is
  * unavailable, so a worker failure degrades latency rather than breaking the game.
  */
@@ -66,7 +66,7 @@ export class GeneratorPool {
      * Fills the pool for a specification ahead of first use, so the first room of the day is as
      * fast as the tenth.
      *
-     * @param {object} spec - Puzzle specification, as for `take`.
+     * @param {object} spec - Puzzle specification, as for take.
      * @returns {void}
      */
     prewarm(spec) {
@@ -86,7 +86,7 @@ export class GeneratorPool {
         if (worker) await worker.terminate();
     }
 
-    /** Tops the pool up to `targetSize`, counting generations already in flight. */
+    /** Tops the pool up to targetSize, counting generations already in flight. */
     #refill(spec) {
         const key = poolKey(spec);
         const stock = this.#ready.get(key) ?? [];
@@ -172,7 +172,7 @@ export class GeneratorPool {
  * Generates a puzzle on the current thread. The pool's fallback path, and what tests use to avoid
  * spinning up a worker.
  *
- * @param {object} spec - Puzzle specification plus an explicit `seed`.
+ * @param {object} spec - Puzzle specification plus an explicit seed.
  * @returns {{ doc: import('../../shared/protocol.js').PuzzleDoc, solution: string[] }} A puzzle.
  * @throws {RangeError} If no generator exists for the requested type.
  */

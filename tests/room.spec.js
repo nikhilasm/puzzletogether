@@ -1,7 +1,7 @@
 /**
  * The room itself: the roster, colour picking, removing a player, and the ways out of a room.
  *
- * Two browser contexts wherever "somebody else" has to be a real second player — a colour is only
+ * Two browser contexts wherever "somebody else" has to be a real second player: a colour is only
  * taken if another seat holds it, and a kick is only a kick if it happens to someone.
  */
 
@@ -11,7 +11,7 @@ import { PLAYER_COLOR_COUNT } from '../shared/constants.js';
 
 import { createRoom, joinRoom, playersOf, submitLanding } from './helpers.js';
 
-/** Opens a second client in its own context, joined to `code`. */
+/** Opens a second client in its own context, joined to code. */
 async function secondPlayer(browser, code, name = 'Grace') {
     const context = await browser.newContext();
     const page = await context.newPage();
@@ -166,7 +166,7 @@ test.describe('choosing a colour', () => {
         await expect(page.locator('pt-player-chips .palette')).toHaveCount(0);
 
         await page.locator('pt-player-chips button.chip').click();
-        // The room code: inert, on screen, and not a control — the footer's prose used to serve
+        // The room code: inert, on screen, and not a control. The footer's prose used to serve
         // here and the footer no longer has any.
         await page.locator('.room-code').click();
         await expect(page.locator('pt-player-chips .palette')).toHaveCount(0);

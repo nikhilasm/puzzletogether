@@ -1,9 +1,9 @@
 /**
- * Converts a `.puz` or `.ipuz` crossword into a bank file (design-spec.md §8).
+ * Converts a .puz or .ipuz crossword into a bank file (design-spec.md §8).
  *
  * Run by hand, never at boot. The bank the server reads is a directory of finished documents; this
  * is what produces one, and keeping the two apart is what lets the loader be a validator rather than
- * a compiler — a puzzle is converted once, by a person, and is thereafter just a file.
+ * a compiler: a puzzle is converted once, by a person, and is thereafter just a file.
  *
  * **It refuses more than it converts, and that is the design.** A crossword that imports slightly
  * wrong is worse than one that does not import: a puzzle whose numbering is off by one is not a
@@ -21,7 +21,7 @@ import { DIFFICULTIES, MAX_CELL_VALUE_LENGTH } from '../shared/constants.js';
 import { ALPHABET, DOC_VERSION } from '../server/puzzles/crossword/index.js';
 import { numberGrid } from '../server/puzzles/crossword/numbering.js';
 
-/** Largest grid the client renders, mirroring `schema.js`. */
+/** Largest grid the client renders, mirroring schema.js. */
 const MAX_SIDE = 25;
 
 /** A refusal with a reason a person can act on, as distinct from a crash. */
@@ -31,7 +31,7 @@ class ImportError extends Error {}
 // .puz
 // ---------------------------------------------------------------------------------------------
 
-/** Byte offsets into a `.puz` header, which is fixed-layout and little-endian. */
+/** Byte offsets into a .puz header, which is fixed-layout and little-endian. */
 const PUZ = {
     MAGIC: 0x02,
     SCRAMBLED: 0x32,
@@ -44,7 +44,7 @@ const PUZ = {
 /**
  * Reads the NUL-terminated strings that follow the two grids.
  *
- * `.puz` stores its text as Latin-1, not UTF-8 — a détente or a naïve in a clue arrives as a single
+ * .puz stores its text as Latin-1, not UTF-8: a détente or a naïve in a clue arrives as a single
  * high byte, and decoding it as UTF-8 produces a replacement character in the middle of somebody's
  * wordplay.
  *
@@ -96,10 +96,10 @@ function readExtensions(buffer, start) {
 }
 
 /**
- * Parses the rebus table: `" 1:HAND; 3:ONE;"`, keyed by the number `GRBS` refers to minus one.
+ * Parses the rebus table: " 1:HAND; 3:ONE;", keyed by the number GRBS refers to minus one.
  *
- * @param {Buffer} table - The `RTBL` section.
- * @returns {Map<number, string>} Rebus answers by `GRBS` value.
+ * @param {Buffer} table - The RTBL section.
+ * @returns {Map<number, string>} Rebus answers by GRBS value.
  */
 function readRebusTable(table) {
     const answers = new Map();
@@ -119,11 +119,11 @@ function readRebusTable(table) {
 }
 
 /**
- * Parses a `.puz` file into the neutral shape the writer below consumes.
+ * Parses a .puz file into the neutral shape the writer below consumes.
  *
  * @param {Buffer} buffer - The whole file.
  * @returns {object} Grid, answers, clues, and the source's own metadata.
- * @throws {ImportError} If the file is not a `.puz`, is scrambled, or is bigger than we render.
+ * @throws {ImportError} If the file is not a .puz, is scrambled, or is bigger than we render.
  */
 function readPuz(buffer) {
     if (buffer.length < PUZ.SOLUTION) throw new ImportError('too short to be a .puz file');
@@ -132,7 +132,7 @@ function readPuz(buffer) {
     }
 
     // A scrambled puzzle's solution is deliberately unreadable. We could store the grid and the
-    // clues, but not the answers — so the puzzle could be displayed and never checked or completed.
+    // clues, but not the answers, so the puzzle could be displayed and never checked or completed.
     if (buffer.readUInt16LE(PUZ.SCRAMBLED) !== 0) {
         throw new ImportError('the solution is scrambled, so it cannot be read honestly');
     }
@@ -151,7 +151,7 @@ function readPuz(buffer) {
     const solutionBytes = buffer.subarray(PUZ.SOLUTION, PUZ.SOLUTION + total);
     if (solutionBytes.length !== total) throw new ImportError('file ends inside the solution grid');
 
-    // Title, author, copyright, then one string per clue, then the notes — so three before and one
+    // Title, author, copyright, then one string per clue, then the notes, so three before and one
     // after. The notes have to be *consumed* even though nothing here wants them: the extension
     // sections begin where the strings end, and stopping a string early leaves that scan starting
     // inside somebody's prose, where it finds no sections and silently reports a puzzle with no
@@ -205,10 +205,10 @@ function readPuz(buffer) {
 // ---------------------------------------------------------------------------------------------
 
 /**
- * Whether an `.ipuz` grid cell is a black square.
+ * Whether an .ipuz grid cell is a black square.
  *
- * `0` is deliberately **not** one. In `.ipuz` a zero means an open square that carries no number,
- * which is most of a crossword — reading it as a block turns every unnumbered square black and
+ * 0 is deliberately **not** one. In .ipuz a zero means an open square that carries no number,
+ * which is most of a crossword: reading it as a block turns every unnumbered square black and
  * leaves a grid of disconnected single letters.
  */
 function isIpuzBlock(cell) {
@@ -216,14 +216,14 @@ function isIpuzBlock(cell) {
 }
 
 /**
- * Parses the crossword subset of `.ipuz`.
+ * Parses the crossword subset of .ipuz.
  *
- * A deliberate subset: `.ipuz` is a general puzzle container that can describe acrostics, sudoku,
+ * A deliberate subset: .ipuz is a general puzzle container that can describe acrostics, sudoku,
  * and much else, and pretending to read all of it would mean pretending to convert files we cannot.
- * Anything outside plain `crossword` is refused by name.
+ * Anything outside plain crossword is refused by name.
  *
  * @param {string} text - The file's contents.
- * @returns {object} The same neutral shape `readPuz` returns.
+ * @returns {object} The same neutral shape readPuz returns.
  * @throws {ImportError} If it is not a crossword, or is missing its solution.
  */
 function readIpuz(text) {
@@ -272,8 +272,8 @@ function readIpuz(text) {
         }
     }
 
-    // `.ipuz` splits its clues by direction; the bank stores them in numbering order, Across before
-    // Down at the same number, which is what `numberGrid` produces and what `.puz` already uses.
+    // .ipuz splits its clues by direction; the bank stores them in numbering order, Across before
+    // Down at the same number, which is what numberGrid produces and what .puz already uses.
     const across = (file.clues?.Across ?? []).map((clue) => ({ dir: 'A', clue }));
     const down = (file.clues?.Down ?? []).map((clue) => ({ dir: 'D', clue }));
     const byNumber = [...across, ...down]
@@ -308,7 +308,7 @@ function readIpuz(text) {
  * carries 76 clues, the two disagree about where the black squares are, and pairing them anyway
  * would silently shift every clue after the disagreement onto the wrong entry.
  *
- * @param {object} parsed - Output of `readPuz` or `readIpuz`.
+ * @param {object} parsed - Output of readPuz or readIpuz.
  * @param {object} options - Identity and provenance for the bank.
  * @returns {{ doc: object, solution: (string|null)[], manifest: object }} The file and its entry.
  * @throws {ImportError} If the grid and the clue list disagree, or a rebus is too long.
@@ -403,7 +403,7 @@ function writeToBank(dir, built) {
 // CLI
 // ---------------------------------------------------------------------------------------------
 
-/** Parses `--flag value` arguments, leaving everything else as an input path. */
+/** Parses --flag value arguments, leaving everything else as an input path. */
 function parseArgs(argv) {
     const options = {};
     const files = [];
@@ -423,7 +423,7 @@ function parseArgs(argv) {
 /**
  * Converts one file into a parsed puzzle, branching on its extension.
  *
- * @param {string} path - Path to a `.puz` or `.ipuz` file.
+ * @param {string} path - Path to a .puz or .ipuz file.
  * @returns {object} The neutral parsed shape.
  * @throws {ImportError} If the extension is not one we read.
  */
@@ -440,7 +440,7 @@ export { readPuz, readIpuz, toBankFile, ImportError };
 /**
  * The command line: convert each file, refuse loudly, and report what happened.
  *
- * `--license` is required and is never inferred from the file's own copyright string. That is
+ * --license is required and is never inferred from the file's own copyright string. That is
  * ADR-0004's build/ship split made mechanical: the pipeline works on anything, and nothing reaches a
  * bank directory without a person having answered what may be served from it.
  *

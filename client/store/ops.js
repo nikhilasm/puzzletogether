@@ -1,8 +1,8 @@
 /**
  * Builds the ops a player's input produces, and says what each one will leave in its cell.
  *
- * Pure and socket-free so that the undo path is testable on its own: `opResult` is what lets the
- * store record an edit's *after* state before the server has confirmed anything, and `restoreOp`
+ * Pure and socket-free so that the undo path is testable on its own: opResult is what lets the
+ * store record an edit's *after* state before the server has confirmed anything, and restoreOp
  * is what turns an undo entry back into an ordinary forward op (design-spec.md §6).
  */
 
@@ -20,7 +20,7 @@ import { OP_TYPE } from '../../shared/protocol.js';
  * @param {string} opId - Client-unique op id.
  * @param {number} cell - Cell index.
  * @param {string} value - The value to write.
- * @returns {Op} A `set` op.
+ * @returns {Op} A set op.
  */
 export function setOp(opId, cell, value) {
     return { opId, t: OP_TYPE.SET, cell, value };
@@ -31,14 +31,14 @@ export function setOp(opId, cell, value) {
  *
  * @param {string} opId - Client-unique op id.
  * @param {number} cell - Cell index.
- * @returns {Op} A `clear` op.
+ * @returns {Op} A clear op.
  */
 export function clearOp(opId, cell) {
     return { opId, t: OP_TYPE.CLEAR, cell };
 }
 
 /**
- * Writes one value across many cells at once — what a nonogram drag becomes.
+ * Writes one value across many cells at once: what a nonogram drag becomes.
  *
  * Batched rather than sent per cell so that painting a run is one write, one echo, and one undo step
  * for everybody in the room, instead of twenty of each racing each other over the wire.
@@ -46,19 +46,19 @@ export function clearOp(opId, cell) {
  * @param {string} opId - Client-unique op id.
  * @param {number[]} cells - Cell indices to write.
  * @param {string|null} value - The value to write, or null to empty them.
- * @returns {Op} A `fill` op.
+ * @returns {Op} A fill op.
  */
 export function fillOp(opId, cells, value) {
     return { opId, t: OP_TYPE.FILL, cells, value };
 }
 
 /**
- * Replaces a cell's pencil marks wholesale — marks are set semantics, not an append log.
+ * Replaces a cell's pencil marks wholesale: marks are set semantics, not an append log.
  *
  * @param {string} opId - Client-unique op id.
  * @param {number} cell - Cell index.
  * @param {number[]} marks - The complete new mark set.
- * @returns {Op} A `marks` op.
+ * @returns {Op} A marks op.
  */
 export function marksOp(opId, cell, marks) {
     return { opId, t: OP_TYPE.MARKS, cell, marks };
@@ -96,7 +96,7 @@ export function opForDigit({ opId, cell, value, isNotes, current }) {
  * @param {string} opId - Client-unique op id.
  * @param {number} cell - Cell index.
  * @param {CellSnapshot} before - The state to restore.
- * @returns {Op} A `set`, `marks`, or `clear` op, whichever reproduces `before`.
+ * @returns {Op} A set, marks, or clear op, whichever reproduces before.
  */
 export function restoreOp(opId, cell, before) {
     if (before.value != null) return setOp(opId, cell, before.value);

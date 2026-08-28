@@ -3,13 +3,13 @@
  * (design-spec.md §8).
  *
  * The rejection is the whole point. A random bitmap is trivial to produce and most of them make bad
- * puzzles — not because they are hard, but because they are *ambiguous*, and an ambiguous nonogram
+ * puzzles, not because they are hard but because they are *ambiguous*, and an ambiguous nonogram
  * cannot be solved, only guessed. Every candidate is therefore solved before it is offered, and one
  * the solver cannot finish is thrown away rather than shipped with a warning.
  *
  * Difficulty is the sweep count that solving took, so the label is measured rather than requested.
  * Density steers the search toward the band that was asked for, the way sudoku's dig targets steer
- * toward a rating — but as with sudoku, what comes back is the rating the puzzle actually earned.
+ * toward a rating; as with sudoku, what comes back is the rating the puzzle actually earned.
  */
 
 import { cluesFor, lineSolve } from './line-solver.js';
@@ -17,7 +17,7 @@ import { cluesFor, lineSolve } from './line-solver.js';
 /**
  * Fill fraction to aim at per difficulty.
  *
- * Sparse grids and dense grids are both easy — a nearly empty line has few places its blocks can go,
+ * Sparse grids and dense grids are both easy: a nearly empty line has few places its blocks can go,
  * and a nearly full one is mostly forced. The interesting puzzles live in the middle, so harder
  * difficulties aim closer to half.
  */
@@ -29,7 +29,7 @@ const DENSITY = { easy: 0.62, medium: 0.55, hard: 0.48 };
  * Normalised by size because a bigger grid needs more sweeps for the same reasoning to travel across
  * it: information propagates one row and one column per sweep, so an unnormalised threshold would
  * call every large puzzle hard and every small one easy. Calibrated against measured sweep counts at
- * each offered size — the bands sit where the three density targets actually separate.
+ * each offered size; the bands sit where the three density targets actually separate.
  */
 const SWEEP_BANDS = { medium: 0.3, hard: 0.45 };
 
@@ -44,7 +44,7 @@ const ORDER = ['easy', 'medium', 'hard'];
  *
  * **This is the seam for a sprite library.** Recognisable images are a real part of nonogram's
  * appeal, but they are a content job rather than a code one, and every hand-drawn sprite still has to
- * survive the same uniqueness rejection as a random bitmap — so the pipeline around this function is
+ * survive the same uniqueness rejection as a random bitmap, so the pipeline around this function is
  * what matters, and swapping in a picture later changes only this function.
  *
  * Cells are drawn independently at the target density rather than as blobs. Clustered pixels make a

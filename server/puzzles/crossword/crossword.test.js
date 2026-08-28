@@ -3,7 +3,7 @@
  *
  * Numbering gets the most attention here because it is the one piece of crossword logic that is
  * *derived* rather than stored, and because getting it wrong produces a puzzle that looks entirely
- * normal and cannot be solved — the clues silently belong to the wrong squares.
+ * normal and cannot be solved: the clues silently belong to the wrong squares.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -14,7 +14,7 @@ import { OP_TYPE } from '../../../shared/protocol.js';
 import crossword, { ALPHABET, DOC_VERSION } from './index.js';
 import { checkNumbering, numberGrid } from './numbering.js';
 
-/** Builds a block array from a picture, where `#` is a black square. */
+/** Builds a block array from a picture, where # is a black square. */
 function gridOf(rows) {
     return {
         size: { rows: rows.length, cols: rows[0].length },
@@ -59,7 +59,7 @@ describe('numberGrid', () => {
     });
 
     /**
-     * Across before Down at the same number is not cosmetic: it is the order `.puz` stores its clue
+     * Across before Down at the same number is not cosmetic: it is the order .puz stores its clue
      * list in, so the importer pairs clues to entries by walking the two lists together. Reverse it
      * and every clue after the first shared number lands on the wrong entry.
      */
@@ -208,7 +208,7 @@ describe('crossword completion', () => {
         expect(crossword.isComplete(doc, boardOf([...'XATAREEAR']), solution)).toBe(false);
     });
 
-    /** A rebus square compares as a whole string, which is the same `===` at a different length. */
+    /** A rebus square compares as a whole string, which is the same === at a different length. */
     it('compares a rebus square against its whole answer', () => {
         const rebus = ['HAND', ...solution.slice(1)];
         expect(crossword.isComplete(doc, boardOf(rebus), rebus)).toBe(true);

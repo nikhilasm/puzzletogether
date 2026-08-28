@@ -1,5 +1,5 @@
 /**
- * Helpers for reading a `PuzzleDoc` — index arithmetic and per-cell lookups.
+ * Helpers for reading a PuzzleDoc: index arithmetic and per-cell lookups.
  *
  * Pure and type-agnostic: anything that only makes sense for one puzzle type belongs in that
  * type's module, not here.
@@ -15,7 +15,7 @@
  * Total number of cells in a grid.
  *
  * @param {GridSize} size - Grid dimensions.
- * @returns {number} `rows * cols`.
+ * @returns {number} rows * cols.
  */
 export function cellCount(size) {
     return size.rows * size.cols;

@@ -1,6 +1,6 @@
 import { defineConfig } from 'vite';
 
-// Vite serves `client/` in development and builds it to `client/dist` for Express to serve in
+// Vite serves client/ in development and builds it to client/dist for Express to serve in
 // production. Socket.IO traffic is proxied through to the Express process on 3001 so the dev
 // client talks to exactly the same server it will in production.
 export default defineConfig({

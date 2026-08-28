@@ -2,19 +2,19 @@
  * The presence overlay: a stripe along the bottom edge of every cell somebody is looking at, split
  * into one segment per player.
  *
- * It was a row of dots in the cell's top-right corner through Phase 4, and both of that design's
- * problems were the same problem — presence was drawn *in* the cell's content area, at a size that
- * grew with the room. The dots covered the top-right pencil mark, and a fourth player had nowhere
- * left to go, so the layer capped at three and wrote `+n` for the rest.
+ * A row of dots in the cell's top-right corner had two problems with one cause: presence drawn *in*
+ * the cell's content area, at a size that grew with the room. The dots covered the top-right pencil
+ * mark, and past three players there was nowhere left to go, so the layer capped at three and wrote
+ * +n for the rest.
  *
  * A stripe fixes both by construction. It occupies an edge rather than the interior, so it can
  * never sit on a note or a value; and the room subdivides a footprint that does not change, so
  * eight players make eight thin bands instead of eight dots' worth of cell. Reading "how many
  * people are here" off the number of colours is also faster than counting dots, which is what the
- * `+n` was quietly admitting.
+ * +n was quietly admitting.
  *
  * A separate layer on purpose. Focus updates arrive at ~10/s per player, and routing them through
- * `<pt-cell>` would re-render the grid constantly (architecture.md §6). It draws only the cells
+ * <pt-cell> would re-render the grid constantly (architecture.md §6). It draws only the cells
  * somebody is in, so its cost scales with players, not with grid size.
  */
 
@@ -67,7 +67,7 @@ export class PtPresenceLayer extends LitElement {
         }
 
         /*
-         * Every player gets the same share of the stripe, however many there are — an equal flex of
+         * Every player gets the same share of the stripe, however many there are: an equal flex of
          * a fixed width, which is the whole reason this scales where a row of dots did not. The
          * zero min-width is because a flex item will not otherwise shrink below its content, and
          * eight of them on a phone are asking to.
@@ -76,7 +76,7 @@ export class PtPresenceLayer extends LitElement {
             flex: 1 1 0;
             min-width: 0;
             /*
-             * Rounded, which at this height is a capsule — --radius-round clamps to half the
+             * Rounded, which at this height is a capsule, since --radius-round clamps to half the
              * shorter side. Each player's share reads as a thing rather than as a length of rule,
              * and a lone player in a cell gets a mark instead of a dash. This is one of the few
              * places the round radius is right on a square grid (brand.md §4): the stripe is a

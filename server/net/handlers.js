@@ -3,7 +3,7 @@
  *
  * The order is always the same and never varies by event: schema-validate the payload, resolve the
  * seat, authorize, then act (code-style.md §8). Handlers reply with a structured ack and never
- * throw — a throw inside a Socket.IO handler kills the connection.
+ * throw: a throw inside a Socket.IO handler kills the connection.
  */
 
 import { applyOp } from '../../shared/board-reducer.js';
@@ -45,9 +45,9 @@ function joinPayload(room, player, token) {
         playerToken: token,
         room: toRoomView(room),
         snapshot: toSnapshot(room),
-        // What this build can serve. Fixed for the life of the process — it is the generators plus
-        // whatever the bank was loaded with — so it rides the one payload a client gets exactly
-        // once, rather than every `room:state` that cannot have changed it (design-spec.md §10).
+        // What this build can serve. Fixed for the life of the process, being the generators plus
+        // whatever the bank was loaded with, so it rides the one payload a client gets exactly
+        // once rather than every room:state that cannot have changed it (design-spec.md §10).
         catalog: catalog(),
     };
 }
@@ -62,7 +62,7 @@ function takeSeat(socket, room, player) {
 /**
  * Drops a player whose grace period expired, re-electing a host if it was theirs.
  *
- * This is the fix for the prototype's empty `disconnect` stub, which leaked players into rooms
+ * This is the fix for the prototype's empty disconnect stub, which leaked players into rooms
  * permanently (design-spec.md §2).
  */
 function onGraceExpired(io, room, playerId) {
@@ -75,7 +75,7 @@ function onGraceExpired(io, room, playerId) {
 /**
  * Resolves the caller's seat, acking a structured error when they hold none.
  *
- * Every handler past `room:join` needs this as its first step, which is why it is a helper rather
+ * Every handler past room:join needs this as its first step, which is why it is a helper rather
  * than four repeated lines.
  */
 function seatOrFail(socket, ack) {
@@ -211,7 +211,7 @@ export function registerHandlers(io, socket) {
     );
 
     // Changes the caller's own colour. A seat only ever speaks for itself, so there is no target
-    // player in the payload — you cannot recolour anybody else.
+    // player in the payload: you cannot recolour anybody else.
     socket.on(
         CLIENT_EVENT.PLAYER_COLOR,
         guard(CLIENT_EVENT.PLAYER_COLOR, (payload, ack) => {
@@ -228,7 +228,7 @@ export function registerHandlers(io, socket) {
         }),
     );
 
-    // Host-only: fetches a puzzle and moves the room into `playing`.
+    // Host-only: fetches a puzzle and moves the room into playing.
     socket.on(
         CLIENT_EVENT.GAME_START,
         guard(CLIENT_EVENT.GAME_START, async (payload, ack) => {
@@ -253,8 +253,8 @@ export function registerHandlers(io, socket) {
             let doc;
             let solution;
             try {
-                // `served` keeps a finite bank from handing back the puzzle the room just solved.
-                // A named `puzzleId` overrides it: having picked that crossword off a list, the host
+                // served keeps a finite bank from handing back the puzzle the room just solved.
+                // A named puzzleId overrides it: having picked that crossword off a list, the host
                 // means that one even if the room has played it before (ADR-0009).
                 ({ doc, solution } = await getPuzzle({
                     ...spec,
@@ -326,7 +326,7 @@ export function registerHandlers(io, socket) {
         }),
     );
 
-    // Broadcasts where a player is looking. Presence only — it locks nothing.
+    // Broadcasts where a player is looking. Presence only; it locks nothing.
     socket.on(
         CLIENT_EVENT.GAME_FOCUS,
         guard(CLIENT_EVENT.GAME_FOCUS, (payload, ack) => {
@@ -353,7 +353,7 @@ export function registerHandlers(io, socket) {
         }),
     );
 
-    // Serves a full snapshot after a client detects a `seq` gap.
+    // Serves a full snapshot after a client detects a seq gap.
     socket.on(
         CLIENT_EVENT.SYNC_REQUEST,
         guard(CLIENT_EVENT.SYNC_REQUEST, (_payload, ack) => {
@@ -485,7 +485,7 @@ export function registerConnectionHandler(io) {
         if (!isProtocolCompatible(socket.handshake.auth?.protocolVersion)) {
             socket.emit(SERVER_EVENT.ERROR, {
                 code: ERROR.PROTOCOL_MISMATCH,
-                message: 'this page is out of date — please refresh',
+                message: 'this page is out of date; please refresh',
             });
             socket.disconnect(true);
             return;

@@ -8,7 +8,7 @@
  * approach it from the side where it can stop the moment the answer is yes.
  *
  * A time budget and retry cap are the mitigation design-spec.md §14 asks for. They bound how long
- * generation *searches for a good puzzle*, not whether it produces one — the refinement loop always
+ * generation *searches for a good puzzle*, not whether it produces one: the refinement loop always
  * terminates in a uniquely solvable grid.
  */
 
@@ -27,7 +27,7 @@ const MAX_ATTEMPTS = 24;
  * Wall-clock ceiling on the search for a puzzle that needed no splitting.
  *
  * Generation runs in a worker thread against a pre-warmed pool, so this is not a latency budget a
- * player ever waits on — it is a ceiling on how much CPU one puzzle may cost while a 7×7 is being
+ * player ever waits on; it is a ceiling on how much CPU one puzzle may cost while a 7×7 is being
  * looked for.
  */
 const TIME_BUDGET_MS = 3000;

@@ -1,22 +1,22 @@
 /**
  * The player roster: one chip per player, two per row, host marked with a leading star.
  *
- * A player's colour is carried by their name and by nothing else on the chip — one channel of colour
- * against one of text, which is the rule (brand.md §3). A bar down the chip's leading edge was tried
- * and taken out again: with ten of them stacked in a two-column grid it read as a stack of tabs, and
- * the roster is a list of people rather than a legend for the grid.
+ * A player's colour is carried by their name and by nothing else on the chip: one channel of colour
+ * against one of text, which is the rule (brand.md §3). Not a bar down the chip's leading edge; ten
+ * of those stacked in a two-column grid read as a stack of tabs, and the roster is a list of people
+ * rather than a legend for the grid.
  *
- * The room code and the seat count sit above this, in the panel `<pt-app>` draws around it.
+ * The room code and the seat count sit above this, in the panel <pt-app> draws around it.
  *
- * Your own chip is a button that opens the palette, and carries a quiet `you` so a room of similar
+ * Your own chip is a button that opens the palette, and carries a quiet you so a room of similar
  * names is still readable. Colour is the one piece of identity a player can change, so it is edited
  * where it is shown rather than behind a settings screen; the colours other people hold are shown
  * struck through rather than hidden, since a room's colours must stay unique.
  *
- * The host additionally gets a remove control on everybody else's chip, behind a confirm dialog —
+ * The host additionally gets a remove control on everybody else's chip, behind a confirm dialog:
  * it is the one action here that takes something away from another person.
  *
- * The roster arrives as properties from `<pt-app>`, but colour claims and removals go straight to
+ * The roster arrives as properties from <pt-app>, but colour claims and removals go straight to
  * the store: only the server can say whether a colour is free or a seat still exists.
  */
 
@@ -204,7 +204,7 @@ export class PtPlayerChips extends LitElement {
             /*
              * Taken by somebody else: greyed and struck through rather than hidden, so you can see
              * what the room already holds and why you cannot have it. Two channels, not just the
-             * dimming — which on a saturated swatch is easy to miss.
+             * dimming, which on a saturated swatch is easy to miss.
              */
             .swatch:disabled {
                 cursor: default;
@@ -238,8 +238,8 @@ export class PtPlayerChips extends LitElement {
     ];
 
     #onDocumentPointerDown = (event) => {
-        // A click anywhere else dismisses the palette. `composedPath` is what makes this work
-        // across the shadow boundary — `event.target` outside would just be `<pt-player-chips>`.
+        // A click anywhere else dismisses the palette. composedPath is what makes this work
+        // across the shadow boundary; event.target outside would just be <pt-player-chips>.
         if (event.composedPath().includes(this)) return;
         this.#close();
     };
@@ -288,7 +288,7 @@ export class PtPlayerChips extends LitElement {
      * Claims a colour, closing on success.
      *
      * Stays open on failure with the reason attached, because the only way to fail is somebody
-     * else claiming that colour a moment ago — and then you do want to pick again. The roster
+     * else claiming that colour a moment ago, and then you do want to pick again. The roster
      * itself is not touched here: the server's broadcast is what repaints it.
      */
     async #choose(colorIndex) {

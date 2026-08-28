@@ -2,23 +2,23 @@
  * Partitioning a solved Latin square into cages, and giving each cage its arithmetic clue.
  *
  * **Difficulty here is a generation parameter, not a measurement.** Cage sizes and the mix of
- * operations are drawn from a distribution per difficulty, and `doc.difficulty` is the difficulty
+ * operations are drawn from a distribution per difficulty, and doc.difficulty is the difficulty
  * that was asked for. This is a deliberate split from sudoku, which rates what it actually dug and
- * labels the puzzle with the measured result — rating a KenKen honestly would mean a
+ * labels the puzzle with the measured result; rating a KenKen honestly would mean a
  * technique-ranked cage solver, and that is the same expensive search that already dominates
  * generation. Recorded in docs/TODO.md so the difference is a decision rather than an oversight.
  *
- * What is *not* a heuristic is uniqueness: `generate.js` refuses to emit a partition until the
+ * What is *not* a heuristic is uniqueness: generate.js refuses to emit a partition until the
  * solver has proved it admits exactly one answer.
  */
 
 /**
  * Cage sizes to draw from, per difficulty. Sampling uniformly from a list with repeats is the
- * weighting — an easy puzzle is mostly pairs, a hard one mostly triples and up.
+ * weighting: an easy puzzle is mostly pairs, a hard one mostly triples and up.
  *
- * No list offers `1`. A single-cell cage is a free digit, and how many of those a puzzle gets is
- * decided by `SINGLE_CELL_ALLOWANCE` rather than here, because asking for them is not what produces
- * them — see `mergeSingletons`.
+ * No list offers 1. A single-cell cage is a free digit, and how many of those a puzzle gets is
+ * decided by SINGLE_CELL_ALLOWANCE rather than here, because asking for them is not what produces
+ * them; see mergeSingletons.
  */
 const CAGE_SIZES = {
     easy: [2, 2, 2, 3, 3],
@@ -31,7 +31,7 @@ const CAGE_SIZES = {
  *
  * Growth strands singletons whatever the size distribution says: a cage that fills the last gap in
  * its corner leaves the cell beside it with no unclaimed neighbour to join. Left alone that produced
- * nine free digits in a 7×7 easy and seven in a medium — an opening handful that solves itself. The
+ * nine free digits in a 7×7 easy and seven in a medium, an opening handful that solves itself. The
  * allowance is a ceiling on that accident, and zero at hard makes it a rule.
  */
 const SINGLE_CELL_ALLOWANCE = { easy: 0.08, medium: 0.02, hard: 0 };
@@ -101,7 +101,7 @@ function pickWeighted(options, weights, rng) {
  * Chooses the operation and target for one cage, from those its solution values can actually
  * support.
  *
- * A cage only offers subtraction or division when its two digits differ — `0−` and `1÷` are
+ * A cage only offers subtraction or division when its two digits differ: 0− and 1÷ are
  * technically true but tell a solver almost nothing, and they read as mistakes.
  */
 function clueFor(cells, solution, difficulty, rng) {
@@ -240,8 +240,8 @@ export function buildCages(solution, n, difficulty, rng) {
  *
  * This is how generation always terminates. Peeling a cell off a cage replaces one loose constraint
  * with two tighter ones, and repeating it far enough leaves every cell in a cage of its own, where
- * each clue simply names its digit — a partition that is trivially unique. So the refinement loop in
- * `generate.js` cannot fail to find an answer; at worst it finds an easy one.
+ * each clue simply names its digit, a partition that is trivially unique. So the refinement loop in
+ * generate.js cannot fail to find an answer; at worst it finds an easy one.
  *
  * The cell peeled off is chosen from those whose removal leaves the rest of the cage connected. A
  * connected region of two or more cells always has at least two such cells, so the choice exists.
@@ -281,11 +281,11 @@ export function splitLargestCage(cages, solution, difficulty, n, rng) {
 /**
  * The clue as it is drawn in the corner of the cage's top-left cell.
  *
- * A single-cell cage shows its digit alone: `3`, not `3=`. The equals sign would be the only
+ * A single-cell cage shows its digit alone: 3, not 3=. The equals sign would be the only
  * operator in the puzzle with nothing on the other side of it.
  *
  * @param {{ op: string, target: number }} cage - The cage to label.
- * @returns {string} The label, e.g. `'12+'` or `'3÷'`.
+ * @returns {string} The label, e.g. '12+' or '3÷'.
  */
 export function cageLabel(cage) {
     return `${cage.target}${OP_SYMBOL[cage.op] ?? ''}`;

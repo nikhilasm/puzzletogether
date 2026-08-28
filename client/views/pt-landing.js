@@ -1,7 +1,7 @@
 /**
  * The landing screen: create a room, or join one with a four-character code.
  *
- * Deliberately two fields and nothing else — the product's appeal is "send a friend a four-letter
+ * Deliberately two fields and nothing else: the product's appeal is "send a friend a four-letter
  * code", so there is no account, no password, and no signup wall (ADR-0005).
  *
  * The two paths sit behind **tabs** rather than side by side. Both need a name, so a single form
@@ -51,7 +51,7 @@ export class PtLanding extends LitElement {
 
             /*
              * Text with a rule under it rather than a pair of buttons. These are not two actions to
-             * choose between — they name which half of one form you are looking at, and boxing them
+             * choose between: they name which half of one form you are looking at, and boxing them
              * made them compete with the button that actually does something.
              */
             .tab {

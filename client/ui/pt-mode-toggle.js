@@ -1,23 +1,21 @@
 /**
  * The Notes toggle: whether a digit press writes a pencil mark or a value.
  *
- * One control, not two, because there is only one setting here and Solve is simply Notes being off —
- * a `Notes | Solve` pair implied two independent things to choose between. Solving is the default
- * state, so it reads as "am I making notes right now?".
+ * One control, not two, because there is only one setting here and Solve is simply Notes being
+ * off; a Notes | Solve pair implied two independent things to choose between. Solving is the
+ * default state, so it reads as "am I making notes right now?".
  *
- * **A pressed button rather than a `role="switch"`** (ADR-0011). It was a switch for two phases, on
- * the argument that a setting should announce itself as a state rather than as an action — which is
- * true, and which `aria-pressed` also does. What the switch additionally needed was a track wide
- * enough to show a knob moving and a word to sit beside it, and in a pinned panel with four other
- * controls that was the whole of its cost. It now looks and reports exactly like the brushes beside
- * it, which were an `aria-pressed` group from the day nonogram shipped. It keeps its word, though —
- * that half of ADR-0011 was reverted, because dropping the labels bought no vertical space.
+ * **A pressed button rather than a role="switch"** (ADR-0011). A setting should announce itself as
+ * a state rather than as an action, which aria-pressed does; a switch additionally needs a track
+ * wide enough to show a knob moving and a word beside it, and in a pinned panel with four other
+ * controls that is the whole of its cost. It looks and reports exactly like the brushes beside it,
+ * which were an aria-pressed group from the day nonogram shipped, and it keeps its word (ADR-0012).
  *
- * **The host is `display: contents`**, so the button inside it is a direct child of the panel's
+ * **The host is display: contents**, so the button inside it is a direct child of the panel's
  * button bar and shares the row on the same terms as Erase and Undo. Wrapped in a box of its own it
  * would have been one flex item against their two, and Notes would have come out half the row wide.
  *
- * Holds no state of its own — the mode lives in the store, so the keypad, the physical keyboard,
+ * Holds no state of its own: the mode lives in the store, so the keypad, the physical keyboard,
  * and this control can never disagree about which one is in force.
  */
 

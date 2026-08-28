@@ -16,11 +16,11 @@ function bit(digit) {
 }
 
 /**
- * Builds a random `n × n` Latin square — the solved grid a KenKen is carved out of.
+ * Builds a random n × n Latin square: the solved grid a KenKen is carved out of.
  *
  * @param {number} n - Grid side length.
  * @param {import('../rng.js').Rng} rng - Seeded generator.
- * @returns {Uint8Array} `n * n` digits in row-major order, each row and column a permutation.
+ * @returns {Uint8Array} n * n digits in row-major order, each row and column a permutation.
  */
 export function randomLatinSquare(n, rng) {
     const cells = new Uint8Array(n * n);
@@ -57,7 +57,7 @@ export function randomLatinSquare(n, rng) {
 /**
  * Whether a cage can still reach its target given what has been placed in it so far.
  *
- * Called after every placement, including the ones that complete the cage — with no cells left the
+ * Called after every placement, including the ones that complete the cage: with no cells left the
  * bounds collapse to the exact arithmetic check, so the two cases are the same expression.
  *
  * @param {{ op: string, target: number, cells: number[] }} cage - The cage being checked.
@@ -98,7 +98,7 @@ function cageHolds(cage, filled, sum, product, first, latest, n) {
 }
 
 /**
- * Counts the solutions a cage set admits, stopping as soon as `limit` are found.
+ * Counts the solutions a cage set admits, stopping as soon as limit are found.
  *
  * Generation only ever asks "is this exactly one?", so the search aborts at two rather than
  * enumerating a space that can be enormous for an under-constrained partition.
@@ -106,7 +106,7 @@ function cageHolds(cage, filled, sum, product, first, latest, n) {
  * @param {{ op: string, target: number, cells: number[] }[]} cages - The puzzle's cages.
  * @param {number} n - Grid side length.
  * @param {number} [limit] - Stop counting once this many solutions are found.
- * @returns {number} The number of solutions found, capped at `limit`.
+ * @returns {number} The number of solutions found, capped at limit.
  */
 export function countSolutions(cages, n, limit = 2) {
     const order = [];
@@ -127,7 +127,7 @@ export function countSolutions(cages, n, limit = 2) {
 
     let found = 0;
 
-    // Returns true to unwind the whole search, which happens only once `limit` is reached.
+    // Returns true to unwind the whole search, which happens only once limit is reached.
     const place = (step) => {
         if (step === order.length) {
             found += 1;

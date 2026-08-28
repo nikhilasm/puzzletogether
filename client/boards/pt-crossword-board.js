@@ -44,15 +44,14 @@ export class PtCrosswordBoard extends PtBoard {
              * Two depths of the same accent rather than two colours: the entry is context and the
              * cursor is position, and they are the same idea at different strengths.
              *
-             * The *gap* between the two depths is the point, and it used to be four percentage
-             * points — 34% against the base element's 30% — which is a difference nobody can see.
-             * A solver glancing back at a fifteen-square run could not find their own cursor in it,
-             * which was the single most-reported thing after the first playtest. So the cursor is
-             * now a solid statement of position and the entry is barely more than a tint: the
-             * question the entry wash answers is "which word am I in", and it only has to be
-             * distinguishable from *no wash at all* to answer it.
+             * The *gap* between the two depths is the point. Four percentage points apart, a solver
+             * glancing back at a fifteen-square run cannot find their own cursor, which was the
+             * single most-reported thing after the first playtest. So the cursor is a solid
+             * statement of position and the entry is barely more than a tint: the question the
+             * entry wash answers is "which word am I in", and it only has to be distinguishable
+             * from *no wash at all* to answer it.
              *
-             * Both depths are the player's own colour, via --focus-color — the base element's
+             * Both depths are the player's own colour, via --focus-color: the base element's
              * rule in the player's hue, at the strengths a crossword needs. A crossword's cursor
              * carries more than any other type's (it also has a *direction*), and its squares are
              * the smallest thing a room ever shares, so it keeps its own numbers rather than
@@ -82,7 +81,7 @@ export class PtCrosswordBoard extends PtBoard {
     /**
      * The entry index for the current document, built at most once per puzzle.
      *
-     * @returns {object} The index from `indexEntries`.
+     * @returns {object} The index from indexEntries.
      */
     get index() {
         if (this.#indexedDoc !== this.doc) {
@@ -125,11 +124,11 @@ export class PtCrosswordBoard extends PtBoard {
     /**
      * Letters only, and always uppercase.
      *
-     * A crossword's answers are stored uppercase, so lowercasing anywhere would make `a` and `A`
-     * different answers to the same clue — a grid nobody could complete. Filtering here rather than
+     * A crossword's answers are stored uppercase, so lowercasing anywhere would make a and A
+     * different answers to the same clue: a grid nobody could complete. Filtering here rather than
      * at the store keeps every source of input on the same rule.
      *
-     * @param {string} key - The `KeyboardEvent.key` value.
+     * @param {string} key - The KeyboardEvent.key value.
      * @returns {string|null} The letter to write, or null when the key means nothing here.
      */
     valueForKey(key) {
@@ -142,7 +141,7 @@ export class PtCrosswordBoard extends PtBoard {
      * A crossword number says what *starts* here, which the bare number cannot.
      *
      * "1" alone tells a screen reader user nothing about which clue solves the square they are on,
-     * and the direction is a property of their cursor rather than of the cell — so the honest thing
+     * and the direction is a property of their cursor rather than of the cell, so the honest thing
      * for a square to say is which entries begin in it.
      *
      * @param {string} label - The number as drawn.
@@ -162,7 +161,7 @@ export class PtCrosswordBoard extends PtBoard {
      * Arrow keys, which in a crossword mean two different things depending on which way they point.
      *
      * Along the direction you are working, an arrow moves the cursor. **Across it, the arrow turns
-     * the cursor** and leaves it where it is — the rule every crossword solver relies on without
+     * the cursor** and leaves it where it is: the rule every crossword solver relies on without
      * being able to state, and the reason a first press of Down on an Across clue should not jump a
      * row. Only when already pointing that way does it move.
      *
@@ -193,7 +192,7 @@ export class PtCrosswordBoard extends PtBoard {
     }
 
     /**
-     * After a letter lands, move along the entry — **over anything already filled in** — and stop at
+     * After a letter lands, move along the entry, **over anything already filled in**, and stop at
      * its end rather than running on.
      *
      * The board's own view of the grid is one op behind here: the letter that triggered this has been
@@ -212,7 +211,7 @@ export class PtCrosswordBoard extends PtBoard {
     /**
      * Turns the cursor around, which is what tapping the selected square or the clue bar does.
      *
-     * Refuses when there is no entry the other way — an unchecked square has only one — because
+     * Refuses when there is no entry the other way, as an unchecked square has only one, because
      * turning to point at nothing would leave the clue bar showing a clue that does not run through
      * the square the cursor is on.
      *
@@ -228,7 +227,7 @@ export class PtCrosswordBoard extends PtBoard {
     /**
      * Moves to another entry, as Tab does, landing on its first square still empty.
      *
-     * @param {number} step - `1` for the next entry, `-1` for the previous.
+     * @param {number} step - 1 for the next entry, -1 for the previous.
      * @returns {void}
      */
     moveToEntry(step) {
@@ -243,7 +242,7 @@ export class PtCrosswordBoard extends PtBoard {
      * Acrosses into the Downs; this stays in the column a solver is working. 7 Down is followed by 8
      * Down, and at the bottom of the Downs it wraps back to the first rather than changing the job.
      *
-     * @param {number} [step] - `1` for the next entry, `-1` for the previous.
+     * @param {number} [step] - 1 for the next entry, -1 for the previous.
      * @returns {void}
      */
     moveToNextClue(step = 1) {
@@ -275,8 +274,8 @@ export class PtCrosswordBoard extends PtBoard {
     /**
      * Tells the screen which entry is now current, so the clue bar can follow the cursor.
      *
-     * Announced from `updated` and nowhere else. Selection is owned by the store, so it arrives back
-     * here as a property one render later — announcing at the moment of asking would report the
+     * Announced from updated and nowhere else. Selection is owned by the store, so it arrives back
+     * here as a property one render later; announcing at the moment of asking would report the
      * entry the cursor was leaving.
      */
     #announceEntry() {
@@ -297,7 +296,7 @@ export class PtCrosswordBoard extends PtBoard {
      * cursor, which is the other near-universal binding.
      *
      * Caught on the host during capture, so they are taken before the base element's own handler on
-     * the grid inside it — letters fall through to that, where they are handled the same as every
+     * the grid inside it; letters fall through to that, where they are handled the same as every
      * other type's.
      */
     connectedCallback() {
@@ -315,11 +314,11 @@ export class PtCrosswordBoard extends PtBoard {
     /**
      * Tapping the square the cursor is already on turns it around.
      *
-     * Caught on the way down, while `this.selection` is still the square being tapped — the base
+     * Caught on the way down, while this.selection is still the square being tapped: the base
      * element's own handler asks the store to move the cursor, and the answer does not come back
      * until the next render, so afterwards there would be no way to tell a re-tap from a first tap.
      *
-     * Not gated on `interactive`, because turning the cursor is navigation and navigation outlives
+     * Not gated on interactive, because turning the cursor is navigation and navigation outlives
      * the solve: a finished grid is still a thing people read back, and a board that stops answering
      * taps the moment the last letter lands reads as broken rather than as finished.
      */
@@ -333,7 +332,7 @@ export class PtCrosswordBoard extends PtBoard {
      * Handles the crossword-only keys, letting everything else fall through to the base.
      *
      * Split the way the base element splits it: the keys that only *move* the cursor work whether or
-     * not the room is still taking input, and the keys that change the grid are the ones `interactive`
+     * not the room is still taking input, and the keys that change the grid are the ones interactive
      * turns off.
      */
     #onCrosswordKey = (event) => {
@@ -368,7 +367,7 @@ export class PtCrosswordBoard extends PtBoard {
             this.backspace();
             return;
         }
-        // Delete empties the square without moving off it — the same rule, minus the step back.
+        // Delete empties the square without moving off it: the same rule, minus the step back.
         if (event.key === 'Delete') {
             this.#take(event);
             if (this.selection != null) this.#clear(this.selection);
@@ -384,7 +383,7 @@ export class PtCrosswordBoard extends PtBoard {
     /**
      * Backspace: take a letter out, and step back along the entry.
      *
-     * Three cases, one rule — *remove one character, and if that emptied the square, move back onto
+     * Three cases, one rule: *remove one character, and if that emptied the square, move back onto
      * the one before it*:
      *
      * - An ordinary filled square empties and the cursor steps back, so a wrong word walks out of the
@@ -394,12 +393,12 @@ export class PtCrosswordBoard extends PtBoard {
      * - An empty square has nothing to take, so the step back happens first and the letter comes off
      *   the square landed on.
      *
-     * It never leaves the entry. `prevInEntry` stops at the first square, and a Backspace that
-     * silently moved a solver into a different clue would lose them their place — the one thing the
+     * It never leaves the entry. prevInEntry stops at the first square, and a Backspace that
+     * silently moved a solver into a different clue would lose them their place, the one thing the
      * cursor rules in this file exist to prevent.
      *
      * Public because the panel's Backspace key presses it too, and there is no version of this rule
-     * that a screen can reimplement — the key on the pad and the key on the keyboard have to be the
+     * that a screen can reimplement: the key on the pad and the key on the keyboard have to be the
      * same act (design-spec.md §11).
      *
      * @returns {void}

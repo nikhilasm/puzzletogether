@@ -1,23 +1,22 @@
 /**
  * The parts of the puzzle-module interface that are identical for every "one value per cell,
- * compared against a solution" type — sudoku and kenken today, crossword in Phase 4.
+ * compared against a solution" type: sudoku, kenken, and crossword.
  *
- * Extracted in Phase 3 rather than copied into the new type. `isComplete` and `checkCells` say
- * nothing type-specific: they compare `effectiveValue` to `solution[idx]`, which is the same
- * sentence whether the value is a sudoku digit, a kenken digit, or a crossword letter. A second
- * copy would only be a second place for the Check semantics to drift.
+ * isComplete and checkCells say nothing type-specific: they compare effectiveValue to
+ * solution[idx], which is the same sentence whether the value is a sudoku digit, a kenken digit,
+ * or a crossword letter. A second copy would only be a second place for Check to drift.
  *
- * Nonogram does **not** use these — a nonogram is complete when its *filled* cells match, and the
- * player's `x` marks are notes rather than answers, so it implements both itself.
+ * Nonogram does **not** use these: a nonogram is complete when its *filled* cells match, and the
+ * player's x marks are notes rather than answers, so it implements both itself.
  */
 
 import { effectiveValue } from '../../shared/puzzle-doc.js';
 
 /**
- * The value characters a grid of side `n` uses, in order.
+ * The value characters a grid of side n uses, in order.
  *
  * @param {number} n - Grid side length, at most 9.
- * @returns {string} The puzzle's alphabet, e.g. `'1234'` for a 4×4.
+ * @returns {string} The puzzle's alphabet, e.g. '1234' for a 4×4.
  */
 export function digitAlphabet(n) {
     return '123456789'.slice(0, n);
@@ -46,7 +45,7 @@ export function isCompleteByValue(doc, board, solution) {
  * @param {import('../../shared/protocol.js').BoardState} board - Current board.
  * @param {string[]} solution - The full solution.
  * @param {number[]} idxs - Cell indices to check.
- * @returns {Object<number, string>} Cell index to `'correct'`, `'wrong'`, or `'empty'`.
+ * @returns {Object<number, string>} Cell index to 'correct', 'wrong', or 'empty'.
  */
 export function checkCellsByValue(doc, board, solution, idxs) {
     const result = {};

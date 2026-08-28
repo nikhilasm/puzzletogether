@@ -2,7 +2,7 @@
  * The screen between puzzles: where the host picks what the room plays next.
  *
  * The room returns here after a Back to Puzzle Select and sits here on first join. Non-hosts get
- * the streak and a plain statement that they are waiting — never controls that would be rejected
+ * the streak and a plain statement that they are waiting, never controls that would be rejected
  * server-side (design-spec.md §4).
  */
 
@@ -42,9 +42,9 @@ export class PtPuzzleSelect extends LitElement {
 
             /*
              * The whole column, not a reading measure. A banked type's card list is the widest thing
-             * this screen shows — a title, an author, and a publication on two lines — and the picker
-             * keeps its own option rows at 26rem and centred, so the extra width reaches the list and
-             * nothing else.
+             * this screen shows, a title with an author and a publication on two lines, and the
+             * picker keeps its own option rows at 26rem and centred, so the extra width reaches the
+             * list and nothing else.
              */
             pt-puzzle-picker {
                 max-width: 40rem;
@@ -55,7 +55,7 @@ export class PtPuzzleSelect extends LitElement {
              * Set well apart: leaving is not what you came to this screen to do. Spacing rather
              * than a rule, because the footer already draws one a little below it.
              *
-             * It is a full-size button here as it is on the game screen — the same control at the
+             * It is a full-size button here as it is on the game screen: the same control at the
              * same size in the same place in the reading order, saying what it is with the red
              * accent rather than by being smaller than everything around it.
              */
@@ -124,7 +124,7 @@ export class PtPuzzleSelect extends LitElement {
     /**
      * Gives up the seat and returns to the landing screen.
      *
-     * Navigating is the whole implementation: `<pt-app>` releases the seat whenever the route
+     * Navigating is the whole implementation: <pt-app> releases the seat whenever the route
      * leaves a room, so this button and the browser's back button cannot drift apart.
      */
     #onLeave() {

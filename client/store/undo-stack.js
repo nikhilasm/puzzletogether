@@ -1,7 +1,7 @@
 /**
  * A player's own edit history: which cell they changed, and what it held before.
  *
- * Undo is per-player and forward-only (design-spec.md §6). There is no global history to rewind —
+ * Undo is per-player and forward-only (design-spec.md §6). There is no global history to rewind:
  * undoing emits a *new* op restoring the earlier value, so it is an ordinary edit that everyone
  * sees. That is why this stores pre-images rather than inverse ops, and why an entry is discarded
  * when somebody else has written to the cell since: rewinding over their work would be a worse
@@ -44,7 +44,7 @@ export function sameCell(a, b) {
 /**
  * Reduces a board cell to the value and marks an undo entry cares about.
  *
- * @param {object|null|undefined} cellState - A cell from `BoardState.cells`, possibly absent.
+ * @param {object|null|undefined} cellState - A cell from BoardState.cells, possibly absent.
  * @returns {CellSnapshot} The comparable snapshot, with an empty cell reading as blank.
  */
 export function snapshotCell(cellState) {
@@ -75,7 +75,7 @@ export class UndoStack {
     /**
      * Records an edit this player just made.
      *
-     * A no-op edit is not recorded: pressing `5` on a cell that already holds `5` should not cost
+     * A no-op edit is not recorded: pressing 5 on a cell that already holds 5 should not cost
      * an undo press to walk back over.
      *
      * @param {UndoEntry} entry - The cell, and its state either side of the edit.
@@ -98,7 +98,7 @@ export class UndoStack {
     }
 
     /**
-     * Removes and returns everything the most recent action wrote — one entry for an ordinary edit,
+     * Removes and returns everything the most recent action wrote: one entry for an ordinary edit,
      * the whole run for a drag.
      *
      * The depth limit can cut a group in half, leaving a drag that undoes the last few cells it

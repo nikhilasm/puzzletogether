@@ -10,7 +10,7 @@ import { restorePlayer } from '../rooms/lifecycle.js';
 import { getRoom } from '../rooms/store.js';
 
 /**
- * Reads the handshake `auth` block a client connects with.
+ * Reads the handshake auth block a client connects with.
  *
  * @param {import('socket.io').Socket} socket - The connecting socket.
  * @returns {{ token: string|null, code: string|null, protocolVersion: number|null }} The claims

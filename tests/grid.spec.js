@@ -3,9 +3,9 @@
  * the cursor's own colour.
  *
  * These are the assertions that a screenshot would have made for us if screenshots were reliable
- * across engines. Every one of them corresponds to something that went wrong once — cells a pixel
+ * across engines. Every one of them corresponds to something that went wrong once: cells a pixel
  * out in Firefox, marks that moved when their neighbours changed, dots that only landed on the top
- * row — so they are worth their runtime in both browsers.
+ * row. They are worth their runtime in both browsers.
  */
 
 import { expect, test } from '@playwright/test';
@@ -200,7 +200,7 @@ test.describe('presence stripes', () => {
     });
 
     /**
-     * One segment per player, however many there are — the cap and its `+n` are gone, because a
+     * One segment per player, however many there are: the cap and its +n are gone, because a
      * stripe divides where a row of dots had to queue.
      */
     test('give every player in the cell a segment of their own', async ({ page, browser }) => {
@@ -266,7 +266,7 @@ test.describe('presence stripes', () => {
 test.describe('the cursor', () => {
     /**
      * Your own cursor is drawn in your own colour, and the row and column it implies in a lighter
-     * wash of the same — the two questions a solver asks of a grid ("where am I", "what constrains
+     * wash of the same: the two questions a solver asks of a grid ("where am I", "what constrains
      * this square") answered as one idea at two strengths.
      */
     test('is washed in the local player’s colour, and its lines more faintly', async ({ page }) => {
@@ -282,14 +282,14 @@ test.describe('the cursor', () => {
              * The two are separate longhands so that a given square shows its faint printed ground
              * *and* the cursor wash on top, rather than one replacing the other and blinking out
              * every time somebody moves. That means the colour to read here is the gradient's, and
-             * reading backgroundColor instead returns the given tint on every cell — which is why
+             * reading backgroundColor instead returns the given tint on every cell, which is why
              * this used to see 0.05 for the cursor and 0.05 for its column and call them equal.
              */
             const alpha = (cell) => {
                 const image = getComputedStyle(cell).backgroundImage;
                 if (image === 'none') return 0;
-                // Chromium serialises a resolved color-mix as `color(srgb r g b / a)` and Firefox
-                // as `rgba(r, g, b, a)`. Read the alpha out of whichever arrived.
+                // Chromium serialises a resolved color-mix as color(srgb r g b / a) and Firefox
+                // as rgba(r, g, b, a). Read the alpha out of whichever arrived.
                 const slashed = image.match(/\/\s*([\d.]+)\s*\)/);
                 if (slashed) return Number.parseFloat(slashed[1]);
                 const commas = image.match(/rgba\([^)]*,\s*([\d.]+)\s*\)/);

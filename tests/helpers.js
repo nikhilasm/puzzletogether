@@ -2,7 +2,7 @@
  * Shared moves for the browser tests: getting into a room, and getting a puzzle on screen.
  *
  * Playwright's CSS engine pierces open shadow roots, so the specs read as ordinary selectors and
- * never reach for `shadowRoot` except where they deliberately inspect a component's own state.
+ * never reach for shadowRoot except where they deliberately inspect a component's own state.
  */
 
 import { expect } from '@playwright/test';
@@ -16,14 +16,14 @@ export async function submitLanding(page, { name, code }) {
     await page.waitForFunction(() => window.location.hash.startsWith('#/room/'));
 }
 
-/** Creates a room as `name` and returns its code. */
+/** Creates a room as name and returns its code. */
 export async function createRoom(page, name = 'Ada') {
     await page.goto('/');
     await submitLanding(page, { name });
     return (await page.evaluate(() => window.location.hash)).split('/').pop();
 }
 
-/** Joins an existing room as `name`, from a page that has not loaded the app yet. */
+/** Joins an existing room as name, from a page that has not loaded the app yet. */
 export async function joinRoom(page, name, code) {
     await page.goto('/');
     await submitLanding(page, { name, code });
@@ -34,9 +34,9 @@ export async function joinRoom(page, name, code) {
  * Starts a puzzle as the host, and waits for the grid.
  *
  * The type is clicked before the size, because choosing a type resets the size to that type's
- * default — a 4×4 nonogram does not exist, so the picker cannot carry a sudoku's size across.
+ * default: a 4×4 nonogram does not exist, so the picker cannot carry a sudoku's size across.
  *
- * A banked type is chosen rather than described, so `side` names a card instead of a size button
+ * A banked type is chosen rather than described, so side names a card instead of a size button
  * (ADR-0009). Passing nothing takes whichever card the bank lists first, which is what most tests
  * want: they need *a* crossword, not a particular one.
  */
@@ -63,7 +63,7 @@ export function boardOf(page) {
     return page.locator('pt-sudoku-board, pt-kenken-board, pt-nonogram-board, pt-crossword-board');
 }
 
-/** The roster as the page currently holds it — the component's own property, not its DOM. */
+/** The roster as the page currently holds it: the component's own property, not its DOM. */
 export function playersOf(page) {
     return page
         .locator('pt-player-chips')

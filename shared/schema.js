@@ -1,8 +1,8 @@
 /**
  * Runtime validation for every inbound socket payload.
  *
- * Static types describe what *should* arrive; this checks what does (ADR-0006). Shape only —
- * authority (`playerId === room.hostId`) is a separate, later step.
+ * Static types describe what *should* arrive; this checks what does (ADR-0006). Shape only:
+ * authority (playerId === room.hostId) is a separate, later step.
  */
 
 import {
@@ -75,13 +75,11 @@ function integerArray({ maxLength = MAX_CELLS, min = 0, max = MAX_CELLS, optiona
 }
 
 /**
- * Builds a validator for a cell value: 1–`MAX_CELL_VALUE_LENGTH` characters, or null to clear.
+ * Builds a validator for a cell value: 1–MAX_CELL_VALUE_LENGTH characters, or null to clear.
  *
- * This bounds the **wire**, not the puzzle. Through Phase 3 it was exactly one character, and that
- * doubled as the rule keeping every type's cells to a single digit or mark — until a crossword rebus
- * square needed to hold a whole word (ADR-0007). What may go in a given cell is a question for that
- * type's `validateOp`, which is where sudoku, kenken, and nonogram now each say "exactly one" for
- * themselves. Nothing in this file will say it for them.
+ * This bounds the **wire**, not the puzzle. A crossword rebus square holds a whole word (ADR-0007),
+ * so what may go in a given cell is a question for that type's validateOp: sudoku, kenken, and
+ * nonogram each say "exactly one" for themselves. Nothing in this file will say it for them.
  */
 function cellValue({ optional = false } = {}) {
     return (value, key) => {
@@ -95,7 +93,7 @@ function cellValue({ optional = false } = {}) {
     };
 }
 
-/** Per-op-type field requirements, applied on top of the common `opId`/`t` check. */
+/** Per-op-type field requirements, applied on top of the common opId/t check. */
 const OP_FIELDS = {
     [OP_TYPE.SET]: { cell: integer({ max: MAX_CELLS - 1 }), value: cellValue() },
     [OP_TYPE.MARKS]: {
@@ -119,7 +117,7 @@ function opShape(value, key) {
     return checkFields(value, OP_FIELDS[value.t], key);
 }
 
-/** Validates a `{ rows, cols }` grid size. */
+/** Validates a { rows, cols } grid size. */
 function gridSize(value, key) {
     if (value == null || typeof value !== 'object') return `${key} must be an object`;
     return (
@@ -143,7 +141,7 @@ export const SCHEMAS = {
     },
     [CLIENT_EVENT.ROOM_LEAVE]: {},
     [CLIENT_EVENT.ROOM_BACK_TO_SELECT]: {},
-    // A `playerId` is a UUID the server issued; the handler checks it names a seat in *this* room.
+    // A playerId is a UUID the server issued; the handler checks it names a seat in *this* room.
     [CLIENT_EVENT.ROOM_KICK]: {
         playerId: string({ max: 64 }),
     },
@@ -151,7 +149,7 @@ export const SCHEMAS = {
     [CLIENT_EVENT.PLAYER_COLOR]: {
         colorIndex: integer({ max: PLAYER_COLOR_COUNT - 1 }),
     },
-    // `puzzleId` names one puzzle out of a bank's catalog, for the types whose content is a list
+    // puzzleId names one puzzle out of a bank's catalog, for the types whose content is a list
     // rather than a description (ADR-0009). Optional because three of the four types are generated
     // and have nothing to name; shape only, so whether the id exists is the provider's answer.
     [CLIENT_EVENT.GAME_START]: {
@@ -187,7 +185,7 @@ function checkFields(payload, fields, prefix) {
  *
  * @param {string} event - The client-to-server event name.
  * @param {any} payload - The raw payload as received from the socket.
- * @returns {{ ok: boolean, message?: string }} `ok: true`, or the first validation failure.
+ * @returns {{ ok: boolean, message?: string }} ok: true, or the first validation failure.
  */
 export function validate(event, payload) {
     const fields = SCHEMAS[event];

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { applyOp, applyOps, emptyBoard, toggleMark } from './board-reducer.js';
 import { OP_TYPE } from './protocol.js';
 
-/** A `set` op, with the boilerplate filled in. */
+/** A set op, with the boilerplate filled in. */
 function setOp(opId, cell, value) {
     return { opId, t: OP_TYPE.SET, cell, value };
 }
@@ -74,7 +74,7 @@ describe('applyOp', () => {
 describe('applyOps', () => {
     /**
      * The load-bearing invariant from ADR-0001: a client that applies ops one at a time as they
-     * arrive must end up with exactly the board the server would send in a snapshot — in any
+     * arrive must end up with exactly the board the server would send in a snapshot, in any
      * arrival order, since ops carry their own sequence numbers.
      */
     it('matches the snapshot regardless of the order ops arrive in', () => {
@@ -115,8 +115,8 @@ describe('toggleMark', () => {
 
 describe('marks ops', () => {
     /**
-     * A cell holds a value or marks, never both — it is how a cell renders, and it is what makes a
-     * cell's whole state expressible in one op, which is what undo relies on.
+     * A cell holds a value or marks, never both. That is how a cell renders, and it is what makes
+     * a cell's whole state expressible in one op, which is what undo relies on.
      */
     it('replaces the value when marks are written over it', () => {
         const withValue = applyOp(emptyBoard(), setOp('a', 0, '4'), { seq: 1, by: 'p1' });

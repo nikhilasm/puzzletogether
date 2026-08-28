@@ -6,7 +6,7 @@
  * something a solver reads once per entry. The cost is that scanning for a way in becomes a tap
  * rather than a glance, which is exactly what the always-visible clue bar is there to offset.
  *
- * Built on the native `<dialog>`, like `<pt-confirm>`, so focus trapping, Escape, and the inert
+ * Built on the native <dialog>, like <pt-confirm>, so focus trapping, Escape, and the inert
  * backdrop come from the platform rather than from hand-written key handling.
  *
  * Holds nothing: it is given the entries and the current one, and reports which clue was picked.
@@ -34,7 +34,7 @@ export class PtClueList extends LitElement {
         css`
             dialog {
                 /*
-                 * Nearly the whole viewport. This is a reading surface — the point of opening it is
+                 * Nearly the whole viewport. This is a reading surface: the point of opening it is
                  * to see as many clues at once as possible, so the usual modal restraint would be
                  * working against the only reason it exists.
                  */
@@ -53,8 +53,9 @@ export class PtClueList extends LitElement {
              * dialog[open], never bare dialog.
              *
              * The UA stylesheet hides a closed dialog with dialog:not([open]) { display: none },
-             * and an author display on dialog beats it outright — origin wins over specificity —
-             * so styling the bare selector would leave the clue list on screen permanently.
+             * and an author display on dialog beats it outright, since origin wins over
+             * specificity, so styling the bare selector would leave the clue list on screen
+             * permanently.
              *
              * Flex rather than the calc(100% - 4.5rem) this used to give .lists: that number was
              * the head's height written down twice, and it was already wrong by a few pixels once
@@ -73,11 +74,10 @@ export class PtClueList extends LitElement {
              * One padding value for the head and the columns, so the heading, the column headings,
              * and the clues all start on the same left edge.
              *
-             * They did not. Both used var(--space-5), and there is no --space-5 in the scale —
-             * it goes 1, 2, 3, 4, 6, 8, 12. An undefined custom property with no fallback makes the
-             * whole declaration invalid at computed-value time, so padding fell back to its
-             * initial 0 and the dialog had no inset at all on either box. The inconsistency was the
-             * .head and .column boxes each losing a *different* padding to the same typo.
+             * One value, and a real one: the scale goes 1, 2, 3, 4, 6, 8, 12, and an undefined
+             * custom property with no fallback makes the whole declaration invalid at
+             * computed-value time. A typo there leaves the box with no padding at all rather than
+             * with the wrong padding.
              */
             .head {
                 display: flex;
@@ -123,7 +123,7 @@ export class PtClueList extends LitElement {
              *
              * **No rule between them, and none under the head.** Three hairlines in a box this size
              * cut a reading surface into panes, and none of them was doing work the whitespace was
-             * not already doing — the Across and Down headings say where one list ends. The dialog's
+             * not already doing: the Across and Down headings say where one list ends. The dialog's
              * own border is the only line here now.
              */
             .lists {
@@ -168,9 +168,9 @@ export class PtClueList extends LitElement {
              * button and their text sat at the top of that box. On a one-line clue nothing showed;
              * on a clue that wrapped to two, the number hung at the first line while the row's own
              * padding centred nothing, and every row in the list looked differently aligned.
-             * Centring the items is right for the number — it should sit against the *clue*, not
-             * against the clue's first line — and align-self puts it back to the top where the
-             * clue is long enough for that to matter more.
+             * Centring the items is right for the number, which should sit against the *clue*
+             * rather than against the clue's first line, and align-self puts it back to the top
+             * where the clue is long enough for that to matter more.
              */
             li button {
                 display: flex;
@@ -197,7 +197,7 @@ export class PtClueList extends LitElement {
             }
 
             /*
-             * The entry the cursor is in, marked the same way the grid marks it — the accent wash.
+             * The entry the cursor is in, marked the same way the grid marks it: the accent wash.
              * Someone glancing between the grid and this list should not have to learn two
              * vocabularies for "you are here".
              */
@@ -275,7 +275,7 @@ export class PtClueList extends LitElement {
             ?.scrollIntoView({ block: 'nearest' });
     }
 
-    /** Reports a pick or a dismissal; the screen above owns `open`. */
+    /** Reports a pick or a dismissal; the screen above owns open. */
     #emit(name, detail = {}) {
         this.dispatchEvent(new CustomEvent(name, { detail, bubbles: true, composed: true }));
     }

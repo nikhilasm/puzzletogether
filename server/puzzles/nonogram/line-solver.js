@@ -3,16 +3,16 @@
  * how hard it is.
  *
  * Ambiguous nonograms are the classic failure mode of naive generation (ADR-0004), so a candidate is
- * only ever emitted if this resolves it completely — a puzzle a line-solver cannot finish is one a
+ * only ever emitted if this resolves it completely; a puzzle a line-solver cannot finish is one a
  * player would have to guess at. That makes the solver the uniqueness proof.
  *
  * It is also the measurement. Sweeping rows and columns until nothing changes is exactly the process
  * a person follows, so **how many sweeps it took is a property of the puzzle**, not a parameter that
- * was fed in — which is what lets nonogram label itself with a measured difficulty the way sudoku
+ * was fed in, which is what lets nonogram label itself with a measured difficulty the way sudoku
  * does, and unlike kenken.
  */
 
-/** Cell states inside the solver. Kept numeric so a line is a `Uint8Array`. */
+/** Cell states inside the solver. Kept numeric so a line is a Uint8Array. */
 export const UNKNOWN = 0;
 export const FILL = 1;
 export const CROSS = 2;
@@ -30,14 +30,14 @@ export const CROSS = 2;
  */
 export function solveLine(clues, line) {
     const length = line.length;
-    // An empty line is clued `[0]`, which is a statement about the line rather than a block to place.
+    // An empty line is clued [0], which is a statement about the line rather than a block to place.
     const blocks = clues.filter((clue) => clue > 0);
     const filledIn = new Int32Array(length);
     const crossedIn = new Int32Array(length);
     const candidate = new Uint8Array(length);
     let placements = 0;
 
-    // `start` is the first cell this clue may occupy; everything before it is already decided.
+    // start is the first cell this clue may occupy; everything before it is already decided.
     const place = (clueIdx, start) => {
         if (clueIdx === blocks.length) {
             for (let i = start; i < length; i += 1) {
@@ -123,7 +123,7 @@ function writeLine(grid, rows, cols, index, isRow, line) {
  * @param {number} cols - Column count.
  * @returns {{ grid: Uint8Array, solved: boolean, sweeps: number }|null} The furthest the solver got,
  *   how many sweeps *deduced something*, and whether it finished; null when the clues contradict
- *   each other. The final sweep, which by definition changes nothing, is not counted — it is how the
+ *   each other. The final sweep, which by definition changes nothing, is not counted: it is how the
  *   loop learns it is finished, not work the puzzle demanded. Without that subtraction the count can
  *   never fall below two, and no small grid could ever measure easy.
  */
@@ -153,8 +153,8 @@ export function lineSolve(rowClues, colClues, rows, cols) {
 /**
  * The clue list for one line of a bitmap: the length of each run of filled cells.
  *
- * An empty line's clue is `[0]` rather than `[]`, because the gutter has to draw something — a blank
- * clue reads as "not yet worked out" where a `0` reads as "this line is empty".
+ * An empty line's clue is [0] rather than [], because the gutter has to draw something; a blank
+ * clue reads as "not yet worked out" where a 0 reads as "this line is empty".
  *
  * @param {number[]} cells - One row or column, 1 for filled.
  * @returns {number[]} Block lengths in order.

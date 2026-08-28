@@ -8,7 +8,7 @@
 /**
  * A refilling token bucket. One bucket per socket per event class.
  *
- * Deliberately not a queue: an op over the limit is dropped with a `RATE_LIMITED` ack, not delayed,
+ * Deliberately not a queue: an op over the limit is dropped with a RATE_LIMITED ack, not delayed,
  * because a late op in a live shared grid is worse than no op.
  */
 export class TokenBucket {
@@ -52,7 +52,7 @@ export class TokenBucket {
  * Creates the set of buckets a single socket needs.
  *
  * @param {object} limits - One config object per event class.
- * @returns {Object<string, TokenBucket>} Buckets keyed by the same names as `limits`.
+ * @returns {Object<string, TokenBucket>} Buckets keyed by the same names as limits.
  */
 export function createBuckets(limits) {
     return Object.fromEntries(

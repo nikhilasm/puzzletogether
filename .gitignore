@@ -8,7 +8,7 @@ playwright-report/
 .claude/
 
 # Source .puz files are inputs to the importer, not part of the repo. They are somebody else's
-# copyrighted work, downloadable for free but not therefore redistributable — and committing one
+# copyrighted work, downloadable for free but not therefore redistributable, and committing one
 # is the act of redistributing it. The converted bank under data/crosswords/ is tracked; what it
 # was converted from is not. See ADR-0004.
 data/*.puz

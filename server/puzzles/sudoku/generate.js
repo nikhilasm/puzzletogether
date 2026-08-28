@@ -2,7 +2,7 @@
  * Sudoku generation: a random solved grid, dug symmetrically, with uniqueness re-proved after
  * every dig (design-spec.md §8).
  *
- * A puzzle is only ever emitted if `countSolutions` says it has exactly one solution, so an
+ * A puzzle is only ever emitted if countSolutions says it has exactly one solution, so an
  * ambiguous puzzle cannot reach a player even if the difficulty heuristics are wrong.
  */
 
@@ -11,7 +11,7 @@ import { countSolutions, createDims, randomSolvedGrid } from './solver.js';
 
 /**
  * Clue count to stop digging at once the target difficulty is reached, as a fraction of cells.
- * Digging past this adds nothing — the puzzle is already as hard as was asked for.
+ * Digging past this adds nothing: the puzzle is already as hard as was asked for.
  */
 const CLUE_FLOOR = { easy: 0.5, medium: 0.4, hard: 0.28 };
 
@@ -89,7 +89,7 @@ function digHoles(solution, dims, difficulty, rng) {
  * uniqueness guarantee is not a heuristic and always holds.
  *
  * @param {object} options - Generation options.
- * @param {string} options.difficulty - Requested difficulty, one of `DIFFICULTY_ORDER`.
+ * @param {string} options.difficulty - Requested difficulty, one of DIFFICULTY_ORDER.
  * @param {number} options.n - Grid side length.
  * @param {import('../rng.js').Rng} options.rng - Seeded generator.
  * @returns {{ cells: Uint8Array, solution: Uint8Array, difficulty: string, clues: number }}

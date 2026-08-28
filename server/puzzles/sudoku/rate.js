@@ -2,8 +2,8 @@
  * Difficulty rating by the techniques a logical solver needs (design-spec.md §8).
  *
  * Rating is a property of the puzzle, not of the clue count: a 30-clue grid needing an X-wing is
- * harder than a 24-clue grid that falls to singles. Only the techniques below are implemented —
- * anything a human would need beyond them rates `hard`.
+ * harder than a 24-clue grid that falls to singles. Only the techniques below are implemented;
+ * anything a human would need beyond them rates hard.
  */
 
 import { createDims } from './solver.js';
@@ -27,7 +27,7 @@ function buildUnits(dims) {
     return { rows, cols, boxes, all: [...rows, ...cols, ...boxes] };
 }
 
-/** Builds each cell's peer list — every cell sharing a row, column, or region with it. */
+/** Builds each cell's peer list: every cell sharing a row, column, or region with it. */
 function buildPeers(dims, units) {
     const { n, boxOf } = dims;
     return Array.from({ length: n * n }, (_unused, idx) => {
@@ -120,7 +120,7 @@ function applySingles(state) {
     return progress;
 }
 
-/** Every combination of `size` entries from a list, as index tuples. */
+/** Every combination of size entries from a list, as index tuples. */
 function combinations(items, size) {
     if (size > items.length) return [];
     const result = [];
@@ -140,7 +140,7 @@ function combinations(items, size) {
 }
 
 /**
- * Naked pairs and triples: `k` cells in a unit whose candidates together span only `k` values own
+ * Naked pairs and triples: k cells in a unit whose candidates together span only k values own
  * those values, so no other cell in the unit can hold them.
  */
 function applyNakedSubsets(state, maxSize) {
@@ -162,7 +162,7 @@ function applyNakedSubsets(state, maxSize) {
 }
 
 /**
- * Hidden pairs and triples: `k` values in a unit that between them can only go in `k` cells own
+ * Hidden pairs and triples: k values in a unit that between them can only go in k cells own
  * those cells, so every other candidate in them is impossible.
  */
 function applyHiddenSubsets(state, maxSize) {
@@ -202,7 +202,7 @@ function applyHiddenSubsets(state, maxSize) {
 
 /**
  * Removes candidates using pointing pairs and box-line reduction: when a value is confined to one
- * row or column inside a region, it leaves the rest of that line — and vice versa.
+ * row or column inside a region, it leaves the rest of that line, and vice versa.
  */
 function applyPointing(state) {
     const { n, boxOf } = state.dims;
@@ -260,8 +260,8 @@ function eliminate(state, unit, keep, mask) {
  *
  * @param {Uint8Array} cells - The puzzle grid, 0 for empty. Not mutated.
  * @param {number} n - Grid side length.
- * @returns {string} `'easy'` (singles only), `'medium'` (needs naked or hidden subsets, or
- *   pointing), or `'hard'` (needs a technique beyond those, such as an X-wing, or none of them
+ * @returns {string} 'easy' (singles only), 'medium' (needs naked or hidden subsets, or
+ *   pointing), or 'hard' (needs a technique beyond those, such as an X-wing, or none of them
  *   finish it).
  */
 export function rate(cells, n) {

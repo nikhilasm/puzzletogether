@@ -1,7 +1,7 @@
 /**
  * Client entry point: fonts, global styles, and the root element.
  *
- * Fonts are self-hosted through `@fontsource` — no third-party request and no FOUT tied to someone
+ * Fonts are self-hosted through @fontsource: no third-party request, and no FOUT tied to someone
  * else's uptime (brand.md §2).
  */
 

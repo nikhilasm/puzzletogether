@@ -2,20 +2,20 @@ import js from '@eslint/js';
 import globals from 'globals';
 
 /*
- * Scoped deliberately to `shared/` — the socket contract.
+ * Scoped deliberately to shared/: the socket contract.
  *
- * `shared/protocol.js`, `shared/schema.js`, and `shared/board-reducer.js` are the code both sides
+ * shared/protocol.js, shared/schema.js, and shared/board-reducer.js are the code both sides
  * of the wire depend on, and the only place a silent mismatch causes a desync rather than a visible
- * bug. Application code in `client/` and `server/` is not linted; formatting there is Prettier's
+ * bug. Application code in client/ and server/ is not linted; formatting there is Prettier's
  * job and correctness is the tests'.
  *
- * `tests/` is the exception to that reasoning rather than a widening of it: it is the only code in
+ * tests/ is the exception to that reasoning rather than a widening of it: it is the only code in
  * the repo nothing else checks. Everything else has a test; the tests have lint.
  *
- * `scripts/` joined in Phase 4 for a third reason again: it is the only code that *writes content
- * into the repo*. `import-crossword.js` produces the bank files the server then serves, run by hand
+ * scripts/ joined in Phase 4 for a third reason again: it is the only code that *writes content
+ * into the repo*. import-crossword.js produces the bank files the server then serves, run by hand
  * and rarely, which is exactly the situation where a typo waits months to be discovered. It is pure
- * Node — no browser globals — which is the one way its config differs from the others.
+ * Node, with no browser globals, which is the one way its config differs from the others.
  */
 export default [
     {
@@ -23,7 +23,7 @@ export default [
     },
     js.configs.recommended,
     {
-        // Browser globals appear inside `page.evaluate()` callbacks, which run in the page.
+        // Browser globals appear inside page.evaluate() callbacks, which run in the page.
         files: ['tests/**/*.js'],
         languageOptions: {
             ecmaVersion: 2023,
@@ -48,7 +48,7 @@ export default [
         rules: {
             'no-unused-vars': [
                 'error',
-                // `const { solution, ...rest } = file` is how a test drops one key to prove the
+                // const { solution, ...rest } = file is how a test drops one key to prove the
                 // reader refuses what is left. The binding is unused by design.
                 { argsIgnorePattern: '^_', ignoreRestSiblings: true },
             ],
@@ -79,7 +79,7 @@ export default [
                         {
                             group: ['**/client/**', '**/server/**', '../client/*', '../server/*'],
                             message:
-                                'shared/ must import nothing from client/ or server/ — it runs in both (code-style.md §6).',
+                                'shared/ must import nothing from client/ or server/; it runs in both (code-style.md §6).',
                         },
                     ],
                 },

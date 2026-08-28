@@ -45,10 +45,9 @@ describe('validate', () => {
     });
 
     /**
-     * A multi-character value is a crossword rebus square, and the schema stopped refusing them in
-     * Phase 4 (ADR-0007). What it still does is *bound* them — this file's job is the wire, and the
-     * question of whether a given puzzle may hold `HAND` in a cell belongs to that type's
-     * `validateOp`, which is where sudoku and kenken are tested to still say no.
+     * A multi-character value is a crossword rebus square, which the schema bounds rather than
+     * refuses (ADR-0007). This file's job is the wire; whether a given puzzle may hold HAND in a
+     * cell belongs to that type's validateOp, where sudoku and kenken are tested to still say no.
      */
     it('accepts a multi-character cell value, which is a rebus square', () => {
         const op = { opId: 'x', t: OP_TYPE.SET, cell: 0, value: 'HAND' };
@@ -67,7 +66,7 @@ describe('validate', () => {
         expect(validate(CLIENT_EVENT.GAME_OP, { op }).ok).toBe(false);
     });
 
-    it('rejects an empty cell value — null is how a cell is emptied, not the empty string', () => {
+    it('rejects an empty cell value: null is how a cell is emptied, not the empty string', () => {
         const op = { opId: 'x', t: OP_TYPE.SET, cell: 0, value: '' };
         expect(validate(CLIENT_EVENT.GAME_OP, { op }).ok).toBe(false);
     });
@@ -146,7 +145,7 @@ describe('validate', () => {
     });
 
     it('ignores a cell list smuggled into check, since check has no cell-scoped form', () => {
-        // A well-formed payload with extra keys is accepted and the extras are never read — the
+        // A well-formed payload with extra keys is accepted and the extras are never read. The
         // server grades the whole grid, so a client cannot use Check to probe one cell at a time.
         expect(validate(CLIENT_EVENT.GAME_CHECK, { cells: [0, 1, 2] }).ok).toBe(true);
     });

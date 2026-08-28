@@ -2,7 +2,7 @@
  * Crossword in a real browser: the black squares, the cursor's *direction*, and the clue UI.
  *
  * Direction is what this file mostly exercises, because it is the thing crossword adds that no
- * other type has and no unit test can see — a cursor that is somewhere *and pointing*, moved by
+ * other type has and no unit test can see: a cursor that is somewhere *and pointing*, moved by
  * rules that only feel right or wrong under a real keyboard and a real click.
  */
 
@@ -62,7 +62,7 @@ test.describe('crossword', () => {
 
     /**
      * A black square holds nothing and can hold nothing, so putting the cursor on it could only
-     * ever be a dead end. This is a `<pt-board>` change rather than a crossword one — no other type
+     * ever be a dead end. This is a <pt-board> change rather than a crossword one; no other type
      * has block cells, which is exactly why it went untested until now.
      */
     test('never puts the cursor on a black square', async ({ page }) => {
@@ -140,7 +140,7 @@ test.describe('crossword', () => {
         await page.locator('pt-clue-bar .clue').click();
         expect((await cursorOf(page)).entry).toMatchObject({ num: 2, dir: 'D' });
 
-        // The whole direction, and then round — never across into the Acrosses.
+        // The whole direction, and then round, never across into the Acrosses.
         for (let press = 0; press < 4; press += 1) {
             await page.locator('pt-clue-bar .clue').click();
         }
@@ -165,7 +165,7 @@ test.describe('crossword', () => {
      * Typing jumps the crossings somebody has already filled in.
      *
      * With a letter in the middle of the word, the next keystroke has to land *past* it rather than
-     * on top of it — the crossings are the whole point of the grid, and overwriting one to type
+     * on top of it: the crossings are the whole point of the grid, and overwriting one to type
      * around it is the fastest way to undo a teammate's work in a room solving together.
      */
     test('typing steps over squares that are already filled', async ({ page }) => {
@@ -174,8 +174,8 @@ test.describe('crossword', () => {
         await page.keyboard.press('ArrowDown');
         await page.keyboard.type('X');
 
-        // Selecting a square does not change which way the cursor points — that is the direction's
-        // whole nature — so getting back to 1 Across takes a tap to select and a re-tap to turn.
+        // Selecting a square does not change which way the cursor points, which is the direction's
+        // whole nature, so getting back to 1 Across takes a tap to select and a re-tap to turn.
         await page.locator('pt-cell >> nth=1').click();
         await page.locator('pt-cell >> nth=1').click();
         expect(await cursorOf(page)).toMatchObject({ cell: 1, direction: 'A' });
@@ -194,7 +194,7 @@ test.describe('crossword', () => {
      *
      * The two assertions after the letter are the ones that matter. The cursor advancing proves the
      * tap went through the board's own advance rule rather than around it, and the grid still holding
-     * focus proves the pad does not steal it — which is what would silently kill every arrow key and
+     * focus proves the pad does not steal it, which is what would silently kill every arrow key and
      * every physical keystroke after the first tap.
      */
     test('a key on the pad types into the grid without taking focus off it', async ({ page }) => {
@@ -218,8 +218,8 @@ test.describe('crossword', () => {
      * The pad's own Backspace, which is the only way to delete on a touch screen now that there is no
      * platform keyboard to borrow one from.
      *
-     * It is the *same* act as the keyboard's, not a second implementation of it — clear the square
-     * and step back along the entry — which is why it asks the board rather than the store.
+     * It is the *same* act as the keyboard's, not a second implementation of it: clear the square
+     * and step back along the entry, which is why it asks the board rather than the store.
      */
     test('the pad has a Backspace, and it walks back through the entry', async ({ page }) => {
         await page.locator('pt-cell >> nth=1').click();
@@ -239,11 +239,11 @@ test.describe('crossword', () => {
     });
 
     /**
-     * Crossword's button bar: Clues, Rebus, Backspace, Undo — one row, in that order.
+     * Crossword's button bar: Clues, Rebus, Backspace, Undo, in one row and that order.
      *
      * Clues leads because it is the only one that does not act on the square you are on; it opens
      * the puzzle's other half. Backspace has moved off the bottom letter row and up here, where the
-     * other controls that clear a square already were — a phone keyboard's ⌫ is a key among keys and
+     * other controls that clear a square already were: a phone keyboard's ⌫ is a key among keys and
      * ours is not, and having it in the corner of the pad was borrowing a shape without the reason
      * for it.
      */
@@ -273,7 +273,7 @@ test.describe('crossword', () => {
 
     /**
      * The keys are QWERTY, in three staggered rows, because that is the arrangement a solver's thumbs
-     * already know from every phone they have ever held — which is the one thing a pad of ours can
+     * already know from every phone they have ever held, which is the one thing a pad of ours can
      * borrow from the keyboard it replaces (ADR-0010).
      */
     test('the letter keys are laid out like a keyboard', async ({ page }) => {
@@ -296,8 +296,8 @@ test.describe('crossword', () => {
     /**
      * Every key the same width, and every row centred against the ten-key row above.
      *
-     * Neither was true. The rows were a twenty-half-column grid, and `grid-column: span 2` followed
-     * by `grid-column-start: 2` on the first key of rows two and three left the end at `auto` — so A
+     * Neither was true. The rows were a twenty-half-column grid, and grid-column: span 2 followed
+     * by grid-column-start: 2 on the first key of rows two and three left the end at auto, so A
      * and Z came out a single column wide, visibly narrower than every other key. And a short row
      * could only be left-aligned in the grid, which the bottom row made obvious once Backspace left
      * it.
@@ -391,7 +391,7 @@ test.describe('crossword', () => {
      * The cursor has to be findable inside a highlighted run of squares, which after the first
      * playtest it was not: the two washes were 34% and 30% of the same accent, a difference nobody
      * can see. Asserted as a ratio rather than a colour so the dark theme and any later retune stay
-     * within it — what matters is that one reads as a position and the other as context.
+     * within it: what matters is that one reads as a position and the other as context.
      */
     test('the cursor is plainly stronger than the rest of its entry', async ({ page }) => {
         await page.locator('pt-cell >> nth=1').click();
@@ -414,9 +414,9 @@ test.describe('crossword', () => {
      * The clue dialog's own layout, which had four things wrong with it at once.
      *
      * The worst was invisible in the source: both the head and the columns were padded with
-     * `var(--space-5)`, and the scale has no `--space-5` — it runs 1, 2, 3, 4, 6, 8, 12. An
+     * var(--space-5), and the scale has no --space-5: it runs 1, 2, 3, 4, 6, 8, 12. An
      * undefined custom property with no fallback makes the whole declaration invalid at
-     * computed-value time, so `padding` fell back to its initial `0` and the dialog had no inset at
+     * computed-value time, so padding fell back to its initial 0 and the dialog had no inset at
      * all. Nothing warns about this; the property simply is not there.
      */
     test('the clue dialog is evenly padded, unruled, and vertically centred', async ({ page }) => {
@@ -451,7 +451,7 @@ test.describe('crossword', () => {
         expect(layout.headLeft).toBeGreaterThan(0);
         expect(layout.listsLeft).toBe(layout.headLeft);
 
-        // No separating rules — not under the head, not between the columns, not round the close.
+        // No separating rules: not under the head, not between the columns, not round the close.
         expect(layout.headBorder).toBe('0px');
         expect(layout.columnBorder).toBe('0px');
         expect(layout.closeBorder).toBe('0px');
@@ -465,7 +465,7 @@ test.describe('crossword', () => {
     /**
      * Addressed by position rather than by clue text on purpose: the bank holds several minis and
      * hands back whichever it likes, so a test naming one of their clues would pass or fail on the
-     * draw. The *shape* is shared — every mini is the corner-blocked 5×5 — so the last Across entry
+     * draw. The *shape* is shared, since every mini is the corner-blocked 5×5, so the last entry
      * is always 8A along the bottom row, starting at cell 21.
      */
     test('the clue list opens, marks where you are, and moves you when picked', async ({
@@ -488,7 +488,7 @@ test.describe('crossword', () => {
 
     /**
      * A square says which entries *start* in it, because the bare number tells a screen-reader user
-     * nothing about which clue solves the square they are on — and the direction is a property of
+     * nothing about which clue solves the square they are on, and the direction is a property of
      * their cursor rather than of the cell.
      */
     test('a numbered square says what starts there', async ({ page }) => {
@@ -514,7 +514,7 @@ test.describe('crossword', () => {
      * "The solution never leaves the server" is the load-bearing claim behind Check, Reveal, and
      * server-verified completion (§6), and a bank is the one supply where the whole answer sits in a
      * file that something could serialise wholesale by accident. The answers are read from the
-     * tracked bank — which the tests may do, because the seed minis are ours and committed — and
+     * tracked bank, which the tests may do because the seed minis are ours and committed, and
      * every frame the browser receives is searched for them.
      */
     test('no socket frame carries a solution letter before the puzzle is solved', async ({
@@ -544,7 +544,7 @@ test.describe('crossword', () => {
         await expect.poll(() => frames.length).toBeGreaterThan(2);
 
         // Reduced to just its capitals before searching, because a solution does not travel as a
-        // word — it would travel as `["C","L","O","S","E"]`, one cell at a time, which a search for
+        // word: it would travel as ["C","L","O","S","E"], one cell at a time, which a search for
         // the contiguous string would sail straight past. Clue text survives as its initials only,
         // so it cannot manufacture a match.
         const capitals = frames.map((frame) => frame.replace(/[^A-Z]/g, ''));
@@ -554,12 +554,12 @@ test.describe('crossword', () => {
     });
 
     /**
-     * A solved grid is still a grid people read back — whose word was that, what was 4 Down — and
-     * every way of moving around it has to keep working after the last letter lands. Only *writing*
-     * stops.
+     * A solved grid is still a grid people read back, asking whose word that was or what 4 Down
+     * was, and every way of moving around it has to keep working after the last letter lands. Only
+     * *writing* stops.
      *
      * Worth a browser test rather than a unit one because the bug it guards was three separate
-     * controls going quiet at once, each for the same reason: an `interactive` flag that meant "the
+     * controls going quiet at once, each for the same reason: an interactive flag that meant "the
      * room is still taking input" being read as "this control does anything at all".
      */
     test('a finished grid can still be navigated, but not typed into', async ({ page }) => {
@@ -584,7 +584,7 @@ test.describe('crossword', () => {
         expect((await cursorOf(page)).cell).toBe(1);
 
         /*
-         * Arrows still steer, and this one also settles which way the cursor points — Up in the top
+         * Arrows still steer, and this one also settles which way the cursor points: Up in the top
          * row can only turn it, never move it, so the cursor faces Down afterwards whichever way the
          * solve happened to leave it.
          */
@@ -638,15 +638,15 @@ test.describe('crossword rebus', () => {
 
     /**
      * The whole of ADR-0007 in one check: with Rebus on, a square holds a word, and it gets there as
-     * an ordinary `set` op carrying the whole value rather than as any new kind of edit.
+     * an ordinary set op carrying the whole value rather than as any new kind of edit.
      */
     /**
      * Rebus is a toggle in the panel's button bar, sitting where Notes and the brushes sit in the
-     * other types — every type's one setting in the same place (design-spec.md §4).
+     * other types: every type's one setting in the same place (design-spec.md §4).
      *
      * It is the *only* way to a rebus square on a touch screen: Shift is the desktop path, and a pad
      * of ours has no Shift key to offer. That is why it has to hold its state visibly rather than
-     * being a press-and-forget button — which is what `aria-pressed` and the accent wash are for.
+     * being a press-and-forget button, which is what aria-pressed and the accent wash are for.
      */
     async function turnOnRebus(page) {
         const rebus = page.locator('pt-keypad .action', { hasText: 'Rebus' });
@@ -697,7 +697,7 @@ test.describe('crossword rebus', () => {
         const word = await sizeOf();
 
         expect(word).toBeLessThan(single);
-        // But it stops shrinking rather than vanishing — the floor in <pt-cell>.
+        // But it stops shrinking rather than vanishing: the floor in <pt-cell>.
         expect(word).toBeGreaterThan(single * 0.35);
     });
 
@@ -714,9 +714,9 @@ test.describe('crossword rebus', () => {
      * A long rebus is clipped by its square and never widens it.
      *
      * Past about five characters the font-size hits its floor and the string is wider than the cell.
-     * It was supposed to clip — `overflow: hidden` and `max-width: 100%` were both already there —
-     * but the value is a flex item, and a flex item's `min-width` defaults to its min-content width,
-     * which for unbreakable text is the whole string. `min-width` beats `max-width`, so the span
+     * It was supposed to clip, since overflow: hidden and max-width: 100% were both already there,
+     * but the value is a flex item, and a flex item's min-width defaults to its min-content width,
+     * which for unbreakable text is the whole string. min-width beats max-width, so the span
      * pushed its cell wider than every other cell and bent the entire grid: at eight characters the
      * row visibly stepped out and every column crossing it went with it.
      *

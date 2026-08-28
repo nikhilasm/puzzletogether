@@ -1,5 +1,5 @@
 /**
- * The bridge between `RoomStore` and Lit: a `ReactiveController` that re-renders its host when the
+ * The bridge between RoomStore and Lit: a ReactiveController that re-renders its host when the
  * slice of state that host cares about changes.
  *
  * The selector matters for more than tidiness. Focus updates arrive at ~10/s per player, and a

@@ -1,8 +1,8 @@
 /**
  * The in-memory room map and the only module that touches it (ADR-0002).
  *
- * Every room carries `createdAt`, `lastActivityAt`, and a `timers` set, so the garbage collector
- * in `lifecycle.js` can delete a room without leaking a single timer — the defect that made the
+ * Every room carries createdAt, lastActivityAt, and a timers set, so the garbage collector
+ * in lifecycle.js can delete a room without leaking a single timer, the defect that made the
  * prototype's rooms immortal.
  */
 
@@ -26,20 +26,20 @@ import { generateRoomCode } from './codes.js';
 /**
  * @typedef {object} Room
  * @property {string} code - The 4-character room code.
- * @property {string} state - One of `ROOM_STATE`.
- * @property {string|null} hostId - Current host's `playerId`.
+ * @property {string} state - One of ROOM_STATE.
+ * @property {string|null} hostId - Current host's playerId.
  * @property {number} createdAt - Creation timestamp.
  * @property {number} lastActivityAt - Last time anything happened in the room.
  * @property {object} settings - Puzzle type, difficulty, size, and assist permissions.
  * @property {Map<string, Player>} players - Seats, connected or in their grace period.
- * @property {Map<string, string>} tokens - Reconnect token to `playerId` (ADR-0005).
+ * @property {Map<string, string>} tokens - Reconnect token to playerId (ADR-0005).
  * @property {number} streak - Consecutive puzzles solved by this room.
  * @property {import('../../shared/protocol.js').PuzzleDoc|null} doc - Current puzzle.
  * @property {string[]|null} solution - Current solution. Never serialised to a client.
  * @property {import('../../shared/protocol.js').BoardState} board - Authoritative board.
  * @property {number|null} startedAt - When the current puzzle began.
  * @property {number} assists - Check and Reveal uses this puzzle.
- * @property {Map<string, number>} focus - `playerId` to the cell they have focused.
+ * @property {Map<string, number>} focus - playerId to the cell they have focused.
  * @property {Set<NodeJS.Timeout>} timers - Every timer the room owns, cleared on delete.
  */
 
@@ -47,7 +47,7 @@ import { generateRoomCode } from './codes.js';
 const ROOMS = new Map();
 
 /**
- * Creates an empty room in the `select` state and stores it.
+ * Creates an empty room in the select state and stores it.
  *
  * @returns {Room} The new room, with a unique code and no players yet.
  */
