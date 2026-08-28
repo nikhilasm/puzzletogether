@@ -1,0 +1,74 @@
+/*
+ * Global styles. Everything else is scoped inside a component's static styles (code-style.md §9).
+ */
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html {
+    height: 100%;
+}
+
+body {
+    min-height: 100%;
+    margin: 0;
+    background-color: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-ui);
+    font-size: var(--text-base);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+}
+
+/*
+ * The graph-paper rule. It rides on a pseudo-element at ~3% so page content stays full-opacity,
+ * and it should be invisible until you look for it (brand.md §4).
+ */
+body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: var(--texture-opacity);
+    background-image:
+        repeating-linear-gradient(to right, var(--ink) 0 1px, transparent 1px var(--texture-gap)),
+        repeating-linear-gradient(to bottom, var(--ink) 0 1px, transparent 1px var(--texture-gap));
+}
+
+pt-app {
+    position: relative;
+    z-index: 1;
+    display: block;
+}
+
+:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    :root {
+        --motion-mark: 0ms;
+        --motion-presence: 0ms;
+        --motion-modal: 0ms;
+        --motion-celebrate: 0ms;
+        /*
+         * Collapsed for consistency, but the grid's wave is skipped outright rather than run at
+         * 0ms; see prefersReducedMotion in pt-celebration-layer.js. A duration this rule cannot
+         * reach holds the congrats modal back, and a silent pause is not a reduced animation.
+         */
+        --motion-celebrate-sweep: 0ms;
+        --motion-celebrate-pulse: 0ms;
+    }
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0ms !important;
+        transition-duration: 0ms !important;
+    }
+}

@@ -1,0 +1,213 @@
+/*
+ * The brand system as custom properties (brand.md).
+ *
+ * Every colour, font, radius, and spacing value in the app comes from here. A literal hex in a
+ * component is a review failure; that is what keeps the dark theme a token swap rather than an
+ * audit (code-style.md §9).
+ */
+
+:root {
+    /* Typography */
+    --font-display: 'Fraunces Variable', Georgia, serif;
+    --font-ui: 'Karla', system-ui, sans-serif;
+    --font-mono: 'DM Mono', ui-monospace, monospace;
+    --wordmark-variation: 'SOFT' 40, 'WONK' 1, 'opsz' 84;
+
+    /*
+     * The wordmark is the only text wide enough to overrun a phone. It holds its full size from
+     * about 500px up and shrinks below that, rather than being overridden per component.
+     */
+    --text-wordmark: clamp(1.75rem, 8.5vw, 2.75rem);
+    --text-xl: 1.5rem;
+    --text-lg: 1.25rem;
+    --text-base: 1rem;
+    --text-sm: 0.8rem;
+    --text-xs: 0.64rem;
+
+    /* Colour: light, "paper" */
+    --paper: #fbf8f3;
+    --paper-raised: #fffdf9;
+    --ink: #1f1d1a;
+    --graphite: #6b6660;
+    --rule: #ded7cb;
+    --accent: #0e8fa8;
+    --accent-text: #0b7a8f;
+    --pencil: #3767cc;
+    --correct: #2f7a4a;
+    --wrong: #c4442e;
+
+    /*
+     * A control that takes something away: Leave room, and nothing else yet.
+     *
+     * Deliberately its own token rather than --wrong, which it currently matches to the byte.
+     * --wrong means *this answer is incorrect*: it is grid feedback, it is transient, and
+     * brand.md §4 already refuses it for the caution triangle on the same grounds. Leaving a room
+     * is not a mistake, so borrowing the colour that says "mistake" would make the two indivisible
+     * the first time either wants to move. One of them will.
+     */
+    --danger: #c4442e;
+
+    /*
+     * Player identities. Values are per theme: a colour dark enough to clear 4.5:1 on cream is too
+     * dark to clear it on charcoal, so one set cannot serve both (see the contrast test).
+     */
+    --player-0: #d23434;
+    --player-1: #ae4b97;
+    --player-2: #a75d16;
+    --player-3: #3d7e32;
+    --player-4: #177c7c;
+    --player-5: #5b63c4;
+    --player-6: #7a5aa8;
+    --player-7: #8a6c24;
+    --player-8: #2073b0;
+    --player-9: #676b70;
+
+    /*
+     * The colour the local player's own cursor is drawn in.
+     *
+     * A board publishes its player's --player-N here, so the cell you are in is washed in the
+     * colour that is already *you* everywhere else in the room. It falls back to --accent, so a
+     * grid with no seat behind it still draws one.
+     *
+     * Only the cursor. A player's colour still never touches an entered value (brand.md §3).
+     */
+    --focus-color: var(--accent);
+
+    /*
+     * The wash behind a square the puzzle came with, rather than one a player filled in.
+     *
+     * Mixed from --ink, which means it needs no per-theme value to do the right thing: on cream
+     * --ink is near-black so the square goes very slightly darker, and on charcoal --ink is the
+     * warm off-white so it goes very slightly lighter. Both readings are "this one was printed".
+     *
+     * It carries no meaning on its own: the weight of the digit is what says "given" (brand.md §3),
+     * and this only has to separate the printed squares from the empty ones at a glance.
+     */
+    --given-fill: color-mix(in srgb, var(--ink) 5%, transparent);
+
+    /*
+     * Shape and line. Chrome is a softened rectangle and the puzzle is square; --radius-round is
+     * for things that are actually round, like the presence stripe's capsule ends, not for boxes.
+     */
+    --radius-control: 6px;
+    --radius-grid: 0;
+    --radius-modal: 12px;
+    --radius-round: 999px;
+    --border: 1.5px solid var(--rule);
+    --stroke-icon: 1.5;
+    --shadow-modal: 0 8px 32px rgb(31 29 26 / 0.18);
+    /*
+     * The subdivision line, and an opaque twin of it.
+     *
+     * Region rules are painted *over* the hairlines rather than replacing them, so a translucent
+     * heavy rule would show the hairline through its middle as a darker core. Any board that wants a
+     * heavy rule in the hairline's colour uses the solid mix instead: the same colour to the eye,
+     * with nothing to accumulate underneath it.
+     */
+    --grid-rule: color-mix(in srgb, var(--graphite) 30%, transparent);
+    --grid-rule-solid: color-mix(in srgb, var(--graphite) 30%, var(--paper));
+    --grid-hairline: 1px solid var(--grid-rule);
+
+    /*
+     * The frame around the whole grid. Its width is also the offset every gutter aligns itself by,
+     * so it is deliberately *not* the same token as the rules inside: a board that wants heavier
+     * internal rules must not silently move its own clue columns half a pixel.
+     */
+    --grid-frame-width: 2.5px;
+    --grid-heavy: var(--grid-frame-width) solid var(--ink);
+
+    /*
+     * The rules *inside* the grid, as a bare length and colour: they are painted as an overlay on
+     * top of the hairlines rather than as a border (see pt-cell).
+     *
+     * A board overrides these when its heavy lines divide nothing. A nonogram's bands are there to
+     * be counted against rather than to carry a rule about what may go where, and drawn in --ink
+     * they read as part of the picture being filled in.
+     */
+    --grid-heavy-width: 2.5px;
+    --grid-heavy-color: var(--ink);
+
+    /*
+     * How tall a cell's presence stripe is, as a fraction of the cell.
+     *
+     * A fraction rather than a length, because the arithmetic has to happen where --cell-size is
+     * known: a custom property resolves its var()s on the element that declares it, so a length
+     * computed here would be a 40px cell's stripe on every grid. The layer clamps it at both ends.
+     */
+    --presence-stripe: 0.09;
+
+    /* Texture */
+    --texture-gap: 24px;
+    --texture-opacity: 0.03;
+
+    /* Space */
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-6: 1.5rem;
+    --space-8: 2rem;
+    --space-12: 3rem;
+
+    --column-width: 640px;
+
+    /* Motion: collapsed to 0ms under prefers-reduced-motion, in base.css */
+    --motion-mark: 90ms;
+    --motion-presence: 120ms;
+    --motion-modal: 160ms;
+
+    /*
+     * The one arrival that is allowed to be seen.
+     *
+     * Every other modal in the app opens as quietly as it can: a confirm dialog is an interruption
+     * and should not celebrate itself. The congrats modal is the opposite: it is the room finishing
+     * something together, and 160ms of a 4px drift was so restrained that people reported it as
+     * appearing with no animation at all. Longer, and with a scale, so the panel reads as arriving.
+     */
+    --motion-celebrate: 260ms;
+
+    /*
+     * The grid's own celebration, which runs before that modal opens: every square pulses once in
+     * the room's colours, as a wave travelling from the top-left corner to the bottom-right.
+     *
+     * Two values because the wave is two things: how long the front takes to cross the grid, and
+     * how long one square is lit as it passes. The sweep is divided by the grid's span at the point
+     * of use, so every size takes the same total time; a 25×25 gets a faster wave rather than a
+     * longer wait. Their sum is CELEBRATION_MS in pt-celebration-layer.js, which is how long the
+     * modal is held back; change these and change that.
+     */
+    --motion-celebrate-sweep: 900ms;
+    --motion-celebrate-pulse: 600ms;
+}
+
+/*
+ * Dark: "evening desk". Selected by data-theme on <html>, which theme.js sets from the stored
+ * choice or the OS preference. No prefers-color-scheme rule here; the attribute is the one switch.
+ */
+:root[data-theme='dark'] {
+    --paper: #1a1815;
+    --paper-raised: #232019;
+    --ink: #ede7dc;
+    --graphite: #9a9288;
+    --rule: #3a342b;
+    --accent: #3fbbd4;
+    --accent-text: #3fbbd4;
+    --pencil: #7fa3e8;
+    --correct: #6fbf8b;
+    --wrong: #e88a76;
+    --danger: #e88a76;
+
+    /* A touch stronger on charcoal: the same 5% of a light ink reads fainter than 5% of a dark one. */
+    --given-fill: color-mix(in srgb, var(--ink) 8%, transparent);
+
+    --player-0: #da5858;
+    --player-1: #bc63a7;
+    --player-2: #c9701a;
+    --player-3: #4b9b3e;
+    --player-4: #1d9a9a;
+    --player-5: #757ccd;
+    --player-6: #9176b7;
+    --player-7: #a8842c;
+    --player-8: #4fa8dd;
+    --player-9: #9ea4ab;
+}

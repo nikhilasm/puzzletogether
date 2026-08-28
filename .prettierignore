@@ -1,0 +1,11 @@
+# Build output and dependencies.
+node_modules
+client/dist
+
+# Editor and tool state, not ours to format.
+.claude
+
+# Prose. Prettier reflows Markdown paragraphs and re-lays-out tables, which costs more in
+# readability than it buys in consistency: the docs are read far more often than they are diffed.
+# The 4-space rule from code-style.md §1 still applies to them; review enforces it.
+*.md

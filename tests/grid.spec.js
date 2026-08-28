@@ -1,0 +1,316 @@
+/**
+ * How the grid is drawn: cell geometry, region rules, pencil-mark positions, presence stripes, and
+ * the cursor's own colour.
+ *
+ * These are the assertions that a screenshot would have made for us if screenshots were reliable
+ * across engines. Every one of them corresponds to something that went wrong once: cells a pixel
+ * out in Firefox, marks that moved when their neighbours changed, dots that only landed on the top
+ * row. They are worth their runtime in both browsers.
+ */
+
+import { expect, test } from '@playwright/test';
+
+import { cellBoxes, createRoom, firstEditableCell, joinRoom, startPuzzle } from './helpers.js';
+
+/** Positions of one cell's pencil marks, relative to that cell's own top-left corner. */
+function markPositions(page, index) {
+    return page.locator(`pt-cell >> nth=${index}`).evaluate((cell) => {
+        const origin = cell.getBoundingClientRect();
+        return Object.fromEntries(
+            [...cell.shadowRoot.querySelectorAll('.marks span')].map((span) => {
+                const box = span.getBoundingClientRect();
+                return [
+                    span.textContent.trim(),
+                    {
+                        x: Math.round(box.x - origin.x),
+                        y: Math.round(box.y - origin.y),
+                    },
+                ];
+            }),
+        );
+    });
+}
+
+test.describe('cell geometry', () => {
+    test.beforeEach(async ({ page }) => {
+        await createRoom(page);
+        await startPuzzle(page);
+    });
+
+    test('every cell is the same size, region borders included', async ({ page }) => {
+        const boxes = await cellBoxes(page);
+        expect(boxes).toHaveLength(16);
+
+        const widths = new Set(boxes.map((box) => box.width.toFixed(2)));
+        const heights = new Set(boxes.map((box) => box.height.toFixed(2)));
+        expect(widths.size, `cell widths: ${[...widths]}`).toBe(1);
+        expect(heights.size, `cell heights: ${[...heights]}`).toBe(1);
+    });
+
+    test('cells stay square', async ({ page }) => {
+        const [box] = await cellBoxes(page);
+        expect(Math.abs(box.width - box.height)).toBeLessThan(0.5);
+    });
+
+    test('rows share a baseline and columns share an edge', async ({ page }) => {
+        const boxes = await cellBoxes(page);
+
+        for (let row = 0; row < 4; row += 1) {
+            const tops = boxes.slice(row * 4, row * 4 + 4).map((box) => box.y.toFixed(2));
+            expect(new Set(tops).size, `row ${row} tops: ${tops}`).toBe(1);
+        }
+        for (let col = 0; col < 4; col += 1) {
+            const lefts = [0, 1, 2, 3].map((row) => boxes[row * 4 + col].x.toFixed(2));
+            expect(new Set(lefts).size, `column ${col} lefts: ${lefts}`).toBe(1);
+        }
+    });
+
+    test('region rules are drawn over the hairlines, not beside them', async ({ page }) => {
+        // A cell on a region boundary keeps the same 1px border as every other cell; the heavy
+        // rule is an overlay. That is what stops it mitring with the hairline on the next edge.
+        const heavy = await page
+            .locator('pt-cell[heavy-right]')
+            .first()
+            .evaluate((cell) => {
+                const overlay = getComputedStyle(cell, '::after');
+                return {
+                    border: getComputedStyle(cell).borderRightWidth,
+                    overlayWidth: overlay.width,
+                    overlayContent: overlay.content,
+                };
+            });
+        expect(heavy.border).toBe('1px');
+        expect(heavy.overlayContent).not.toBe('none');
+        expect(Number.parseFloat(heavy.overlayWidth)).toBeGreaterThan(1);
+    });
+});
+
+test.describe('pencil marks', () => {
+    test('hold their position as other marks come and go', async ({ page }) => {
+        await createRoom(page);
+        await startPuzzle(page);
+
+        const cell = await firstEditableCell(page);
+        await page.locator(`pt-cell >> nth=${cell}`).click();
+        await page.locator('pt-mode-toggle .action').click();
+
+        await page.locator('pt-keypad .digits button', { hasText: '4' }).click();
+        await expect.poll(async () => Object.keys(await markPositions(page, cell))).toEqual(['4']);
+        const alone = (await markPositions(page, cell))['4'];
+
+        await page.locator('pt-keypad .digits button', { hasText: '1' }).click();
+        await page.locator('pt-keypad .digits button', { hasText: '2' }).click();
+        await expect
+            .poll(async () => Object.keys(await markPositions(page, cell)).sort())
+            .toEqual(['1', '2', '4']);
+
+        expect((await markPositions(page, cell))['4']).toEqual(alone);
+
+        // And back down again: removing its neighbours must not move it either.
+        await page.locator('pt-keypad .digits button', { hasText: '1' }).click();
+        await expect
+            .poll(async () => Object.keys(await markPositions(page, cell)).sort())
+            .toEqual(['2', '4']);
+        expect((await markPositions(page, cell))['4']).toEqual(alone);
+    });
+
+    test('lay out in a grid wide and tall enough for the whole alphabet', async ({ page }) => {
+        await createRoom(page);
+        await startPuzzle(page);
+
+        const tracks = await page.locator('pt-sudoku-board').evaluate((board) => ({
+            cols: board.markColumns,
+            rows: board.markRows,
+            alphabet: board.doc.meta.alphabet.length,
+        }));
+        expect(tracks.cols * tracks.rows).toBeGreaterThanOrEqual(tracks.alphabet);
+    });
+});
+
+test.describe('presence stripes', () => {
+    test('land inside the cell they belong to, on every row', async ({ page, browser }) => {
+        const code = await createRoom(page);
+        await startPuzzle(page);
+
+        const context = await browser.newContext();
+        const guest = await context.newPage();
+        await joinRoom(guest, 'Grace', code);
+        await expect(guest.locator('pt-cell').first()).toBeVisible();
+
+        // The bottom-right cell: the furthest thing from the top row, where this used to work.
+        const target = 15;
+        await guest.locator(`pt-cell >> nth=${target}`).click();
+
+        const who = page.locator('pt-presence-layer .who').first();
+        await expect(who).toBeVisible();
+
+        const placement = await page.locator('pt-sudoku-board').evaluate((board, index) => {
+            const cells = board.shadowRoot.querySelectorAll('pt-cell');
+            const cell = cells[index].getBoundingClientRect();
+            const layer = board.shadowRoot.querySelector('pt-presence-layer');
+            const mark = layer.shadowRoot.querySelector('.who').getBoundingClientRect();
+            return {
+                cell: { x: cell.x, y: cell.y, right: cell.right, bottom: cell.bottom },
+                stripe: { x: mark.x + mark.width / 2, y: mark.y + mark.height / 2 },
+            };
+        }, target);
+
+        expect(placement.stripe.x).toBeGreaterThan(placement.cell.x);
+        expect(placement.stripe.x).toBeLessThan(placement.cell.right);
+        expect(placement.stripe.y).toBeGreaterThan(placement.cell.y);
+        expect(placement.stripe.y).toBeLessThan(placement.cell.bottom);
+
+        await context.close();
+    });
+
+    /**
+     * The stripe subdivides a fixed footprint rather than growing, which is what a row of dots did
+     * not do. So "big enough to see" is now two measurements: it stays thick enough to read as a
+     * colour, and it spans the cell rather than a corner of it.
+     */
+    test('are big enough to see', async ({ page, browser }) => {
+        const code = await createRoom(page);
+        await startPuzzle(page);
+
+        const context = await browser.newContext();
+        const guest = await context.newPage();
+        await joinRoom(guest, 'Grace', code);
+        await expect(guest.locator('pt-cell').first()).toBeVisible();
+        await guest.locator('pt-cell >> nth=5').click();
+
+        await expect(page.locator('pt-presence-layer .who').first()).toBeVisible();
+
+        const size = await page.locator('pt-sudoku-board').evaluate((board) => {
+            const cell = board.shadowRoot.querySelector('pt-cell').getBoundingClientRect();
+            const layer = board.shadowRoot.querySelector('pt-presence-layer');
+            // Laid-out size, not the painted box: the stripe arrives on a scale animation, and a
+            // bounding box caught mid-flight measures the animation rather than the stripe.
+            const style = getComputedStyle(layer.shadowRoot.querySelector('.who'));
+            return {
+                height: Number.parseFloat(style.height),
+                width: Number.parseFloat(style.width),
+                cell: cell.width,
+            };
+        });
+
+        expect(size.height).toBeGreaterThanOrEqual(3);
+        expect(size.width).toBeGreaterThan(size.cell / 2);
+
+        await context.close();
+    });
+
+    /**
+     * One segment per player, however many there are: the cap and its +n are gone, because a
+     * stripe divides where a row of dots had to queue.
+     */
+    test('give every player in the cell a segment of their own', async ({ page, browser }) => {
+        const code = await createRoom(page);
+        await startPuzzle(page);
+
+        // A context each: the reconnect token is per-room in localStorage, so four guests sharing
+        // one would be four tabs fighting over a single seat.
+        const contexts = [];
+        for (const name of ['Grace', 'Alan', 'Edsger', 'Barbara']) {
+            const context = await browser.newContext();
+            const guest = await context.newPage();
+            await joinRoom(guest, name, code);
+            await expect(guest.locator('pt-cell').first()).toBeVisible();
+            await guest.locator('pt-cell >> nth=5').click();
+            contexts.push(context);
+        }
+
+        // Four other players on one square: four bands, none of them an overflow count.
+        await expect.poll(() => page.locator('pt-presence-layer .who').count()).toBe(4);
+
+        const widths = await page
+            .locator('pt-presence-layer')
+            .evaluate((layer) =>
+                [...layer.shadowRoot.querySelectorAll('.who')].map(
+                    (el) => el.getBoundingClientRect().width,
+                ),
+            );
+        // Equal shares of the same stripe, so no player's presence is louder than another's.
+        for (const width of widths) expect(Math.abs(width - widths[0])).toBeLessThan(1);
+
+        for (const context of contexts) await context.close();
+    });
+
+    test('recolour the moment their player changes colour', async ({ page, browser }) => {
+        const code = await createRoom(page);
+        await startPuzzle(page);
+
+        const context = await browser.newContext();
+        const guest = await context.newPage();
+        await joinRoom(guest, 'Grace', code);
+        await expect(guest.locator('pt-cell').first()).toBeVisible();
+        await guest.locator('pt-cell >> nth=5').click();
+
+        const stripeColor = () =>
+            page
+                .locator('pt-presence-layer .who')
+                .first()
+                .evaluate((el) => getComputedStyle(el).backgroundColor);
+
+        await expect(page.locator('pt-presence-layer .who')).toBeVisible();
+        const before = await stripeColor();
+
+        // No reselecting the cell afterwards: the roster changing is the only event involved.
+        await guest.locator('pt-player-chips button.chip').click();
+        await guest.locator('pt-player-chips .swatch').nth(6).click();
+
+        await expect.poll(stripeColor).not.toBe(before);
+        await context.close();
+    });
+});
+
+test.describe('the cursor', () => {
+    /**
+     * Your own cursor is drawn in your own colour, and the row and column it implies in a lighter
+     * wash of the same: the two questions a solver asks of a grid ("where am I", "what constrains
+     * this square") answered as one idea at two strengths.
+     */
+    test('is washed in the local player’s colour, and its lines more faintly', async ({ page }) => {
+        await createRoom(page);
+        await startPuzzle(page);
+        await page.locator('pt-cell >> nth=5').click();
+
+        const washes = await page.locator('pt-sudoku-board').evaluate((board) => {
+            const cells = [...board.shadowRoot.querySelectorAll('pt-cell')];
+            /*
+             * The wash is a background-*image* now, not a background-color.
+             *
+             * The two are separate longhands so that a given square shows its faint printed ground
+             * *and* the cursor wash on top, rather than one replacing the other and blinking out
+             * every time somebody moves. That means the colour to read here is the gradient's, and
+             * reading backgroundColor instead returns the given tint on every cell, which is why
+             * this used to see 0.05 for the cursor and 0.05 for its column and call them equal.
+             */
+            const alpha = (cell) => {
+                const image = getComputedStyle(cell).backgroundImage;
+                if (image === 'none') return 0;
+                // Chromium serialises a resolved color-mix as color(srgb r g b / a) and Firefox
+                // as rgba(r, g, b, a). Read the alpha out of whichever arrived.
+                const slashed = image.match(/\/\s*([\d.]+)\s*\)/);
+                if (slashed) return Number.parseFloat(slashed[1]);
+                const commas = image.match(/rgba\([^)]*,\s*([\d.]+)\s*\)/);
+                return commas ? Number.parseFloat(commas[1]) : 1;
+            };
+            const style = getComputedStyle(board);
+            return {
+                // The host is the room's first seat, so their colour is index 0.
+                focus: style.getPropertyValue('--focus-color').trim(),
+                own: style.getPropertyValue('--player-0').trim(),
+                accent: style.getPropertyValue('--accent').trim(),
+                selected: alpha(cells[5]),
+                // Cell 1 shares a column with cell 5 on a 4×4; cell 10 shares neither.
+                line: alpha(cells[1]),
+                elsewhere: alpha(cells[10]),
+            };
+        });
+
+        expect(washes.focus).not.toBe(washes.accent);
+        expect([washes.own, 'var(--player-0)']).toContain(washes.focus);
+        expect(washes.selected).toBeGreaterThan(washes.line);
+        expect(washes.line).toBeGreaterThan(washes.elsewhere);
+    });
+});
