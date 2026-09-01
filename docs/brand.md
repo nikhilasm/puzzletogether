@@ -197,6 +197,8 @@ The mock's heavy cage borders are a signature. Keep them emphatic.
 
 **Region rules are an overlay, not a border**, and every cell keeps the same 1px hairlines whatever region it sits in. As a border the heavy rule changed the cell's box, putting rows a pixel out in Firefox, and it mitred with the hairline on the adjoining edge, notching the rule at every crossing. A line that carries meaning should not also carry geometry.
 
+**Type on ink: the kakuro clue square.** A kakuro prints its two sums on a blocked square, which is `--ink` like every other type's blocks, so both numbers are `--paper` and the diagonal dividing them is `--paper` at 55%. This is the only place in the app where text sits on an ink ground, and it is deliberate rather than incidental: the square *is* the clue, so it is drawn as a filled tile with the puzzle written on it, not as a black square with a label stuck in a corner. The rule is softened because it divides the two sums rather than competing with them ([ADR-0014](adr/0014-a-clue-cell-carries-two-sums.md)).
+
 **Heavy rules are not always `--ink`.** Sudoku's region rules are, because they divide the puzzle into parts that carry a rule. A nonogram's bands divide nothing and exist to be counted against, so they are the hairline's colour at three times its weight; in `--ink` they read as thin filled squares competing with the picture. `--grid-heavy-color` and `--grid-heavy-width` are the per-board override; `--grid-frame-width` is separate, because the outer frame is the puzzle's edge in every type and the gutters align by it.
 
 ### Texture
@@ -221,7 +223,9 @@ It should be invisible until you look for it. If it becomes noticeable at a glan
 
 ### Icons
 
-Eighteen, drawn as inline SVG in `client/ui/icons.js`: erase, undo, pencil (Notes), sun, moon, leave, close, check, reveal, puzzles (Puzzle Select), fill, warning, next, rebus, backspace, list (Clues), info (About), start. Line drawings on a 24×24 box inheriting `currentColor` and `--stroke-icon`, so an icon inside a disabled control greys out with it and neither theme needs a second asset.
+Twenty-one, drawn as inline SVG in `client/ui/icons.js`: erase, undo, pencil (Notes), sun, moon, leave, close, check, reveal, puzzles (Puzzle Select), fill, warning, next, rebus, backspace, list (Clues), info (About), help (How to play), flag (Report an issue), github, start. Line drawings on a 24×24 box inheriting `currentColor` and `--stroke-icon`, so an icon inside a disabled control greys out with it and neither theme needs a second asset.
+
+`github` is the one exception, and the exception is the point: it is a borrowed mark on a 16×16 box, filled rather than stroked, because a logo is recognised before it is read and an outlined approximation of it is only a worse version of somebody else's drawing.
 
 ```css
 --stroke-icon: 1.5;   /* the border weight, so icons and rules read as one hand */
@@ -231,10 +235,11 @@ Eighteen, drawn as inline SVG in `client/ui/icons.js`: erase, undo, pencil (Note
 
 - **Pressed constantly**: Notes, Rebus, the three brushes, Erase, Undo, Clues, Backspace. In the pinned panel at thumb size, label **under** the icon. Four of them come to 236px against the 296px a 320px screen has to give. The label is `--text-sm`, stepping to `--text-xs` below 30rem. Their icons are a fixed `1rem` rather than `iconStyle`'s `1.25em`, so they match each other rather than whichever shadow root's font size they inherit.
 - **Pressed once or twice**: Puzzle Select, Check, Reveal, Leave Room. Down the page, label beside the icon.
+- **Peripheral**: the footer's Theme, About, GitHub, and Report. One bar at the foot of the page, drawn with the panel's own `.action`, label under the icon. Theme's label is its destination ("Dark"), like its name and its glyph; Report's is one word against a fuller `aria-label`, because four labels share a 320px row and "Report" alone does not say what of. Asserted in `tests/game.spec.js`.
 
-Two icons stand alone, both peripheral: the footer's theme and About controls, on a line of their own with nothing to align to. They are 44px squares carrying `aria-label` and `title`, asserted in `tests/game.spec.js`. Two others have never had visible words and put the meaning in the accessible name: the host's remove control, and the warning triangle on a cautioned size.
+Three icons stand alone, and put the meaning entirely in the accessible name: the host's remove control, the warning triangle on a cautioned size, and the `?` on the puzzle header. The last is wordless because a question mark is already a word: it has offered to answer "how does this work" on every interface for thirty years, and a labelled button on the caption would compete with the caption. It is a question mark rather than the ⓘ it used to be because the caption beside it already says what the puzzle *is*; what is still wanted from it is the rules. Borderless and `--graphite` in a 2.25rem box, which is the size a secondary icon-only control takes here, the dialogs' close controls included.
 
-Every icon is `aria-hidden`; the control around it has a name. A nineteenth icon should be a decision, not a reflex.
+Every icon is `aria-hidden`; the control around it has a name. A twenty-second icon should be a decision, not a reflex.
 
 **A caution is not an error.** The warning triangle marks a choice that works and costs something, so it is `--graphite` like any other note, never `--wrong`, and it never disables what it marks.
 
@@ -351,6 +356,7 @@ All five have been run:
 | A pressed setting gets an accent border | No accent border, because it read as a stuck focus ring | That finding applied to a control that already had a knob saying the same thing; the ground filling at the same time settles the ambiguity | Phase 4b, 2026-08-09 |
 | Every panel control carries a label under its icon | Wordless 44px icon squares in the panel | The icon-only bar was meant to buy a row of vertical space and bought none: panel height is set by the key rows below the bar ([ADR-0012](adr/0012-a-label-under-every-icon.md)) | Phase 4b, 2026-08-09 |
 | Hover rules sit behind `@media (hover: hover)` | Unguarded `:hover` | A touch browser holds emulated hover on the last-tapped element, leaving an accent border stuck on a toggle | Phase 4b, 2026-08-09 |
+| The footer is one bar of four labelled actions | Two wordless 44px squares over a row of links at `--text-xs` | The split said "a button changes the app, a link leaves it" in a difference of *size*, which reads as a difference in importance: two footnotes under two controls nobody could name without hovering. The distinction survives in the markup, where the two that leave are still anchors | Phase 4b, 2026-08-31 |
 | The theme control is an action that names its destination | A labelled `role="switch"`, and before that a button whose label changed under you | A toggle made the icon genuinely ambiguous: a sun reads as "you are in light" as easily as "press for light" | Phase 4b, 2026-08-09 |
 | Region rules are drawn as an overlay | A heavier border on the cell | As a border it changed the cell's box, misaligning rows by 1px in Firefox, and mitred with the hairline, notching the rule at every crossing | Phase 2 |
 | The grid is opaque | The page texture showed through the cells | It read as a second, unaligned ruling inside the real one | Phase 3 |

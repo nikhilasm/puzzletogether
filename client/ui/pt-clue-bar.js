@@ -95,16 +95,18 @@ export class PtClueBar extends LitElement {
             }
 
             /*
-             * One line, cut off rather than wrapped. A strip that grows a second line when the clue is
-             * long would move the keys under it every few entries, and the full text is a tap away in
-             * the list, whereas keys that shift under a thumb are unusable.
+             * Wrapped, not cut off. A clue a solver cannot finish reading is a clue they have to
+             * leave the screen for, and a long one is exactly when they need it most, so the strip
+             * grows a line rather than an ellipsis. The keys move down with it, which the panel
+             * already handles: it measures itself and the page reserves what it reports, so the
+             * grid above stays whole either way.
+             *
+             * A single word longer than the strip breaks rather than pushing the arrow off the end.
              */
             .text {
                 flex: 1;
-                overflow: hidden;
                 min-width: 0;
-                white-space: nowrap;
-                text-overflow: ellipsis;
+                overflow-wrap: break-word;
             }
 
             .next {

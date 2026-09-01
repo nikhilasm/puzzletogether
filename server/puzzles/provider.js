@@ -12,19 +12,21 @@ import { SIZES_BY_TYPE, DIFFICULTIES, PUZZLE_TYPES } from '../../shared/constant
 
 import { bankCatalog, loadBank, takeFromBank } from './bank.js';
 import crossword from './crossword/index.js';
+import kakuro from './kakuro/index.js';
 import kenken from './kenken/index.js';
 import nonogram from './nonogram/index.js';
 import { GeneratorPool } from './pool.js';
 import sudoku from './sudoku/index.js';
 
-/** Puzzle modules by type. A fifth type is one import and one entry. */
-const MODULES = { sudoku, kenken, nonogram, crossword };
+/** Puzzle modules by type. A further type is one import and one entry. */
+const MODULES = { sudoku, kenken, nonogram, kakuro, crossword };
 
 /** Which producer serves each type, the whole of what getPuzzle has to decide. */
 const PROVIDER_BY_TYPE = {
     sudoku: 'generator',
     kenken: 'generator',
     nonogram: 'generator',
+    kakuro: 'generator',
     crossword: 'bank',
 };
 

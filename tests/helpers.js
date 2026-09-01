@@ -60,7 +60,9 @@ export async function startPuzzle(page, side = '4×4', type = 'Sudoku') {
 
 /** The board element on screen, whichever type it is. */
 export function boardOf(page) {
-    return page.locator('pt-sudoku-board, pt-kenken-board, pt-nonogram-board, pt-crossword-board');
+    return page.locator(
+        'pt-sudoku-board, pt-kenken-board, pt-nonogram-board, pt-kakuro-board, pt-crossword-board',
+    );
 }
 
 /** The roster as the page currently holds it: the component's own property, not its DOM. */

@@ -253,3 +253,42 @@ test.describe('filtering the list', () => {
         expect((await resolvedSpec(page)).puzzleId).toBe('b');
     });
 });
+
+test.describe('describing a generated puzzle', () => {
+    test.beforeEach(async ({ page }) => {
+        await createRoom(page);
+    });
+
+    /** One of the picker's fieldsets, addressed by its legend. */
+    const group = (page, legend) =>
+        page.locator('pt-puzzle-picker fieldset').filter({ hasText: legend });
+
+    /**
+     * The same rule the card list obeys: what the picker submits is what it is showing.
+     *
+     * A grid below its type's floor cannot be rated, so the buttons grey out and the panel says the
+     * grids are always easy. The spec has to follow. Otherwise picking hard at 9×9 and dropping to
+     * 4×4 leaves hard in the submitted spec with no enabled button to take it back, and the server
+     * spends its whole redraw budget on a band no 4×4 sudoku can have.
+     */
+    test('drops the difficulty to easy on a grid too small to rate', async ({ page }) => {
+        const level = (label) => group(page, 'Difficulty').locator('.option', { hasText: label });
+
+        await level('Hard').click();
+        expect((await resolvedSpec(page)).difficulty).toBe('hard');
+
+        await group(page, 'Size').locator('.option', { hasText: '4×4' }).click();
+
+        await expect(level('Hard')).toBeDisabled();
+        await expect(page.locator('pt-puzzle-picker .note')).toHaveText(
+            'grids below 9×9 are always easy',
+        );
+        expect((await resolvedSpec(page)).difficulty).toBe('easy');
+
+        // ...and going back up to a size that can be rated leaves easy chosen rather than restoring
+        // a difficulty the host can no longer see they asked for.
+        await group(page, 'Size').locator('.option', { hasText: '9×9' }).click();
+        await expect(level('Easy')).toHaveAttribute('aria-pressed', 'true');
+        expect((await resolvedSpec(page)).difficulty).toBe('easy');
+    });
+});

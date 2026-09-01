@@ -50,7 +50,7 @@ test.describe('shape and focus', () => {
             'pt-keypad .actions button',
             'pt-player-chips .chip',
             'pt-mode-toggle .action',
-            'footer .icon-button',
+            'footer .action',
             'pt-game .puzzle-actions button',
         ]) {
             expect(await radius(selector), selector).toBe('6px');
@@ -64,25 +64,6 @@ test.describe('shape and focus', () => {
             .evaluate((el) => getComputedStyle(el).backgroundColor);
         expect(frame).not.toBe('rgba(0, 0, 0, 0)');
         expect(await radius('pt-cell')).toBe('0px');
-    });
-
-    /**
-     * The footer's two wordless controls are 44px squares.
-     *
-     * They are the only icon-only controls left in the app; the panel's carry words. Nothing in
-     * the CSS fails loudly if a future one forgets its size; it would simply
-     * shrink to its icon and still work for anyone with a mouse.
-     */
-    test('every icon-only control is a 44px square', async ({ page }) => {
-        const boxes = await page
-            .locator('.icon-button')
-            .evaluateAll((els) => els.map((el) => el.getBoundingClientRect()));
-
-        expect(boxes.length).toBe(2);
-        for (const box of boxes) {
-            expect(Math.round(box.width)).toBe(44);
-            expect(Math.round(box.height)).toBe(44);
-        }
     });
 
     /**
@@ -106,7 +87,7 @@ test.describe('shape and focus', () => {
             'pt-keypad .digits button',
             'pt-keypad .actions button',
             'pt-mode-toggle .action',
-            'footer .icon-button',
+            'footer .action',
             'pt-sudoku-board .grid',
             'pt-game .puzzle-actions button',
             // Leave room is red at rest and accent when focused: one ring, whatever the control.
@@ -114,7 +95,7 @@ test.describe('shape and focus', () => {
         ];
 
         for (const theme of ['light', 'dark']) {
-            if (theme === 'dark') await page.locator('footer .icon-button').first().click();
+            if (theme === 'dark') await page.locator('footer .action').first().click();
             const accent = await page.evaluate(() =>
                 getComputedStyle(document.documentElement).getPropertyValue('--accent').trim(),
             );
@@ -132,8 +113,8 @@ test.describe('shape and focus', () => {
     }) => {
         await expect(page.locator('pt-keypad .action svg.icon')).toHaveCount(3);
         await expect(page.locator('pt-mode-toggle svg.icon')).toHaveCount(1);
-        // Theme and About, both wordless now.
-        await expect(page.locator('footer svg.icon')).toHaveCount(2);
+        // Theme, About, GitHub, Report: one bar, one icon each.
+        await expect(page.locator('footer svg.icon')).toHaveCount(4);
         await expect(page.locator('pt-game .puzzle-actions button.danger svg.icon')).toHaveCount(1);
 
         const total = await page.locator('svg.icon').count();
@@ -185,16 +166,6 @@ test.describe('shape and focus', () => {
             });
 
         expect(box.labelTop).toBeGreaterThanOrEqual(box.iconBottom - 1);
-    });
-
-    /** The footer's two wordless controls say what they are on hover. */
-    test('every icon-only control carries a title', async ({ page }) => {
-        const titles = await page
-            .locator('.icon-button')
-            .evaluateAll((els) => els.map((el) => el.getAttribute('title')));
-
-        expect(titles.length).toBe(2);
-        for (const title of titles) expect(title).toBeTruthy();
     });
 
     /**
@@ -286,8 +257,8 @@ test.describe('shape and focus', () => {
     test('nothing is stranded underneath the panel', async ({ page }) => {
         await page.mouse.wheel(0, 5000);
 
-        // The last thing on the page is the footer's link row, which is below the game screen and
-        // so below any spacer the game screen could have reserved for itself.
+        // The last thing on the page is the footer's action bar, which is below the game screen
+        // and so below any spacer the game screen could have reserved for itself.
         const clear = async (selector) => {
             const panel = await page.locator('pt-keypad').boundingBox();
             const box = await page.locator(selector).boundingBox();
@@ -297,7 +268,7 @@ test.describe('shape and focus', () => {
         await expect
             .poll(() => clear('pt-game .puzzle-actions button.danger'))
             .toBeGreaterThanOrEqual(0);
-        await expect.poll(() => clear('footer .footer-links')).toBeGreaterThanOrEqual(0);
+        await expect.poll(() => clear('footer .footer-actions')).toBeGreaterThanOrEqual(0);
     });
 });
 
@@ -472,39 +443,51 @@ test.describe('the footer', () => {
     test('the theme button switches, names the switch, and remembers it', async ({ page }) => {
         await createRoom(page);
 
-        const theme = page.locator('footer .icon-button').first();
+        const theme = page.locator('footer .action').first();
         await expect(theme).toHaveAttribute('aria-label', 'Switch to dark theme');
         expect(await theme.getAttribute('aria-pressed'), 'not a toggle').toBeNull();
+
+        await expect(theme.locator('.action-label')).toHaveText('Dark');
 
         await theme.click();
         await expect
             .poll(() => page.evaluate(() => document.documentElement.dataset.theme))
             .toBe('dark');
         await expect(theme).toHaveAttribute('aria-label', 'Switch to light theme');
+        await expect(theme.locator('.action-label')).toHaveText('Light');
         expect(await page.evaluate(() => localStorage.getItem('pt:theme'))).toBe('dark');
     });
 
     /**
-     * The two links out of the app, on one line, under the two buttons that stay in it.
+     * Four controls on one row, each with its word, each big enough for a thumb.
      *
-     * That division is the footer's whole organising idea: a button changes the app, a link leaves
-     * it. Asserting they share a row is asserting the second half is drawn as one thing.
+     * The bar replaced two wordless squares over two links set a step smaller, so what is asserted
+     * here is what that swap was for: one row, and nothing on it that has to be hovered to be
+     * named. The two that leave the app are still anchors, which is the one part of the old
+     * division that survived: a button changes the app, a link leaves it, and only the drawing
+     * stopped saying so.
      */
-    test('the links sit side by side below the buttons', async ({ page }) => {
+    test('the footer is one bar of four labelled actions', async ({ page }) => {
         await createRoom(page);
 
-        const links = page.locator('footer .footer-links a');
-        await expect(links).toHaveText(['GitHub', 'Report an issue']);
+        const actions = page.locator('footer .footer-actions > *');
+        await expect(actions.locator('.action-label')).toHaveText([
+            'Dark',
+            'About',
+            'GitHub',
+            'Report',
+        ]);
 
-        const boxes = await links.evaluateAll((els) =>
-            els.map((el) => Math.round(el.getBoundingClientRect().top)),
+        const boxes = await actions.evaluateAll((els) =>
+            els.map((el) => el.getBoundingClientRect()),
         );
-        expect(new Set(boxes).size, 'both links share a row').toBe(1);
+        expect(new Set(boxes.map((box) => Math.round(box.top))).size, 'one row').toBe(1);
+        for (const box of boxes) expect(box.height).toBeGreaterThanOrEqual(44);
 
-        const actions = await page
-            .locator('footer .footer-actions')
-            .evaluate((el) => el.getBoundingClientRect().bottom);
-        expect(boxes[0]).toBeGreaterThanOrEqual(Math.round(actions));
+        const links = await actions.evaluateAll((els) =>
+            els.filter((el) => el.tagName === 'A').map((el) => el.getAttribute('target')),
+        );
+        expect(links, 'the two that leave are anchors, in a new tab').toEqual(['_blank', '_blank']);
     });
 
     /**
@@ -514,7 +497,7 @@ test.describe('the footer', () => {
     test('About opens, states the version, and closes', async ({ page }) => {
         await createRoom(page);
 
-        await page.locator('footer .icon-button').last().click();
+        await page.locator('footer .action').nth(1).click();
         const dialog = page.locator('pt-about dialog');
         await expect(dialog).toBeVisible();
         await expect(dialog).toContainText('PuzzleTogether');
@@ -522,6 +505,81 @@ test.describe('the footer', () => {
 
         await page.keyboard.press('Escape');
         await expect(dialog).not.toBeVisible();
+    });
+});
+
+test.describe('how to play', () => {
+    /**
+     * The rules of the puzzle, opened from the caption that names it.
+     *
+     * The entry point is on the header and not in the puzzle-action row, because that row is
+     * defined by scope: everything in it acts on the room's puzzle or on your seat in it, and help
+     * acts on nothing. Both halves of that are asserted here, since the row staying at four buttons
+     * is the part a later change would quietly undo.
+     */
+    test('opens from the header, states the rules, and closes', async ({ page }) => {
+        await createRoom(page);
+        await startPuzzle(page);
+
+        await expect(page.locator('pt-game .puzzle-actions button')).toHaveText([
+            'Puzzle Select',
+            'Check',
+            'Reveal',
+            'Leave Room',
+        ]);
+
+        const help = page.locator('pt-game .header .help');
+        await expect(help).toHaveAttribute('aria-label', 'How to play Sudoku');
+        await help.click();
+
+        const dialog = page.locator('pt-help dialog');
+        await expect(dialog).toBeVisible();
+        await expect(dialog.locator('h2')).toHaveText('How to play Sudoku');
+        await expect(dialog.locator('.goal')).toContainText('no digit repeats');
+        await expect(dialog.locator('li')).toHaveCount(3);
+        // The half that is about this app rather than about sudoku: the one setting beside the keys.
+        await expect(dialog.locator('.input')).toContainText('Notes');
+
+        await page.keyboard.press('Escape');
+        await expect(dialog).not.toBeVisible();
+    });
+
+    /**
+     * The caption is centred on the caption, not on the caption plus its control.
+     *
+     * Flex centring divides the row between everything in it, so without the balancing item the
+     * words sit half a control left of centre: small enough to read as nothing on one puzzle, and
+     * plain as soon as the name changes length beside a grid that is centred properly.
+     */
+    test('the header text is centred as though the control were not there', async ({ page }) => {
+        await createRoom(page);
+        await startPuzzle(page);
+
+        const centres = await page.locator('pt-game .header').evaluate((header) => {
+            const centre = (el) => {
+                const box = el.getBoundingClientRect();
+                return box.x + box.width / 2;
+            };
+            return {
+                header: centre(header),
+                title: centre(header.querySelector('span:not(.balance)')),
+            };
+        });
+
+        // A pixel of tolerance: the two engines round a half-width differently, which is the whole
+        // reason this row is centred as flex items rather than aligned against a baseline.
+        expect(Math.abs(centres.header - centres.title)).toBeLessThanOrEqual(1);
+    });
+
+    /** The same sentence the dialog opens with, where the host is choosing what to start. */
+    test('the picker says what a type asks of a solver', async ({ page }) => {
+        await createRoom(page);
+
+        const goal = page.locator('pt-puzzle-picker .goal');
+        await expect(goal).toContainText('no digit repeats');
+
+        await page.locator('pt-puzzle-picker .option', { hasText: 'Nonogram' }).click();
+        await expect(goal).toContainText('a picture comes out of the grid');
     });
 });
 
@@ -553,7 +611,7 @@ test.describe('on a phone', () => {
         for (const selector of [
             'pt-mode-toggle .action',
             'pt-keypad .actions button',
-            'footer .icon-button',
+            'footer .action',
         ]) {
             const box = await page.locator(selector).first().boundingBox();
             expect(box.height, selector).toBeGreaterThanOrEqual(44);

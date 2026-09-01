@@ -16,9 +16,9 @@ import {
 import { ROOM_STATE } from '../../shared/protocol.js';
 import { roomStore } from '../store/room-store.js';
 import { StoreController } from '../store/store-controller.js';
-import { controls, iconButton } from '../styles/controls.js';
+import { actionButton, controls } from '../styles/controls.js';
 import { THEME, currentTheme, toggleTheme } from '../theme.js';
-import { iconStyle, infoIcon, moonIcon, sunIcon } from '../ui/icons.js';
+import { flagIcon, githubIcon, iconStyle, infoIcon, moonIcon, sunIcon } from '../ui/icons.js';
 
 import '../ui/pt-player-chips.js';
 import './pt-about.js';
@@ -47,7 +47,7 @@ export class PtApp extends LitElement {
 
     static styles = [
         controls,
-        iconButton,
+        actionButton,
         iconStyle,
         css`
             :host {
@@ -141,12 +141,19 @@ export class PtApp extends LitElement {
             }
 
             /*
-             * The app's own controls, and the two links out of it.
+             * The app's own controls, and the two ways out of it, on one bar.
              *
              * Everything above the footer belongs to a room or a puzzle. What is left down here is
-             * the handful of things that are true of the *app*, how it looks and what it is, so they
-             * are drawn as the app's controls rather than as sentences about it: two icon buttons on
-             * one line, and the links that leave the app set smaller underneath them.
+             * the handful of things that are true of the *app*: how it looks, what it is, where it
+             * came from, and where to say it is broken.
+             *
+             * They were two rows, two wordless squares over two links set a step smaller. The rule
+             * that split them, a button changes the app and a link leaves it, is still true of the
+             * markup and no longer costs a row: it was drawn as a difference in size, which reads
+             * as a difference in importance, and what it produced was a pair of footnotes under a
+             * pair of controls nobody could name without hovering. One bar of four labelled
+             * controls says all four things at once, and the two that leave are still anchors, so a
+             * middle click still opens them in a tab.
              *
              * The version line that used to be here has moved into About, where it sits with the
              * rest of the answer to the question it was half of.
@@ -162,41 +169,24 @@ export class PtApp extends LitElement {
                 font-size: var(--text-sm);
             }
 
+            /*
+             * Capped rather than left to the column: the buttons share the row equally, and a
+             * full-width column would stretch four peripheral controls into paddles. At the cap
+             * they come out the width the input panel's controls are, which is what this app draws
+             * a bar of labelled actions at wherever one appears.
+             */
             .footer-actions {
                 display: flex;
                 gap: var(--space-2);
                 justify-content: center;
+                width: 100%;
+                max-width: 22rem;
             }
 
-            /*
-             * Side by side, divided by a middot rather than by a gap alone.
-             *
-             * They are two links and not two buttons because they leave the app, the rule the whole
-             * footer turns on. Set at --text-xs, which puts them a step below the smallest thing
-             * on the page above: they are the last thing anyone needs and should read that way.
-             */
-            .footer-links {
-                display: flex;
-                flex-wrap: wrap;
-                gap: var(--space-2);
-                justify-content: center;
-                margin: 0;
-                padding: 0;
-                font-size: var(--text-xs);
-            }
-
-            .footer-links li {
-                list-style: none;
-            }
-
-            .footer-links li + li::before {
-                content: '·';
-                margin-right: var(--space-2);
-                color: var(--rule);
-            }
-
-            footer a {
-                color: var(--accent-text);
+            /* Two of the four are anchors wearing .action, so only the underline has to go: the
+               colour, the box, and the hover all come from the shared fragment. */
+            .footer-actions a {
+                text-decoration: none;
             }
 
             .notice {
@@ -324,35 +314,48 @@ export class PtApp extends LitElement {
                       a button that does one thing, so it says which thing and wears the icon of the
                       theme it would leave you in. That also settles which of the two icons to draw,
                       which as a toggle was genuinely ambiguous: the sun could as easily have meant
-                      "you are in light" as "press for light", and it meant the first.
+                      "you are in light" as "press for light", and it meant the first. The label is
+                      the destination for the same reason the icon is.
                     -->
                     <button
-                        class="icon-button"
+                        class="action"
                         type="button"
                         aria-label=${this.#themeAction}
-                        title=${this.#themeAction}
                         @click=${this.#onToggleTheme}
                     >
                         ${this.theme === THEME.DARK ? sunIcon : moonIcon}
+                        <span class="action-label">
+                            ${this.theme === THEME.DARK ? 'Light' : 'Dark'}
+                        </span>
                     </button>
                     <button
-                        class="icon-button"
+                        class="action"
                         type="button"
                         aria-label="About PuzzleTogether"
-                        title="About"
                         @click=${() => {
                             this.showingAbout = true;
                         }}
                     >
                         ${infoIcon}
+                        <span class="action-label">About</span>
                     </button>
+                    <a class="action" href=${GITHUB_URL} rel="noreferrer" target="_blank">
+                        ${githubIcon}
+                        <span class="action-label">GitHub</span>
+                    </a>
+                    <!-- One visible word, because four labels share a 320px row; the accessible
+                         name is the sentence, because "Report" alone does not say what of. -->
+                    <a
+                        class="action"
+                        href=${ISSUES_URL}
+                        rel="noreferrer"
+                        target="_blank"
+                        aria-label="Report an issue"
+                    >
+                        ${flagIcon}
+                        <span class="action-label">Report</span>
+                    </a>
                 </div>
-                <ul class="footer-links">
-                    <li><a href=${GITHUB_URL} rel="noreferrer" target="_blank">GitHub</a></li>
-                    <li>
-                        <a href=${ISSUES_URL} rel="noreferrer" target="_blank">Report an issue</a>
-                    </li>
-                </ul>
             </footer>
             <pt-about
                 .open=${this.showingAbout}

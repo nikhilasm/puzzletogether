@@ -17,8 +17,10 @@ import { boardFor } from '../boards/registry.js';
 import { roomStore } from '../store/room-store.js';
 import { StoreController } from '../store/store-controller.js';
 import { actionButton, controls, dangerButton } from '../styles/controls.js';
+import { helpFor } from '../ui/help-text.js';
 import {
     checkIcon,
+    helpIcon,
     iconStyle,
     leaveIcon,
     listIcon,
@@ -32,6 +34,7 @@ import './pt-congrats-modal.js';
 import '../ui/pt-brush-bar.js';
 import '../ui/pt-clue-bar.js';
 import '../ui/pt-clue-list.js';
+import '../ui/pt-help.js';
 import '../ui/pt-keypad.js';
 import '../ui/pt-mode-toggle.js';
 import '../ui/pt-timer.js';
@@ -53,6 +56,7 @@ export class PtGame extends LitElement {
         /** The crossword entry under this player's cursor, reported by the board. */
         entry: { state: true },
         showingClues: { state: true },
+        showingHelp: { state: true },
         /** Whether the grid is running its solve wave, which the modal waits out. */
         celebrating: { state: true },
     };
@@ -71,7 +75,21 @@ export class PtGame extends LitElement {
                enough to read as one block with it, and the type steps down so the grid stays the
                largest thing on the screen. Weight, not size, is what separates them from the
                timer underneath. */
+            /*
+             * A flex row rather than a centred text run, because of what sits at the end of it.
+             *
+             * The help control is a box with an icon in it, and aligning a box against a line of
+             * type is vertical-align arithmetic that the two engines round differently: grid
+             * alignment is already the one place this app has shipped a Firefox-only bug. Centring
+             * both as flex items asks neither engine for a baseline. It wraps, so a long caption on
+             * a 320px screen drops the control to its own line instead of widening the page.
+             */
             .header {
+                display: flex;
+                flex-wrap: wrap;
+                gap: var(--space-1);
+                align-items: center;
+                justify-content: center;
                 margin: 0 0 var(--space-1);
                 font-size: var(--text-lg);
                 font-weight: 400;
@@ -80,6 +98,62 @@ export class PtGame extends LitElement {
 
             .header strong {
                 font-weight: 700;
+            }
+
+            /*
+             * The way into the rules, on the caption that names the type rather than in the action
+             * row below it.
+             *
+             * That row is defined by scope: things that act on the room's puzzle or on your seat in
+             * it. Help acts on nothing, so a fifth button there would blunt the one rule keeping
+             * Undo and Reveal apart, and a host's four already come to about 618px against the
+             * row's 480, so it would buy a third line as well. Here it costs no row at all and sits
+             * on the word it explains.
+             *
+             * Borderless and --graphite, like the roster's remove control: an annotation on the
+             * heading rather than a control competing with it. It inherits the header's size so the
+             * mark is drawn at the caption's own scale, and takes the 2.25rem box the dialogs'
+             * close controls take, which is this app's size for a secondary icon-only control.
+             */
+            .header .help {
+                display: flex;
+                flex: none;
+                align-items: center;
+                justify-content: center;
+                width: 2.25rem;
+                min-height: 2.25rem;
+                padding: 0;
+                border: none;
+                background: none;
+                color: var(--graphite);
+                font-size: inherit;
+            }
+
+            /*
+             * The empty item that keeps the caption centred on the caption.
+             *
+             * Flex centring divides the row between everything in it, so the control at the end was
+             * pushing the words left by half its width: the heading was centred and the title was
+             * not. An equal item at the head of the row balances it, so the words sit exactly where
+             * they would if the control did not exist and the mark hangs off their right edge.
+             *
+             * Drawn only when the control is, since a spacer with nothing to answer is the same
+             * error mirrored.
+             */
+            .header .balance {
+                flex: none;
+                width: 2.25rem;
+            }
+
+            .header .help .icon {
+                width: 1em;
+                height: 1em;
+            }
+
+            @media (hover: hover) {
+                .header .help:hover {
+                    color: var(--ink);
+                }
             }
 
             pt-timer {
@@ -196,6 +270,7 @@ export class PtGame extends LitElement {
         this.busy = false;
         this.entry = null;
         this.showingClues = false;
+        this.showingHelp = false;
         this.celebrating = false;
         // A screen that opens onto an already-finished puzzle has nothing to celebrate: the room
         // finished it before this element existed.
@@ -404,8 +479,29 @@ export class PtGame extends LitElement {
         const isPlaying = state.room?.state === ROOM_STATE.PLAYING;
         const board = boardFor(doc.type);
 
+        // Twice, because the mark and the item that offsets it sit either side of the words.
+        const help = helpFor(doc.type);
+
         return html`
-            <h2 class="header"><strong>${type}</strong>: ${difficulty} ${size}</h2>
+            <h2 class="header">
+                ${help ? html`<span class="balance" aria-hidden="true"></span>` : nothing}
+                <span><strong>${type}</strong>: ${difficulty} ${size}</span>
+                ${
+                    help
+                        ? html`<button
+                              class="help"
+                              type="button"
+                              aria-label=${`How to play ${type}`}
+                              title="How to play"
+                              @click=${() => {
+                                  this.showingHelp = true;
+                              }}
+                          >
+                              ${helpIcon}
+                          </button>`
+                        : nothing
+                }
+            </h2>
             <pt-timer
                 .startedAt=${state.startedAt}
                 .clockOffsetMs=${state.clockOffsetMs}
@@ -676,7 +772,8 @@ export class PtGame extends LitElement {
     }
 
     /**
-     * The confirm dialog for Reveal, and the congrats modal every player gets on completion.
+     * The confirm dialog for Reveal, the rules of this puzzle type, and the congrats modal every
+     * player gets on completion.
      *
      * The modal is simply handed the result late while the grid is celebrating, rather than being
      * told to wait: it opens on solved arriving and knows nothing about a wave, which keeps the
@@ -684,6 +781,13 @@ export class PtGame extends LitElement {
      */
     #renderDialogs(state) {
         return html`
+            <pt-help
+                .open=${this.showingHelp}
+                .type=${state.doc?.type ?? ''}
+                @pt-help-close=${() => {
+                    this.showingHelp = false;
+                }}
+            ></pt-help>
             <pt-confirm
                 .open=${this.confirmingReveal}
                 heading="Reveal the whole puzzle?"

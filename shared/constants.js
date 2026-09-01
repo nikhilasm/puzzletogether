@@ -94,7 +94,7 @@ export const ASSIST_RATE_LIMIT = { capacity: 3, refillPerSecond: 0.5 };
 export const MAX_CELL_VALUE_LENGTH = 8;
 
 /** Every puzzle type this build can serve. */
-export const PUZZLE_TYPES = ['sudoku', 'kenken', 'nonogram', 'crossword'];
+export const PUZZLE_TYPES = ['sudoku', 'kenken', 'nonogram', 'kakuro', 'crossword'];
 
 /**
  * How each type is written when shown to a player.
@@ -106,6 +106,7 @@ export const PUZZLE_TYPE_NAMES = {
     sudoku: 'Sudoku',
     kenken: 'KenKen',
     nonogram: 'Nonogram',
+    kakuro: 'Kakuro',
     crossword: 'Crossword',
 };
 
@@ -118,6 +119,10 @@ export const DIFFICULTIES = ['easy', 'medium', 'hard'];
  * KenKen stops at 7 because uniqueness verification is its expensive step and climbs sharply with
  * size: ~170ms median for a 7×7 hard against ~1ms for a 5×5 (docs/TODO.md).
  *
+ * **Kakuro's sides count the clue border**, since the border is part of the document: a 9 is a 9×9
+ * grid whose first row and column are clue squares, leaving an 8×8 of squares to fill. Stating it in
+ * solvable cells would make the picker's numbers disagree with the grid a host is looking at.
+ *
  * **Crossword is absent on purpose.** A generator can produce any size it offers, so a constant can
  * state them; a bank offers whatever files it was given. Crossword's sizes reach Puzzle Select
  * through the provider's catalog, as { rows, cols } pairs rather than sides, since a real crossword
@@ -127,6 +132,7 @@ export const SIZES_BY_TYPE = {
     sudoku: [4, 6, 9],
     kenken: [4, 5, 6, 7],
     nonogram: [5, 10, 15, 20],
+    kakuro: [7, 9, 11, 13],
 };
 
 /**
@@ -141,6 +147,13 @@ export const SIZE_CAUTION = {
     nonogram: {
         above: 15,
         message: 'the squares get very small on a phone; best played on a larger screen',
+    },
+    // Kakuro's caution is a different one at a smaller size: a nonogram square that shrinks is still
+    // an empty square, while a kakuro clue square has two numbers and a diagonal printed inside it,
+    // so it stops being readable before it stops being clickable.
+    kakuro: {
+        above: 11,
+        message: 'the printed sums get hard to read on a phone; best played on a larger screen',
     },
 };
 
@@ -159,6 +172,11 @@ export const DIFFICULTY_MIN_SIDE = {
     sudoku: 9,
     kenken: 4,
     nonogram: 5,
+    // No floor: kakuro's difficulty is carried by how long the rules take to settle the grid, and
+    // that separates at every size offered, a 7×7 included. It was 9 while the generator derived its
+    // sums from a filled grid, which made a small kakuro measure easy however it was drawn; choosing
+    // the clues instead reaches all three levels at 7×7 (ADR-0015).
+    kakuro: 0,
     // Crossword difficulty is declared in the bank manifest, not measured: it is how obscure the
     // clues are, which is a property of the writing. Size has nothing to do with it.
     crossword: 0,

@@ -13,6 +13,7 @@ export class PtCell extends LitElement {
         index: { type: Number },
         value: { type: String },
         label: { type: String },
+        clue: { type: Object },
         marks: { type: Array },
         markCols: { type: Number },
         markRows: { type: Number },
@@ -309,6 +310,65 @@ export class PtCell extends LitElement {
         }
 
         /*
+         * A clue square: two sums, split by the diagonal that says which is which.
+         *
+         * The whole square is the clue, unlike a label, which is a small thing written in the corner
+         * of a square that holds something else. So it is drawn as its own layer at the cell's full
+         * size rather than positioned beside the value, and it never coexists with one: a square
+         * carrying a clue is blocked, and a blocked square holds nothing.
+         *
+         * The rule is a gradient rather than a border or an element, because it has to run corner to
+         * corner and CSS has no diagonal border. to top right puts the colour band across the other
+         * diagonal, which is the one a kakuro splits on, top-left corner to bottom-right.
+         * It is a true diagonal only because a cell is square, which aspect-ratio on the host
+         * guarantees.
+         *
+         * **Each sum sits on the side its run leaves by.** The across run goes right, so its total is
+         * in the upper-right triangle; the down run goes down, so its total is in the lower-left. A
+         * solver reads a clue square by following the direction the number is pointing, so the two
+         * the other way round is not a cosmetic difference: it is the wrong clue on the run.
+         *
+         * Both numbers are --paper on the square's --ink ground, which is the one place in the app
+         * where type sits on ink. The rule itself is softened to 55%, because it divides the two
+         * sums rather than competing with them.
+         */
+        .clue {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(
+                to top right,
+                transparent calc(50% - 0.5px),
+                color-mix(in srgb, var(--paper) 55%, transparent) calc(50% - 0.5px),
+                color-mix(in srgb, var(--paper) 55%, transparent) calc(50% + 0.5px),
+                transparent calc(50% + 0.5px)
+            );
+            pointer-events: none;
+        }
+
+        /*
+         * Sized off the cell like everything else in the grid, and floored so a 13×13 on a phone
+         * still has legible sums. Slightly larger than a label's proportion: a label annotates a
+         * square somebody is working in, while these two numbers are the entire content of theirs.
+         */
+        .clue span {
+            position: absolute;
+            font-size: min(var(--text-sm), max(7px, calc(var(--cell-size, 40px) * 0.34)));
+            line-height: 1;
+            color: var(--paper);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .clue .across {
+            top: 7%;
+            right: 9%;
+        }
+
+        .clue .down {
+            bottom: 7%;
+            left: 9%;
+        }
+
+        /*
          * Marks sit in fixed positions so a digit is always in the same corner of every cell, which
          * is what makes a grid of notes scannable. Size derives from the cell, like the value does.
          *
@@ -359,6 +419,7 @@ export class PtCell extends LitElement {
         this.index = 0;
         this.value = null;
         this.label = null;
+        this.clue = null;
         this.marks = [];
         this.markCols = 3;
         this.markRows = 3;
@@ -410,9 +471,34 @@ export class PtCell extends LitElement {
     render() {
         return html`
             ${this.circled ? html`<span class="ring" aria-hidden="true"></span>` : nothing}
+            ${this.clue ? this.#renderClue() : nothing}
             ${this.label ? html`<span class="label">${this.label}</span>` : nothing}
             ${this.value != null ? this.#renderValue() : nothing}
             ${this.value == null && this.marks?.length ? this.#renderMarks() : nothing}
+        `;
+    }
+
+    /**
+     * The pair of sums on a clue square, either side of its diagonal.
+     *
+     * Hidden from a screen reader, which is told the same thing better: the board composes the whole
+     * square into one phrase on the cell, so reading these two numbers loose would say them twice
+     * and say neither of them as a clue.
+     */
+    #renderClue() {
+        return html`
+            <span class="clue" aria-hidden="true">
+                ${
+                    this.clue.across != null
+                        ? html`<span class="across">${this.clue.across}</span>`
+                        : nothing
+                }
+                ${
+                    this.clue.down != null
+                        ? html`<span class="down">${this.clue.down}</span>`
+                        : nothing
+                }
+            </span>
         `;
     }
 

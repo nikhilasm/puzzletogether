@@ -10,7 +10,7 @@
 
 import { expect, test } from '@playwright/test';
 
-import { boardOf, createRoom, startPuzzle } from './helpers.js';
+import { boardOf, createRoom, firstEditableCell, startPuzzle } from './helpers.js';
 
 /** Every cell's current value, straight off the board's view of the room. */
 function valuesOf(page) {
@@ -168,6 +168,172 @@ test.describe('kenken', () => {
         await page.locator('pt-keypad .digits button').first().click();
 
         expect((await valuesOf(page))[0]).toBe('1');
+    });
+});
+
+/**
+ * Kakuro is the type whose structure is printed on the squares nobody writes in, which is the one
+ * thing the document schema could not say before it (ADR-0014). So what is checked here is that the
+ * pair of sums reaches the grid, that it is *said* as well as drawn, and that the rest of the type is
+ * the shared machinery doing its job: the same keypad, the same cursor, the same blocked squares.
+ */
+test.describe('kakuro', () => {
+    test.beforeEach(async ({ page }) => {
+        await createRoom(page);
+        await startPuzzle(page, '9×9', 'Kakuro');
+    });
+
+    /**
+     * The type that most needs explaining gets the same help control every other type gets.
+     *
+     * Kakuro is the one type whose structure is printed on squares nobody writes in, so a solver
+     * who has never met one has nothing on screen telling them which sum belongs to which run. The
+     * dialog is where that is said, and it is reached the same way everywhere.
+     */
+    test('explains its clue squares from the header', async ({ page }) => {
+        await page.locator('pt-game .header .help').click();
+
+        const dialog = page.locator('pt-help dialog');
+        await expect(dialog.locator('h2')).toHaveText('How to play Kakuro');
+        await expect(dialog.locator('li').first()).toContainText('split by a diagonal');
+    });
+
+    test('prints two sums either side of a diagonal, on blocked squares only', async ({ page }) => {
+        const clues = await boardOf(page).evaluate((board) =>
+            board.doc.cells
+                .map((cell, idx) => (cell.clue ? { idx, ...cell.clue } : null))
+                .filter(Boolean),
+        );
+        expect(clues.length).toBeGreaterThan(8);
+
+        // Squares carrying both sums come first, so the corner check below always has a square to
+        // make it on: a sample taken in grid order can be all single-sum border squares.
+        const both = clues.filter((clue) => clue.across != null && clue.down != null);
+        expect(both.length, 'a square carries both sums').toBeGreaterThan(0);
+
+        for (const clue of [...both.slice(0, 3), ...clues.slice(0, 3)]) {
+            const cell = page.locator(`pt-cell >> nth=${clue.idx}`);
+            await expect(cell).toHaveAttribute('block', '');
+
+            const drawn = await cell.evaluate((element) => {
+                const layer = element.shadowRoot.querySelector('.clue');
+                const centre = (selector) => {
+                    const span = layer.querySelector(selector);
+                    if (!span) return null;
+                    const box = span.getBoundingClientRect();
+                    return {
+                        text: span.textContent,
+                        x: box.x + box.width / 2,
+                        y: box.y + box.height / 2,
+                    };
+                };
+                return {
+                    rule: getComputedStyle(layer).backgroundImage,
+                    down: centre('.down'),
+                    across: centre('.across'),
+                };
+            });
+
+            expect(drawn.rule, 'the diagonal is drawn').toContain('gradient');
+            expect(drawn.down?.text ?? null).toBe(clue.down == null ? null : String(clue.down));
+            expect(drawn.across?.text ?? null).toBe(
+                clue.across == null ? null : String(clue.across),
+            );
+
+            // Which triangle a sum is in *is* which run it labels: across leaves the square to the
+            // right, down leaves it downwards, so the two swapped is the wrong clue on the run
+            // rather than a cosmetic difference. Compared by centre, so it holds at any cell size.
+            if (drawn.down && drawn.across) {
+                expect(drawn.across.x, 'the across sum is right of the down sum').toBeGreaterThan(
+                    drawn.down.x,
+                );
+                expect(drawn.across.y, 'the across sum is above the down sum').toBeLessThan(
+                    drawn.down.y,
+                );
+            }
+        }
+
+        // An open square never carries the layer, so nothing draws a diagonal through a square
+        // somebody is meant to write a digit in.
+        const open = await boardOf(page).evaluate((board) =>
+            board.doc.cells.findIndex((cell) => !cell.block),
+        );
+        await expect(page.locator(`pt-cell >> nth=${open} >> .clue`)).toHaveCount(0);
+    });
+
+    /**
+     * A blocked square says "blocked" and stops, which is right everywhere else and wrong here: in a
+     * kakuro that square is carrying the puzzle. Withholding it would leave a solver who is not
+     * looking at the screen with no clues at all.
+     */
+    test('says a clue square as its sums, and a plain block as blocked', async ({ page }) => {
+        const squares = await boardOf(page).evaluate((board) => {
+            const cols = board.doc.size.cols;
+            const clued = board.doc.cells.findIndex((cell) => cell.clue?.down != null);
+            const plain = board.doc.cells.findIndex((cell) => cell.block && !cell.clue);
+            return {
+                clued: { idx: clued, ...board.doc.cells[clued].clue, cols },
+                plain,
+            };
+        });
+
+        const sums = [];
+        if (squares.clued.down != null) sums.push(`${squares.clued.down} down`);
+        if (squares.clued.across != null) sums.push(`${squares.clued.across} across`);
+        const row = Math.floor(squares.clued.idx / squares.clued.cols) + 1;
+        const col = (squares.clued.idx % squares.clued.cols) + 1;
+
+        await expect(page.locator(`pt-cell >> nth=${squares.clued.idx}`)).toHaveAttribute(
+            'aria-label',
+            `row ${row} column ${col}, clue ${sums.join(', ')}`,
+        );
+        await expect(page.locator(`pt-cell >> nth=${squares.plain}`)).toHaveAttribute(
+            'aria-label',
+            /blocked$/,
+        );
+    });
+
+    /**
+     * Sudoku and kenken take as many digits as the grid is wide; a kakuro run draws on all nine
+     * however small the grid, which is why the keypad reads the puzzle's alphabet and not its size.
+     */
+    test('takes all nine digits on a 9×9 grid', async ({ page }) => {
+        await expect(page.locator('pt-keypad .digits button')).toHaveCount(9);
+
+        const open = await firstEditableCell(page);
+        await page.locator(`pt-cell >> nth=${open}`).click();
+        await page.locator('pt-keypad .digits button').nth(8).click();
+
+        expect((await valuesOf(page))[open]).toBe('9');
+    });
+
+    test('skips clue squares with the arrows, and washes the two runs the cursor is in', async ({
+        page,
+    }) => {
+        const open = await firstEditableCell(page);
+        await page.locator(`pt-cell >> nth=${open}`).click();
+
+        // The cursor's context is the across run and the down run, not the whole row and column.
+        const wash = await boardOf(page).evaluate((board) => {
+            const inRuns = board.doc.meta.runs
+                .filter((run) => run.cells.includes(board.selection))
+                .flatMap((run) => run.cells);
+            const highlighted = [...board.shadowRoot.querySelectorAll('pt-cell')]
+                .map((cell, idx) => (cell.hasAttribute('highlighted') ? idx : -1))
+                .filter((idx) => idx >= 0);
+            return { expected: [...new Set(inRuns)].sort((a, b) => a - b), highlighted };
+        });
+        expect(wash.expected.length).toBeGreaterThan(2);
+        expect(wash.highlighted).toEqual(wash.expected);
+
+        // Walking right along the row lands only on squares a player can write in.
+        for (let press = 0; press < 6; press += 1) {
+            await page.keyboard.press('ArrowRight');
+            const landed = await boardOf(page).evaluate((board) => ({
+                block: board.doc.cells[board.selection].block,
+            }));
+            expect(landed.block, 'the cursor never sits on a clue square').toBe(false);
+        }
     });
 });
 

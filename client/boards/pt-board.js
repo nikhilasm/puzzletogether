@@ -589,6 +589,7 @@ export class PtBoard extends LitElement {
                 .index=${idx}
                 .value=${value}
                 .label=${docCell.label}
+                .clue=${docCell.clue ?? null}
                 .marks=${marks}
                 .markCols=${this.markColumns}
                 .markRows=${this.markRows}
@@ -623,12 +624,22 @@ export class PtBoard extends LitElement {
      * because it describes the square rather than what is written in it.
      *
      * A blocked square stops after being named. It has no value, can hold no marks, and cannot be
-     * checked, so "empty" would invite an edit that is not possible.
+     * checked, so "empty" would invite an edit that is not possible. **Unless it is carrying the
+     * puzzle**: a kakuro prints its sums on blocked squares, and a square that said only "blocked"
+     * would withhold the clue rather than the absence of one. Read straight off the two fields the
+     * document schema names, since naming them is all this has to do.
      */
     #cellLabel(idx, docCell, row, col, value, marks, check) {
         const spoken = { block: 'filled', cross: 'crossed out' };
         const position = `row ${row + 1} column ${col + 1}`;
-        if (docCell.block) return `${position}, blocked`;
+        if (docCell.block) {
+            const clue = docCell.clue;
+            if (!clue) return `${position}, blocked`;
+            const sums = [];
+            if (clue.down != null) sums.push(`${clue.down} down`);
+            if (clue.across != null) sums.push(`${clue.across} across`);
+            return `${position}, clue ${sums.join(', ')}`;
+        }
 
         const parts = [position];
         if (docCell.label != null) parts.push(this.spokenLabel(docCell.label, idx));

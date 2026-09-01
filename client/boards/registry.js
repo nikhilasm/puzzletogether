@@ -20,6 +20,7 @@
 import { literal } from 'lit/static-html.js';
 
 import './pt-crossword-board.js';
+import './pt-kakuro-board.js';
 import './pt-kenken-board.js';
 import './pt-nonogram-board.js';
 import './pt-sudoku-board.js';
@@ -29,6 +30,7 @@ export const BOARDS = {
     sudoku: { tag: literal`pt-sudoku-board`, input: 'digits' },
     kenken: { tag: literal`pt-kenken-board`, input: 'digits' },
     nonogram: { tag: literal`pt-nonogram-board`, input: 'brushes' },
+    kakuro: { tag: literal`pt-kakuro-board`, input: 'digits' },
     crossword: { tag: literal`pt-crossword-board`, input: 'letters' },
 };
 

@@ -1,14 +1,14 @@
 /**
  * The icon set: inline SVG, drawn here rather than pulled from a pack.
  *
- * There are eighteen of them, they are all simple geometry, and a dependency would cost more than
- * it saves. Emoji are banned as UI icons (brand.md §1) because they render as somebody else's
+ * There are twenty-one of them, they are all simple geometry, and a dependency would cost more
+ * than it saves. Emoji are banned as UI icons (brand.md §1) because they render as somebody else's
  * artwork at somebody else's weight; these inherit currentColor and the app's line weight, so an
  * icon inside a disabled control greys out with it and the dark theme needs no second asset.
  *
- * Every icon is aria-hidden, and the control around it carries the accessible name. In the panel a
- * one-word label sits under the icon (ADR-0012); the footer's two controls are wordless, so their
- * aria-label and title are all a player has.
+ * Every icon is aria-hidden, and the control around it carries the accessible name. A one-word
+ * label sits under the icon wherever these are drawn as a bar of controls, in the input panel and
+ * in the footer (ADR-0012). The three that stand alone put everything in that name.
  *
  * Geometry lives here; size and weight live in iconStyle, which each consuming component composes
  * into its own styles: shadow roots inherit properties, not rules.
@@ -237,5 +237,61 @@ export const listIcon = html`
         <path d="M9 6.5h11" />
         <path d="M9 12h11" />
         <path d="M9 17.5h11" />
+    </svg>
+`;
+
+/**
+ * How to play: a question mark, which is the shape of the question being asked.
+ *
+ * It sits where the info mark used to, and the swap is the difference between "here is what this
+ * thing is" and "how does this work". The caption beside it already answers the first: it names the
+ * type, the difficulty, and the size. What a solver still wants from it is the rules, and a question
+ * mark is the one glyph that offers to answer a question rather than to describe something.
+ *
+ * The same letterform argument the info mark carries applies here and no more weakly: this is not
+ * read as a punctuation character, it has been the sign for help on every interface for as long as
+ * ⓘ has been the sign for about, and the two are drawn in the same ring so they stay a pair.
+ */
+export const helpIcon = html`
+    <svg viewBox="0 0 24 24" class="icon" aria-hidden="true">
+        <circle cx="12" cy="12" r="8.5" />
+        <path d="M9.6 9.4a2.5 2.5 0 0 1 4.9.7c0 1.7-2.5 2.1-2.5 3.7" />
+        <path d="M12 16.9v.1" />
+    </svg>
+`;
+
+/**
+ * GitHub, drawn as GitHub draws it.
+ *
+ * The one borrowed mark in the set, and the one solid icon that is not solid because it paints
+ * something solid (see fill). A logo is not a description, so there is nothing to redraw at this
+ * app's line weight: an outlined approximation of the octocat is a worse octocat, and the whole
+ * value of a brand mark is that it is recognised before it is read.
+ *
+ * Filled on the path rather than the svg, like fill's rect, because iconStyle's fill: none is a
+ * rule and would beat an attribute on the element it matches.
+ */
+export const githubIcon = html`
+    <svg viewBox="0 0 16 16" class="icon" aria-hidden="true">
+        <path
+            fill="currentColor"
+            stroke="none"
+            d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.6 7.6 0 0 1 2-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"
+        />
+    </svg>
+`;
+
+/**
+ * Reporting an issue: a flag, which is what "report this" has looked like on the web for years.
+ *
+ * Deliberately not the warning triangle. That one marks a choice the app is cautioning you about
+ * and it appears elsewhere on the same session; two icons meaning different things must look
+ * different (brand.md §4). A bug was the other candidate and says too little: the link takes you to
+ * an issue tracker, which takes requests as readily as defects.
+ */
+export const flagIcon = html`
+    <svg viewBox="0 0 24 24" class="icon" aria-hidden="true">
+        <path d="M5.5 21V4" />
+        <path d="M5.5 4.5h11l-2.2 4 2.2 4h-11Z" />
     </svg>
 `;

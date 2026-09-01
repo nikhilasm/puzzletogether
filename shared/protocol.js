@@ -104,10 +104,19 @@ export const INPUT_MODE = {
  */
 
 /**
+ * @typedef {object} CellClue
+ * @property {number|null} across - Sum of the run leaving this square to the right.
+ * @property {number|null} down - Sum of the run leaving this square downwards.
+ */
+
+/**
  * @typedef {object} DocCell
  * @property {boolean} block - True for a structurally blocked cell (crossword black square).
  * @property {string|null} given - A value fixed by the puzzle; not editable.
  * @property {string|null} label - Small label drawn in the cell's top-left (cage or clue number).
+ * @property {CellClue|null} [clue] - A pair of sums drawn either side of the square's diagonal,
+ *   for a type whose structure is printed on its blocked squares rather than on its open ones
+ *   (ADR-0014). Absent for every type that has no such square.
  */
 
 /**

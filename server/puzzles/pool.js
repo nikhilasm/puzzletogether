@@ -5,21 +5,44 @@
  * than a computation, which is what makes the host pressing "new puzzle" feel instant
  * (design-spec.md §8). Falls back to in-process generation when the pool is dry or the worker is
  * unavailable, so a worker failure degrades latency rather than breaking the game.
+ *
+ * It is also where a puzzle is held to the difficulty that was asked for. Three of the four
+ * generators *measure* the difficulty of what they made rather than dialling it in, so a draw can
+ * come back rated at a band nobody requested. The pool redraws (ADR-0017).
  */
 
 import { Worker } from 'node:worker_threads';
 
+import { DIFFICULTIES } from '../../shared/constants.js';
+
+import kakuro from './kakuro/index.js';
 import kenken from './kenken/index.js';
 import nonogram from './nonogram/index.js';
 import { createRng, randomSeed } from './rng.js';
 import sudoku from './sudoku/index.js';
 
 /** Types this pool can generate in-process as a fallback. */
-const MODULES = { sudoku, kenken, nonogram };
+const MODULES = { sudoku, kenken, nonogram, kakuro };
+
+/**
+ * Independent draws to spend looking for the difficulty that was asked for.
+ *
+ * Bounded, because a difficulty can be unreachable at a size rather than merely rare, and no number
+ * of draws would ever find it: a 4×4 sudoku falls to naked and hidden singles however it is dug, so
+ * hard there is impossible, not unlucky. Ten is enough that every reachable band comes back on the
+ * band asked for, and cheap where it is spent in full, since the unreachable cases are all small
+ * sudoku at a few milliseconds a draw.
+ */
+const DIFFICULTY_ATTEMPTS = 10;
 
 /** The pool key for a puzzle specification. */
 function poolKey({ type, difficulty, size }) {
     return `${type}:${difficulty}:${size.rows}x${size.cols}`;
+}
+
+/** How far a measured difficulty sits from the one asked for, counted in bands. */
+function bandsApart(measured, wanted) {
+    return Math.abs(DIFFICULTIES.indexOf(measured) - DIFFICULTIES.indexOf(wanted));
 }
 
 /**
@@ -46,6 +69,9 @@ export class GeneratorPool {
     /**
      * Takes a puzzle matching the specification, generating one if the pool is dry, and starts a
      * background refill either way.
+     *
+     * The puzzle is on the difficulty asked for unless that difficulty is unreachable at that size,
+     * in which case it is the nearest band and the pool has said so on the console.
      *
      * @param {object} spec - Puzzle specification.
      * @param {string} spec.type - Puzzle type.
@@ -110,8 +136,40 @@ export class GeneratorPool {
         }
     }
 
-    /** Generates one puzzle in the worker, falling back to this process if the worker is down. */
+    /**
+     * Draws until the puzzle measures at the difficulty asked for, then settles for the nearest.
+     *
+     * Each generator already searches internally and hands back the closest band it managed, so
+     * this is the outer loop, and its whole contribution is a fresh seed: the same specification
+     * drawn again is an independent puzzle, which is what actually explores. Kakuro at 7×7 hard
+     * came back hard 7 draws in 12 before this and comes back hard every time now.
+     *
+     * Settling rather than failing keeps generation total. An unsatisfiable request then costs a
+     * room a puzzle rated one band away, which is what it already got, instead of no puzzle at all.
+     */
     async #generate(spec) {
+        let best = null;
+
+        for (let attempt = 0; attempt < DIFFICULTY_ATTEMPTS; attempt += 1) {
+            const puzzle = await this.#draw(spec);
+            if (puzzle.doc.difficulty === spec.difficulty) return puzzle;
+
+            const nearer =
+                !best ||
+                bandsApart(puzzle.doc.difficulty, spec.difficulty) <
+                    bandsApart(best.doc.difficulty, spec.difficulty);
+            if (nearer) best = puzzle;
+        }
+
+        console.warn(
+            `[pool] ${poolKey(spec)}: nothing on that band in ${DIFFICULTY_ATTEMPTS} draws, ` +
+                `serving ${best.doc.difficulty}`,
+        );
+        return best;
+    }
+
+    /** Generates one puzzle in the worker, falling back to this process if the worker is down. */
+    async #draw(spec) {
         const seed = randomSeed();
         try {
             return await this.#generateInWorker({ ...spec, seed });

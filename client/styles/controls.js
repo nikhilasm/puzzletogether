@@ -98,8 +98,12 @@ export const controls = css`
 `;
 
 /**
- * A control in the input panel: an icon over a one-word label, and the pressed state a toggle draws
- * on top of it.
+ * A control in a bar of actions: an icon over a one-word label, and the pressed state a toggle
+ * draws on top of it.
+ *
+ * The input panel's controls and the footer's. It was written for the panel, which is where the
+ * measurements below come from; the footer took it when its two wordless squares became four
+ * labelled controls, and inherited the same rule about where the word goes.
  *
  * One fragment for both because they are one control: .action is the box, and adding
  * aria-pressed is what makes it a setting rather than an action. That is the whole of the
@@ -246,59 +250,6 @@ export const actionButton = css`
         .action-label {
             font-size: var(--text-xs);
         }
-    }
-`;
-
-/**
- * A wordless, thumb-sized square: the footer's theme and About controls, and nothing else.
- *
- * Not the panel's controls: dropping the words there saves no vertical space, because the panel's
- * height is set by the rows of keys below it and a shorter button bar only leaves a gap. See actionButton, which is what the panel
- * uses now.
- *
- * It survives here because the footer's two controls are genuinely peripheral, they sit on a line
- * of their own with nothing to align to, and a sun and an ⓘ are about as legible as an icon gets.
- * Both carry aria-label and title.
- */
-export const iconButton = css`
-    .icon-button {
-        display: inline-flex;
-        flex: none;
-        align-items: center;
-        justify-content: center;
-        width: 2.75rem;
-        min-height: 2.75rem;
-        padding: 0;
-        border: var(--border);
-        border-radius: var(--radius-control);
-        background: var(--paper-raised);
-        color: var(--graphite);
-        cursor: pointer;
-        touch-action: manipulation;
-        -webkit-tap-highlight-color: transparent;
-    }
-
-    @media (hover: hover) {
-        .icon-button:hover:not(:disabled) {
-            border-color: var(--accent);
-            color: var(--ink);
-        }
-    }
-
-    .icon-button[aria-pressed='true'] {
-        border-color: var(--accent);
-        background: color-mix(in srgb, var(--accent) 16%, transparent);
-        color: var(--ink);
-    }
-
-    .icon-button:active:not(:disabled) {
-        background: color-mix(in srgb, var(--ink) 10%, var(--paper-raised));
-    }
-
-    .icon-button:disabled {
-        color: var(--graphite);
-        opacity: 0.45;
-        cursor: default;
     }
 `;
 

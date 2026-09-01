@@ -31,6 +31,7 @@ import {
 } from '../../shared/constants.js';
 import { controls, optionGroup } from '../styles/controls.js';
 
+import { helpFor } from './help-text.js';
 import { iconStyle, warningIcon } from './icons.js';
 
 /** Sentence-cases a token for display without touching the value that travels over the wire. */
@@ -155,6 +156,24 @@ export class PtPuzzlePicker extends LitElement {
                 color: var(--graphite);
                 font-size: var(--text-sm);
                 font-style: italic;
+            }
+
+            /*
+             * What the chosen type asks of a solver, in the one sentence help-text.js already states
+             * it in. Under the row rather than on every button, for the same reason the size caution
+             * is: four descriptions turn a row of choices back into a wall of prose.
+             *
+             * Not a .note. A caveat is italic here because it qualifies the choice above it; this
+             * answers the question the row is asking, so it is set as ordinary prose at a reading
+             * measure.
+             */
+            .goal {
+                max-width: 26rem;
+                margin: var(--space-2) auto 0;
+                color: var(--graphite);
+                font-size: var(--text-sm);
+                line-height: 1.5;
+                text-align: center;
             }
 
             /*
@@ -416,9 +435,25 @@ export class PtPuzzlePicker extends LitElement {
         );
     }
 
+    /**
+     * A spec whose difficulty is back at the first band wherever difficulty means nothing.
+     *
+     * Below a type's floor the buttons are already disabled and the panel already says the grids are
+     * always easy, but the spec kept whatever was chosen higher up: pick hard at 9×9, drop to 4×4,
+     * and the picker showed nothing selected while still submitting hard, with the buttons disabled
+     * so it could not be taken back. The server would then spend its whole redraw budget on a band
+     * no 4×4 sudoku can have and warn on every generation. Same rule as the banked list, where a
+     * selection filtered off the screen has to move rather than be quietly submitted.
+     */
+    #rated(spec) {
+        const floor = DIFFICULTY_MIN_SIDE[spec.type] ?? 0;
+        if (spec.size == null || spec.size.rows >= floor) return spec;
+        return { ...spec, difficulty: this.#difficultiesFor(spec.type)[0] };
+    }
+
     /** Applies one field of the spec and announces the whole thing. */
     #choose(patch) {
-        const spec = { ...this.#current, ...patch };
+        const spec = this.#rated({ ...this.#current, ...patch });
         this.spec = spec;
         this.dispatchEvent(
             new CustomEvent('pt-spec-change', { detail: { spec }, bubbles: true, composed: true }),
@@ -668,8 +703,17 @@ export class PtPuzzlePicker extends LitElement {
         `;
     }
 
-    /** The puzzle-type row, which only earns its space once there is more than one type. */
+    /**
+     * The puzzle-type row, which only earns its space once there is more than one type.
+     *
+     * The chosen type's goal sentence sits under it, because the row is the one place in the app
+     * that asks somebody to choose between puzzles they may never have played. It is the same
+     * sentence the game screen's help dialog opens with, so what the host reads here and what the
+     * room reads mid-solve cannot drift apart.
+     */
     #renderTypes(current) {
+        const goal = helpFor(current.type)?.goal ?? null;
+
         return html`
             <fieldset>
                 <legend>Puzzle</legend>
@@ -693,6 +737,7 @@ export class PtPuzzlePicker extends LitElement {
                         }),
                     )}
                 </div>
+                ${goal ? html`<p class="goal">${goal}</p>` : nothing}
             </fieldset>
         `;
     }

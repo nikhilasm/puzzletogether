@@ -44,7 +44,9 @@ flowchart LR
   BANK --> D
 ```
 
-Worker threads keep puzzle creation off the event loop. Sudoku generates fast enough inline, but kenken uniqueness verification does not, and a host pressing "new puzzle" expects an instant result, so all three generated types go through the same pre-warmed pool.
+Worker threads keep puzzle creation off the event loop. Sudoku generates fast enough inline, but kenken's uniqueness verification does not and kakuro's clue search does not, and a host pressing "new puzzle" expects an instant result, so all four generated types go through the same pre-warmed pool.
+
+The pool is more than a cache: it is also where a puzzle is held to the difficulty that was asked for. Three of the four generators measure the difficulty of what they made rather than dialling it in, so the pool redraws with a fresh seed until the rating matches, up to a fixed budget ([ADR-0017](adr/0017-the-pool-redraws-for-difficulty.md)). That is the second reason this work cannot sit on the event loop: a take is now up to ten generations rather than one.
 
 ---
 
@@ -179,6 +181,7 @@ flowchart TB
     POOL --> SUD["sudoku/"]
     POOL --> KEN["kenken/"]
     POOL --> NON["nonogram/"]
+    POOL --> KAK["kakuro/"]
     BNK --> CW["crossword/"]
     CW --> FILES[("data/crosswords")]
 
@@ -193,10 +196,13 @@ flowchart TB
     SUD -.-> IFACE
     KEN -.-> IFACE
     NON -.-> IFACE
+    KAK -.-> IFACE
     CW -.-> IFACE
 ```
 
-**Adding a fifth generated type is two files**: one server module implementing the four methods, and one Lit subclass of `<pt-board>`. A banked type writes three methods; it has no `create`. If a new type requires touching `shared/` or `<pt-board>` itself, the abstraction is wrong.
+**Adding a generated type is two files and eight lines**: one server module implementing the four methods, one Lit subclass of `<pt-board>`, and one entry each in `PUZZLE_TYPES`, `PUZZLE_TYPE_NAMES`, `SIZES_BY_TYPE`, `DIFFICULTY_MIN_SIDE`, `provider.js` twice, `pool.js`, `generator-worker.js`, and the client's `registry.js`. A banked type writes three methods; it has no `create`.
+
+Kakuro was the fifth type and it cost one line more than that: a kakuro prints its clues on the squares nobody writes in, and `DocCell` had no way to carry two sums and a diagonal, so it gained an optional `clue` ([ADR-0014](adr/0014-a-clue-cell-carries-two-sums.md)). **A type needing something from `shared/` is not automatically the abstraction failing**, which is how this was worded before; it is the schema being asked to describe a square it had not met. What would be the abstraction failing is a type needing a new *hook*, and kakuro needed none.
 
 `doc` is client-safe and `solution` never is. The provider returns both; the room holds both; only `doc` is serialized onto a socket. Check and Reveal are server RPCs so the solution stays put.
 
@@ -223,13 +229,13 @@ flowchart TB
     KEYPAD -. "slot: actions" .-> BRUSH["pt-brush-bar<br/>nonogram"]
     KEYPAD -. "slot: actions" .-> REBUS["Rebus toggle<br/>+ All clues<br/>crossword"]
 
-    APP --> THEMESW["theme button<br/>+ About, in the footer"]
+    APP --> THEMESW["footer action bar<br/>theme, About, GitHub, Report"]
     APP --> ABOUT["pt-about<br/>dialog"]
     APP --> SPACE["panel-space<br/>reserves the panel's height"]
     SEL --> PICKER["pt-puzzle-picker"]
     MODAL --> PICKER
 
-    BOARD --> CELL["pt-cell × rows*cols"]
+    BOARD --> CELL["pt-cell × rows*cols<br/>value · label · clue · marks"]
     BOARD --> PRES["pt-presence-layer"]
     BOARD --> CELEB["pt-celebration-layer<br/>mounted for the solve wave"]
 
@@ -247,9 +253,9 @@ flowchart TB
 
 **Cells render once.** `repeat()` keyed by cell index creates each `<pt-cell>` a single time; updates set reactive properties on the specific element that changed. This is the main frontend performance constraint, measured on a 25×25 grid in Phase 1.
 
-**Shared leaves hold no state.** `<pt-mode-toggle>`, `<pt-brush-bar>`, and `<pt-puzzle-picker>` are told what is on and report the press, so the Notes toggle and the store can never disagree. They share appearance and semantics through the `iconButton` fragment in `client/styles/controls.js`. That file and `client/ui/icons.js` are the styling counterpart to the component tree: `css` fragments composed into each shadow root, since a shadow root inherits properties but not rules.
+**Shared leaves hold no state.** `<pt-mode-toggle>`, `<pt-brush-bar>`, and `<pt-puzzle-picker>` are told what is on and report the press, so the Notes toggle and the store can never disagree. They share appearance and semantics through the `actionButton` fragment in `client/styles/controls.js`. That file and `client/ui/icons.js` are the styling counterpart to the component tree: `css` fragments composed into each shadow root, since a shadow root inherits properties but not rules.
 
-**The game screen does not know what a puzzle type is.** `client/boards/registry.js` maps a `doc.type` to its board element and to the kind of input it takes: `digits`, `brushes`, or `letters`. `<pt-game>` branches on the input kind and never on the type name. Sudoku and kenken share `digits` while having nothing else in common; there are fewer ways to put something in a cell than there are puzzles.
+**The game screen does not know what a puzzle type is.** `client/boards/registry.js` maps a `doc.type` to its board element and to the kind of input it takes: `digits`, `brushes`, or `letters`. `<pt-game>` branches on the input kind and never on the type name. Sudoku, kenken, and kakuro share `digits` while having nothing else in common; there are fewer ways to put something in a cell than there are puzzles. The keypad reads the puzzle's own alphabet rather than its size, which is what lets a 9×9 kakuro offer nine digits where a 9×9 sudoku's would also be nine but a 7×7 kakuro's is still nine and a 7×7 kenken's is seven.
 
 **The panel is one element with slots, not four screens.** `<pt-keypad>` is pinned to the foot of the viewport for every type and holds the keys; what changes between types is slotted in from `<pt-game>`: the clue strip, and the one setting that decides what a key means ([ADR-0010](adr/0010-one-pinned-input-panel.md)). The panel never has to ask which puzzle it is serving.
 

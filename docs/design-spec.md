@@ -79,6 +79,9 @@ Cream paper rather than white, warm near-black ink, no cool gray. Fraunces (disp
     - **Your own chip is a button**: it opens a palette of the ten colours, with the ones other players hold greyed and struck through. Colour is the only identity a player can change, so it is edited where it is shown, and the server enforces uniqueness.
     - **The host gets a remove control on everybody else's chip**, behind a confirm dialog. It is the one action done *to* another person. The removed player lands on the landing screen with the reason on screen; nothing stops them rejoining, because there are no accounts to ban.
 - **Puzzle header**: `**Kenken**: Medium 4x4`. Header and timer are `--text-lg` and sit tight to the grid, reading as its caption. They are the same size as each other; weight separates them, so nothing competes with the grid.
+    - **The way into the rules hangs off it**: a wordless `?` at the end of the caption, opening `<pt-help>` on this puzzle type ([ADR-0018](adr/0018-a-type-explains-itself.md)). It is borderless and `--graphite` in the 2.25rem box the dialogs' close controls take, so it annotates the heading rather than competing with it, and the header is a wrapping flex row rather than a centred text run: aligning a box against a line of type is the `vertical-align` arithmetic the two engines round differently.
+    - **The words are centred as though the control were not there.** Flex centring divides the row between everything in it, so an empty item of the control's own width leads the row and balances it. The caption is centred on the caption; the mark hangs off its right edge. The spacer is drawn only when the control is.
+    - **It is not in the puzzle-action row**, which is scoped to what acts on the room's puzzle or on your seat in it. Help acts on nothing, and a host's four buttons already wrap at ~618px against the row's 480.
 - **Live solve timer**: mm:ss, counting up.
 - **The grid**: heavy cage/region rules drawn as an overlay, small cage or clue labels in each cell's top-left.
     - **Entered values are large, bold, and `--ink`**, never tinted by author.
@@ -108,6 +111,8 @@ Two **tabs**, `Create` and `Join`, over a single form. Create asks for a name; J
 Where the host picks a puzzle while everyone waits, and where the room returns between puzzles. It also carries a `Leave Room` button.
 
 **A generated type is described; a banked type is browsed** ([ADR-0009](adr/0009-a-bank-is-browsed-not-described.md)). `<pt-puzzle-picker>` renders two shapes and **which one follows the provider, not the puzzle type**: a catalog entry carrying a `puzzles` array becomes a scrolling list of cards, one without keeps the size and difficulty rows.
+
+**The puzzle-type row says what each type asks of a solver.** The chosen type's one-sentence goal sits under the row, in `--graphite` at a reading measure and not italic: it answers the question the row is asking rather than qualifying it, which is what separates it from the size caution below. It is the same sentence `<pt-help>` opens with, out of the same table, so what the host reads here and what the room reads mid-solve cannot drift apart.
 
 **A choice can be offered and still carry a caveat.** A 20×20 nonogram is a good puzzle on a laptop and a cramped one on a phone, so the option wears a small warning triangle and explains itself in a line beneath the row once picked. It is not disabled: the host may well be on a laptop, and is often the one person in the room who cannot see the problem. The note is `--graphite` and never `--wrong`, because nothing has gone wrong, and the triangle rides in the option's accessible name. A type **defaults to its largest uncautioned size**.
 
@@ -239,7 +244,8 @@ puzzletogether/
    ├─ views/{pt-app,pt-landing,pt-puzzle-select,pt-game,pt-congrats-modal,pt-confirm,pt-about}.js
    ├─ ui/{pt-player-chips,pt-timer,pt-keypad,pt-mode-toggle,pt-brush-bar,pt-puzzle-picker,icons}.js
    │  # pt-keypad is the pinned input panel for every type: clue slot, action bar, keys (ADR-0010)
-   │  └─ {pt-clue-bar,pt-clue-list}.js   # crossword's clue strip and its clue dialog
+   │  ├─ {pt-clue-bar,pt-clue-list}.js   # crossword's clue strip and its clue dialog
+   │  └─ {help-text,pt-help}.js          # goal/rules/input per type, and the dialog over the grid
    └─ boards/{registry,pt-board,pt-cell,pt-presence-layer,pt-celebration-layer}.js
       └─ {pt-sudoku-board,pt-kenken-board,pt-nonogram-board,pt-crossword-board,crossword-entries}.js
 ```
@@ -294,7 +300,7 @@ One document schema covers all four types. Everything type-specific lives under 
   size: { rows: 4, cols: 4 },
   difficulty: 'medium',
   title: null, author: null, source: 'generated', seed: 918273,
-  cells: [ { block: false, given: null, label: null }, … ],  // rows*cols, client-safe
+  cells: [ { block: false, given: null, label: null, clue: null }, … ],  // rows*cols, client-safe
   meta: { … }
 }
 ```
@@ -304,6 +310,7 @@ One document schema covers all four types. Everything type-specific lives under 
 | sudoku | `{ regionRows: 3, regionCols: 3, alphabet: '123456789' }` | digit or null, plus `marks[]` |
 | kenken | `{ cages: [{ id, cells: [idx], op: '+|-|*|/|=', target }], alphabet: '1234' }` | digit or null, plus `marks[]` |
 | nonogram | `{ rowClues: [[3,1],…], colClues: [[2],…], values: { fill: '#', cross: 'x' } }` | tri-state `'#' \| 'x' \| null`, no `marks[]` |
+| kakuro | `{ alphabet: '123456789', runs: [{ id, dir: 'A'\|'D', cells: [idx], sum }] }` | digit or null, plus `marks[]` |
 | crossword | `{ entries: [{ num, dir: 'A'\|'D', cells: [idx], clue, len }], alphabet: 'A…Z', circled: [idx] }` | letter, rebus word, or null |
 
 **Nonogram's two values are single characters named in its own `meta`**, rather than agreed as a shared constant, so the board reads what *this puzzle* uses. Same reason sudoku's alphabet travels in the document.
@@ -313,6 +320,10 @@ One document schema covers all four types. Everything type-specific lives under 
 **So a new type must bound its own values, and nothing will remind it.** This is the one piece of discipline that lives in review rather than in the schema. It is also where the widening turned up a bug the old rule had hidden: sudoku and kenken tested membership with `doc.meta.alphabet.includes(value)`, which on a string matches substrings, so `'12'` would have passed the moment a two-character value could reach it. A check that has never been wrong may only be a check that has never been reached.
 
 **Nonogram has no pencil marks**: the cross is the note, so it lives in the cell's value and `marks[]` stays empty. It is also the one type whose `isComplete` cannot be the shared value-grid comparison, since a grid is solved by its filled squares alone.
+
+**Kakuro prints its clues on `DocCell.clue`**, an optional `{ across, down }` on a blocked square, drawn by `<pt-cell>` as two sums either side of a diagonal ([ADR-0014](adr/0014-a-clue-cell-carries-two-sums.md)). It is the first structure the schema carries on a square nobody writes in, and the only widening a fifth type needed. `<pt-board>` passes it through and says it: a blocked square that carries a clue is announced as `"clue 16 down, 23 across"` rather than as `"blocked"`.
+
+**Kakuro's alphabet is `123456789` at every size**, unlike sudoku's and kenken's, which are the grid's side. A run of four squares still draws on all nine digits. Nothing had to change for that, because the keypad and the board already read `meta.alphabet` rather than `size`.
 
 **KenKen labels its cages through `DocCell.label`**, which already draws in a cell's top-left corner. The server writes `12+` or `3÷` onto each cage's first cell and the board never renders a label itself.
 
@@ -348,7 +359,9 @@ The rules themselves are almost entirely borrowed: a crossword cell holds one va
 
 **A room does not serve the same banked puzzle twice running.** A generator never repeats by construction; a bank of thirty will, and "start another" landing on the puzzle just solved would read as the button being broken. The room remembers the ids it has been served. **A named `puzzleId` overrides that**: having pressed a title off a list, the host means that puzzle.
 
-**Client**: `<pt-board>` owns grid geometry, cell DOM, selection, the presence layer, and op emission. Subclasses supply cell rendering, the keyboard/keypad map, input filtering, and decorations. A fifth type is one server module plus one Lit subclass, touching nothing shared.
+**Client**: `<pt-board>` owns grid geometry, cell DOM, selection, the presence layer, and op emission. Subclasses supply cell rendering, the keyboard/keypad map, input filtering, and decorations. A fifth type is one server module plus one Lit subclass, plus whatever the *document* needs to describe it: kakuro added no hook and one optional cell field ([ADR-0014](adr/0014-a-clue-cell-carries-two-sums.md)).
+
+**A type declares itself twice on the client**: once in `boards/registry.js`, which says what draws it and how it is typed into, and once in `ui/help-text.js`, which says in prose what it asks of a solver ([ADR-0018](adr/0018-a-type-explains-itself.md)). The two are kept apart because they fail differently. `boardFor()` throws at a type it has never heard of, since a build that cannot draw a puzzle is broken; `helpFor()` returns `null`, since a build that cannot explain one is still playable, and the screens answer by leaving the way in undrawn. `client/ui/help-text.test.js` is what stops that silence becoming the way a missing entry is discovered.
 
 | hook | answers | used by |
 |---|---|---|
@@ -363,6 +376,7 @@ The rules themselves are almost entirely borrowed: a crossword cell holds one va
 | `nextSelection(from, dRow, dCol)` | where an arrow key lands, when it is not simply the next square | crossword: skips blocks, flips direction across the entry |
 | `advanceAfterInput(idx)` | where the cursor goes once a value is written, or nowhere | crossword auto-advance |
 | `isCircled` | whether the square is annotated rather than special | crossword themed squares |
+| `isHighlighted` (kakuro) | the two runs crossing the cursor, not the row and column | kakuro |
 | `celebrates(idx)` | whether a square takes part in the solve wave | crossword skips blocks; nonogram also skips fills |
 
 **Crossword pulls on navigation the way nonogram pulled on rendering.** `nextSelection` and `advanceAfterInput` exist because a crossword is the first type where moving the cursor is a puzzle-specific act: everywhere else an arrow key means the adjacent square and typing means stay put, and both were hard-coded in `<pt-board>` because no type had disagreed. `spokenLabel` gains the cell index because a crossword number describes the entries that *start* at a square.
@@ -389,7 +403,34 @@ A partition that is not unique is **tightened rather than redrawn**: the largest
 
 **Nonogram's difficulty is measured**, by the same solver that proves it fair: sweeping rows and columns until nothing changes is what a person does, so how many sweeps it took is a property of the puzzle. The last sweep is not counted, since it deduces nothing. Thresholds are a fraction of the grid's side (0.3 medium, 0.45 hard), normalized because information travels one row and one column per sweep.
 
+**Kakuro.** Lay out the blocks, then **choose** the clue values, each for how much of the board it settles. Nothing is filled in first, which is the opposite of how the other three generated types work and the second thing this type had to be rebuilt over ([ADR-0015](adr/0015-kakuro-clues-are-chosen-not-derived.md)).
+
+**Deriving sums from a filled grid does not work here.** A random filling gives runs middling sums, and a middling sum says almost nothing: 20 across four squares is fourteen different digit sets. The sums are a flow constraint over a graph whose vertices are runs and whose edges are squares, so every cycle in that graph is a degree of freedom the clues cannot see; not one drawn 9×9 or larger in a 12-per-size sample had a single answer. Repairing that meant shortening runs until nothing was left to be vague about, which produced grids whose runs averaged 2.5 squares against the 4 or more a real kakuro has.
+
+So the generator searches over clues instead:
+
+1. **Draw the blocks as a pattern**: symmetric pairs, clustered, to a per-difficulty density ([ADR-0016](adr/0016-kakuro-blocks-are-a-pattern.md)). Any run still over `RUN_LIMIT` is then subdivided as before, which is the one place a layout loses its symmetry.
+2. **Seed the crossings**: where neither clue through a square is chosen, take a pair that pins it hard. 26 in three squares is {6,8,9}, 21 in six is {1..6}, and a square in both is a 6 before anything else is known. Precomputed per pair of run lengths, and grouped by how tightly they pin, because insisting on the tightest pair at every crossing contradicts itself within a few squares.
+3. **Choose the rest, loosest clue first**, each value weighed by what the whole board looks like afterwards.
+4. **Repair** what is still unsettled by re-choosing the two clues crossing a loose square, and only failing that by blocking the square out.
+
+**A run is analysed exactly, and that is a design decision.** Its legal fillings form a small graph; a forward and a backward pass over it say precisely which digits each square can hold and which sums the clue could still take. Anything the analysis cannot deduce has to be paid for with a shorter run or a printed digit, so the propagator's strength is what run length is bought with. Narrowing runs from a worklist rather than sweeping the grid, since choosing one clue can only teach the runs crossing it.
+
+Two global facts prune the search. The across clues and the down clues both total every digit in the grid, so a value putting those two totals out of reach is refused before it is weighed. And a settled board is a unique board, because narrowing is sound: two answers would leave a square holding two digits.
+
+**Kakuro's difficulty is measured in sweeps, like nonogram's**, and steered by two knobs rather than one. The first is the layout's **block density**, 30% of the interior for easy down to 20% for hard; it replaced a per-difficulty run ceiling, which the grid's own width clamped to the same number for all three levels at every size except 13×13. The second is how far down the ranking of candidate clue values each difficulty reaches. Bands are fractions of the side, normalized for the same reason nonogram's are: a deduction travels one run at a time, so a larger grid needs more sweeps to say the same thing.
+
+**Density and run length are one dial.** Every block shortens two runs, so a grid patterned densely enough to look like a kakuro has runs of about 3.5 squares rather than 4.1. Stating the knob as density is what lets it separate the levels at a size whose width has already capped run length.
+
+**Every kakuro this generator ships is settled by the rules alone**, so none of them needs a guess. `hard` is therefore the top of a sweep count rather than "the rules do not finish it"; that case is still rated, because a hand-made puzzle could arrive that way.
+
+Measured over 192 puzzles across four sizes and three difficulties: runs average 3.5 squares at a medium 13×13 and 3.9 at a hard one, no puzzle carried a printed digit, 177 came back at the difficulty requested **as a single draw**, and generation took an average of 1 to 197ms with a worst case of 439ms at a 13×13. The pool redraws the misses ([ADR-0017](adr/0017-the-pool-redraws-for-difficulty.md)), so what a room is handed is on the band it asked for; the cost is that a hard 13×13 averages 434ms once the redraws are counted, which the pre-warmed pool absorbs.
+
 **Latency strategy: pre-warmed pools in a worker thread.** `server/puzzles/pool.js` keeps N ready puzzles per (type, difficulty, size), refilled in the background via `node:worker_threads`. `getPuzzle` pops from the pool, falling back to synchronous generation only if dry.
+
+**The pool is also what holds a puzzle to the difficulty asked for** ([ADR-0017](adr/0017-the-pool-redraws-for-difficulty.md)). Sudoku, nonogram and kakuro measure the difficulty of what they made, so a draw can come back on a band nobody requested; the pool redraws with a fresh seed, up to ten times. A redraw is worth spending because the seed is the whole of what changes: a generator's own retry loop reuses one rng stream and one set of tuned parameters, which is why sudoku's already generous internal budget returns easy every time at 4×4. After ten it serves the nearest band and says so on the console, because a difficulty can be **unreachable** at a size rather than merely unlucky and an unbounded search would pin a worker on a request with no answer. 679 of 720 takes came back exact, and all 41 misses were sudoku below its own 9×9 rating floor, which Puzzle Select does not let a host ask for.
+
+**Difficulty is a promise for a generated type and a preference for a banked one.** A generator can draw again; a bank offers the files it was given, and a bank with no hard 15×15 serving a medium one beats it serving nothing. Size is exact on both paths ([ADR-0004](adr/0004-hybrid-puzzle-supply.md)).
 
 **Crossword bank.** `data/crosswords/index.json` manifest plus one JSON per puzzle, validated at boot. Seeded with hand-authored minis, plus `scripts/import-crossword.js` to convert `.puz`/`.ipuz`. Auto-generated clues are poor, which is why this type is banked rather than generated.
 
@@ -577,10 +618,11 @@ Settled by measurement or playtest: LWW does not feel bad; per-player forward-on
 | Your own cursor is drawn in your own colour | Every cursor was `--accent` | Two people over one screen could not tell whose cursor was whose, and a player's colour now means one thing everywhere | Phase 4b, 2026-08-07 |
 | Room code, seat count, and roster are one panel with a rule and no fill | Three centred lines with nothing grouping them, on `--paper-raised` | The stack read as a screen above the real one, and a filled panel read as a card to be dealt with rather than a caption on the room | Phase 4b, 2026-08-07 |
 | `Leave Room` sits in the action row at full size, marked `--danger` | Smaller and set apart below the row | It was the only button on the screen at its own size, which read as an afterthought rather than as quiet | Phase 4b, 2026-08-09 |
-| The footer is two icon buttons over two links, with `<pt-about>` | A labelled theme switch, a version line, and a link stacked down the page | A button changes the app and a link leaves it; the version line moved into About, which is where the rest of that answer now lives | Phase 4b, 2026-08-09 |
+| The footer is one action bar: Theme, About, GitHub, Report | Two wordless icon buttons over two links a type step smaller | Every one of the four says what it is instead of waiting to be hovered, and the row the links cost is given back; the two that leave stay anchors, so a middle click still opens a tab | Phase 4b, 2026-08-31 |
 | `game:start` covers starting and restarting | A separate `game:newPuzzle` event | Starting from `select` and from `solved` differ in nothing but the state they leave | Phase 2 |
 | A cell holds a value or marks, never both | A `marks` op preserved the cell's value | Undoing back to a marks-only state silently left the old digit in place; one op per cell state is what makes undo a single write | Phase 2 |
 | Crossword entry lookup lives in `client/boards/` | Listed under `shared/puzzle-doc.js` from Phase 0 | `shared/` is what both sides need, and the server never asks what an entry is | Phase 4, 2026-08-03 |
 | Cell values are 1–8 characters on the wire, bounded per type | Exactly one character, bounded by `schema.js` | A rebus square is a standard device and a themed crossword is often built on it ([ADR-0007](adr/0007-rebus-widens-the-cell-value.md)) | Phase 4, 2026-08-03 |
 | `checkCells` needs no block-skipping | Planned as `checkCellsByValue` skipping blocks | `checkPuzzle` already passes `editableIndices(doc)`, which excludes blocks; the planned work did not exist | Phase 4, 2026-08-05 |
 | 15×15 crossword carries no small-screen caution | Planned to be marked like the 20×20 nonogram | Measured: 19px squares at 320px with no overflow, which is what every crossword app ships | Phase 4, 2026-08-05 |
+| A generated puzzle is redrawn until it rates at the difficulty asked for | Whatever the generator produced was served, labelled with what it turned out to be | Three of the four generators measure difficulty rather than setting it, so a request missed often enough to reach a player: kakuro at 7×7 hard came back hard 7 draws in 12 ([ADR-0017](adr/0017-the-pool-redraws-for-difficulty.md)) | Phase 5, 2026-08-30 |
