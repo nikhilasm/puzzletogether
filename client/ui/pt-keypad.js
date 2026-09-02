@@ -49,7 +49,8 @@ export class PtKeypad extends LitElement {
         /** 'digits' for one even grid of keys, 'letters' for the three staggered QWERTY rows. */
         layout: { type: String },
         counts: { type: Object },
-        capacity: { type: Number },
+        /** Max legal count per key, e.g. { '1': 9, '2': 9 }. A key missing from this never dims. */
+        capacities: { type: Object },
         canUndo: { type: Boolean },
         disabled: { type: Boolean },
     };
@@ -209,7 +210,7 @@ export class PtKeypad extends LitElement {
         this.alphabet = '';
         this.layout = 'digits';
         this.counts = {};
-        this.capacity = 0;
+        this.capacities = {};
         this.canUndo = false;
         this.disabled = false;
     }
@@ -366,15 +367,16 @@ export class PtKeypad extends LitElement {
     /** One key, dimmed once the grid already holds as many of it as it can. */
     #renderKey(key) {
         const placed = this.counts?.[key] ?? 0;
-        const remaining = Math.max(0, this.capacity - placed);
-        const isExhausted = this.capacity > 0 && remaining === 0;
+        const capacity = this.capacities?.[key];
+        const remaining = capacity == null ? null : Math.max(0, capacity - placed);
+        const isExhausted = remaining === 0;
 
         return html`
             <button
                 type="button"
                 ?data-exhausted=${isExhausted}
                 ?disabled=${this.disabled}
-                aria-label=${this.capacity > 0 ? `${key}, ${remaining} remaining` : key}
+                aria-label=${remaining == null ? key : `${key}, ${remaining} remaining`}
                 @pointerdown=${this.#onPointerDown}
                 @click=${() => this.#emit('pt-keypad-key', { value: key })}
             >

@@ -63,6 +63,15 @@ export const HELP = {
         ],
         input: 'The clue for the square you are in sits above the keys, and Clues opens the whole list. Rebus holds the cursor still so one square can take a whole word.',
     },
+    suguru: {
+        goal: 'Fill every square so that each heavily outlined region holds every digit from 1 to its own size exactly once.',
+        rules: [
+            'A region of 4 squares uses the digits 1 to 4; a region of 6 uses 1 to 6.',
+            'The same digit may never sit in two touching squares, including diagonally.',
+            'There is no row or column rule: a square is constrained only by its own region and its neighbours.',
+        ],
+        input: NOTES,
+    },
 };
 
 /**

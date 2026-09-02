@@ -94,7 +94,7 @@ export const ASSIST_RATE_LIMIT = { capacity: 3, refillPerSecond: 0.5 };
 export const MAX_CELL_VALUE_LENGTH = 8;
 
 /** Every puzzle type this build can serve. */
-export const PUZZLE_TYPES = ['sudoku', 'kenken', 'nonogram', 'kakuro', 'crossword'];
+export const PUZZLE_TYPES = ['sudoku', 'kenken', 'nonogram', 'kakuro', 'crossword', 'suguru'];
 
 /**
  * How each type is written when shown to a player.
@@ -108,6 +108,7 @@ export const PUZZLE_TYPE_NAMES = {
     nonogram: 'Nonogram',
     kakuro: 'Kakuro',
     crossword: 'Crossword',
+    suguru: 'Suguru',
 };
 
 /** Difficulties every generated type must support. */
@@ -133,6 +134,7 @@ export const SIZES_BY_TYPE = {
     kenken: [4, 5, 6, 7],
     nonogram: [5, 10, 15, 20],
     kakuro: [7, 9, 11, 13],
+    suguru: [5, 6, 7, 8, 9],
 };
 
 /**
@@ -180,6 +182,10 @@ export const DIFFICULTY_MIN_SIDE = {
     // Crossword difficulty is declared in the bank manifest, not measured: it is how obscure the
     // clues are, which is a property of the writing. Size has nothing to do with it.
     crossword: 0,
+    // No floor: suguru's difficulty is carried by its region-size distribution and how far the two
+    // rules the solver knows get before a cell is forced, which separates at every size offered,
+    // a 5×5 included.
+    suguru: 0,
 };
 
 /** How many of a player's own ops stay undoable. Deep enough to fix a bad run, not a whole solve. */

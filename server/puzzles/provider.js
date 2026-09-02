@@ -17,9 +17,10 @@ import kenken from './kenken/index.js';
 import nonogram from './nonogram/index.js';
 import { GeneratorPool } from './pool.js';
 import sudoku from './sudoku/index.js';
+import suguru from './suguru/index.js';
 
 /** Puzzle modules by type. A further type is one import and one entry. */
-const MODULES = { sudoku, kenken, nonogram, kakuro, crossword };
+const MODULES = { sudoku, kenken, nonogram, kakuro, crossword, suguru };
 
 /** Which producer serves each type, the whole of what getPuzzle has to decide. */
 const PROVIDER_BY_TYPE = {
@@ -28,6 +29,7 @@ const PROVIDER_BY_TYPE = {
     nonogram: 'generator',
     kakuro: 'generator',
     crossword: 'bank',
+    suguru: 'generator',
 };
 
 const pool = new GeneratorPool();

@@ -20,9 +20,10 @@ import kenken from './kenken/index.js';
 import nonogram from './nonogram/index.js';
 import { createRng, randomSeed } from './rng.js';
 import sudoku from './sudoku/index.js';
+import suguru from './suguru/index.js';
 
 /** Types this pool can generate in-process as a fallback. */
-const MODULES = { sudoku, kenken, nonogram, kakuro };
+const MODULES = { sudoku, kenken, nonogram, kakuro, suguru };
 
 /**
  * Independent draws to spend looking for the difficulty that was asked for.

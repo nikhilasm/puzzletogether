@@ -182,6 +182,7 @@ flowchart TB
     POOL --> KEN["kenken/"]
     POOL --> NON["nonogram/"]
     POOL --> KAK["kakuro/"]
+    POOL --> SUG["suguru/"]
     BNK --> CW["crossword/"]
     CW --> FILES[("data/crosswords")]
 
@@ -197,12 +198,15 @@ flowchart TB
     KEN -.-> IFACE
     NON -.-> IFACE
     KAK -.-> IFACE
+    SUG -.-> IFACE
     CW -.-> IFACE
 ```
 
 **Adding a generated type is two files and eight lines**: one server module implementing the four methods, one Lit subclass of `<pt-board>`, and one entry each in `PUZZLE_TYPES`, `PUZZLE_TYPE_NAMES`, `SIZES_BY_TYPE`, `DIFFICULTY_MIN_SIDE`, `provider.js` twice, `pool.js`, `generator-worker.js`, and the client's `registry.js`. A banked type writes three methods; it has no `create`.
 
 Kakuro was the fifth type and it cost one line more than that: a kakuro prints its clues on the squares nobody writes in, and `DocCell` had no way to carry two sums and a diagonal, so it gained an optional `clue` ([ADR-0014](adr/0014-a-clue-cell-carries-two-sums.md)). **A type needing something from `shared/` is not automatically the abstraction failing**, which is how this was worded before; it is the schema being asked to describe a square it had not met. What would be the abstraction failing is a type needing a new *hook*, and kakuro needed none.
+
+Suguru was the sixth type and, by this same measure, the abstraction held too: no new hook, and `shared/` did not change at all, since a cell's own alphabet bound is derived from `meta.regions` and cached rather than carried on `DocCell` ([ADR-0019](adr/0019-a-region-bounds-its-own-alphabet.md)). What suguru actually cost lived entirely inside its own generator, not at this boundary: its region and adjacency rules interact in a way none of the other four types' generators had to plan for, and getting a partition that is reliably fillable turned out to need its own decision, not a hook ([ADR-0021](adr/0021-a-region-needs-slack-not-just-room.md)).
 
 `doc` is client-safe and `solution` never is. The provider returns both; the room holds both; only `doc` is serialized onto a socket. Check and Reveal are server RPCs so the solution stays put.
 

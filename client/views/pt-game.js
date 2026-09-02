@@ -49,6 +49,19 @@ function digitCounts(doc, board) {
     return counts;
 }
 
+/**
+ * How many of each key the keypad should ever expect, so it dims a key only once the grid truly
+ * has no more room for it. doc.size.rows is right for every type built on a full latin square
+ * (sudoku, kenken, kakuro); a type whose per-digit ceiling is something else, like suguru's region
+ * sizes (ADR-0019), says so itself via its registry entry's keyCapacity.
+ */
+function keyCapacities(doc, boardEntry) {
+    const capacityForKey = boardEntry.keyCapacity ?? (() => doc.size.rows);
+    const capacities = {};
+    for (const key of doc.meta.alphabet) capacities[key] = capacityForKey(doc, key);
+    return capacities;
+}
+
 export class PtGame extends LitElement {
     static properties = {
         confirmingReveal: { state: true },
@@ -573,7 +586,7 @@ export class PtGame extends LitElement {
                 .layout=${letters ? 'letters' : 'digits'}
                 .alphabet=${(board.input !== 'brushes' && doc.meta.alphabet) || ''}
                 .counts=${letters ? {} : digitCounts(doc, state.view)}
-                .capacity=${letters ? 0 : doc.size.rows}
+                .capacities=${letters ? {} : keyCapacities(doc, board)}
                 .canUndo=${state.canUndo}
                 .disabled=${!isPlaying}
                 @pt-keypad-key=${this.#onKeypadKey}
