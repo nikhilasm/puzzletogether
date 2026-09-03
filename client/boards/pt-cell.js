@@ -243,15 +243,31 @@ export class PtCell extends LitElement {
         }
 
         /*
-         * The cross is sized to the square, not to the type scale around it.
+         * The cross is sized to the square, not to the type scale around it, and it is drawn rather
+         * than typed.
          *
          * It is a mark on a grid rather than a character in a sentence: at text proportions it read
          * as a small dot in a large empty cell, which is exactly what an unmarked cell looks like
          * from arm's length. It has to be legible at a glance across a 20×20 to be worth making.
+         *
+         * As a multiplication character it also sat visibly high in the cell. A glyph is centred on
+         * the font's own axis, not on the box it is laid out in, so centring the span cannot move
+         * ink the font has already placed off-centre. Two strokes in a square viewBox are centred by
+         * construction at every cell size.
          */
         .value.cross {
+            width: 55%;
+            aspect-ratio: 1;
             color: var(--pencil);
-            font-size: calc(var(--cell-size, 40px) * 0.92);
+        }
+
+        .value.cross svg {
+            display: block;
+            width: 100%;
+            height: 100%;
+            stroke: currentColor;
+            stroke-width: 1.5;
+            stroke-linecap: round;
         }
 
         /* Check feedback recolours a mark the same way it recolours a digit. */
@@ -511,7 +527,13 @@ export class PtCell extends LitElement {
     #renderValue() {
         const glyph = this.glyphs?.[this.value];
         if (glyph === 'block') return html`<span class="value block"></span>`;
-        if (glyph === 'cross') return html`<span class="value cross">×</span>`;
+        if (glyph === 'cross') {
+            return html`<span class="value cross"
+                ><svg viewBox="0 0 10 10" aria-hidden="true">
+                    <path d="M1 1 L9 9 M9 1 L1 9" fill="none" />
+                </svg>
+            </span>`;
+        }
 
         // The length drives the size-to-fit rule above. Written as a custom property rather than a
         // computed font-size so the arithmetic stays in the stylesheet with the rest of the geometry.

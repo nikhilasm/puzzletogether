@@ -12,8 +12,8 @@ import { DEFAULT_SETTINGS } from '../../shared/constants.js';
 import { ROOM_STATE } from '../../shared/protocol.js';
 import { roomStore } from '../store/room-store.js';
 import { StoreController } from '../store/store-controller.js';
-import { controls, dangerButton } from '../styles/controls.js';
-import { iconStyle, leaveIcon } from '../ui/icons.js';
+import { accentButton, controls, dangerButton } from '../styles/controls.js';
+import { iconStyle, leaveIcon, startIcon } from '../ui/icons.js';
 
 import '../ui/pt-puzzle-picker.js';
 
@@ -27,6 +27,7 @@ export class PtPuzzleSelect extends LitElement {
     static styles = [
         controls,
         dangerButton,
+        accentButton,
         iconStyle,
         css`
             :host {
@@ -49,6 +50,12 @@ export class PtPuzzleSelect extends LitElement {
             pt-puzzle-picker {
                 max-width: 40rem;
                 margin: 0 auto var(--space-6);
+            }
+
+            .start {
+                display: inline-flex;
+                gap: var(--space-2);
+                align-items: center;
             }
 
             /*
@@ -142,7 +149,13 @@ export class PtPuzzleSelect extends LitElement {
                     this.spec = event.detail.spec;
                 }}
             ></pt-puzzle-picker>
-            <button type="button" ?disabled=${this.busy} @click=${this.#onStart}>
+            <button
+                class="accent start"
+                type="button"
+                ?disabled=${this.busy}
+                @click=${this.#onStart}
+            >
+                ${startIcon}
                 ${this.busy ? 'finding a puzzle…' : `Start ${isSolved ? 'another' : 'puzzle'}`}
             </button>
         `;

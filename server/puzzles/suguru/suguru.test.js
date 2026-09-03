@@ -165,6 +165,21 @@ describe('suguru generation', () => {
         generate('hard', 909, 9);
         expect(Date.now() - started).toBeLessThan(10_000);
     });
+
+    /**
+     * The regression ADR-0021's Revisions record. Hard's original region pool was measured at 6×6
+     * and collapsed at the sizes above it, drawing partitions that are provably unfillable rather
+     * than merely slow: 9 of 25 hard 9×9 requests came back with no puzzle at all, which the caller
+     * then dereferenced. A few seeds at the two sizes that failed is enough to catch a pool that
+     * has stopped filling, since the old one filled 0 of 300 draws at either.
+     */
+    it.each([8, 9])('generates a hard %d×%d on every seed, not just lucky ones', (n) => {
+        for (let seed = 0; seed < 4; seed += 1) {
+            const { doc } = generate('hard', 8100 + seed, n);
+            expect(doc.cells.some((cell) => cell.given == null)).toBe(true);
+            expect(doc.cells.some((cell) => cell.given != null)).toBe(true);
+        }
+    });
 });
 
 describe('suguru module interface', () => {

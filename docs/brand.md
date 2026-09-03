@@ -223,29 +223,44 @@ It should be invisible until you look for it. If it becomes noticeable at a glan
 
 ### Icons
 
-Twenty-one, drawn as inline SVG in `client/ui/icons.js`: erase, undo, pencil (Notes), sun, moon, leave, close, check, reveal, puzzles (Puzzle Select), fill, warning, next, rebus, backspace, list (Clues), info (About), help (How to play), flag (Report an issue), github, start. Line drawings on a 24×24 box inheriting `currentColor` and `--stroke-icon`, so an icon inside a disabled control greys out with it and neither theme needs a second asset.
+Twenty-nine, drawn as inline SVG in `client/ui/icons.js`. Twenty-three are actions: erase, undo, pencil (Notes), sun, moon, leave, close, check, reveal, puzzles (Puzzle Select), fill, warning, next, rebus, backspace, list (Clues), info (About), changelog, home (the author's site), help (How to play), flag (Report an issue), github, start. Line drawings on a 24×24 box inheriting `currentColor` and `--stroke-icon`, so an icon inside a disabled control greys out with it and neither theme needs a second asset.
 
 `github` is the one exception, and the exception is the point: it is a borrowed mark on a 16×16 box, filled rather than stroked, because a logo is recognised before it is read and an outlined approximation of it is only a worse version of somebody else's drawing.
+
+The other six are **puzzle-type marks**, one per type, and they are a different kind of drawing ([ADR-0022](adr/0022-a-type-wears-its-own-board.md)). Each is the same 2×2 of rounded cells on the same 24×24 box, and what separates them is what is printed in the squares: crossword's blocks and letters, sudoku's four digits with two set as givens, nonogram's fill and cross, KenKen's four operators, kakuro's split clue square, suguru's three squares drawn as one region beside a fourth that is not in it. They are identity, not instruction, so they appear in exactly one place, the puzzle-type tiles in `<pt-puzzle-picker>`, always with the type's name under them. Their parts take rules `iconStyle` does not carry, so `typeIconStyle` in the same file supplies them: `.block` fills, `.wash` fills at 18% for a given, `.glyph` prints a character, `.heavy` draws a region rule at 2× the icon stroke. Compose both fragments or the marks come out as empty outlines.
+
+**`.block` keeps its stroke**, where `fill` drops it. A stroke is drawn centred on the path, so an outlined cell is half a stroke bigger than its rect on every side; a block with `stroke: none` came out a stroke narrower than the square beside it, which is visible at 36px and reads as a wonky grid rather than as a filled square.
+
+**The chosen tile's mark takes `--accent-text`**, which is the pressed setting's accent glyph (below) said in one property: every part of a type mark is painted from `currentColor`, blocks and digits included, so the whole drawing moves rather than the outlines alone. No 35% fill wash here; these marks already fill what they mean to fill.
+
+**They are the only icons in the set that set actual type**: their characters are `<text>` in `--font-ui`, where `info` and `help` are geometry that happens to look like a glyph. That is the bend in `rebus`'s rule against lettering an icon, and it is a narrow one: a digit in a sudoku mark is not a word in disguise, it is the thing the square holds.
 
 ```css
 --stroke-icon: 1.5;   /* the border weight, so icons and rules read as one hand */
 ```
 
-**An icon never carries meaning alone.** Every control in the app has its word. **Frequency decides size and placement, not whether there is a word** ([ADR-0012](adr/0012-a-label-under-every-icon.md)):
+**An icon never carries meaning alone.** Every control in the app has its word, drawn beside it, under it, or (in the footer alone) offered on hover and carried always by the accessible name. **Frequency decides size and placement, not whether there is a word** ([ADR-0012](adr/0012-a-label-under-every-icon.md), qualified by [ADR-0023](adr/0023-the-footer-is-one-panel.md)):
 
 - **Pressed constantly**: Notes, Rebus, the three brushes, Erase, Undo, Clues, Backspace. In the pinned panel at thumb size, label **under** the icon. Four of them come to 236px against the 296px a 320px screen has to give. The label is `--text-sm`, stepping to `--text-xs` below 30rem. Their icons are a fixed `1rem` rather than `iconStyle`'s `1.25em`, so they match each other rather than whichever shadow root's font size they inherit.
 - **Pressed once or twice**: Puzzle Select, Check, Reveal, Leave Room. Down the page, label beside the icon.
-- **Peripheral**: the footer's Theme, About, GitHub, and Report. One bar at the foot of the page, drawn with the panel's own `.action`, label under the icon. Theme's label is its destination ("Dark"), like its name and its glyph; Report's is one word against a fuller `aria-label`, because four labels share a 320px row and "Report" alone does not say what of. Asserted in `tests/game.spec.js`.
+- **Pressed once a session, and compared before it is pressed**: the six puzzle types in Puzzle Select. A grid of tiles, mark **over** word like the panel's controls, because the six are being read against each other rather than found in a row ([ADR-0022](adr/0022-a-type-wears-its-own-board.md)).
+- **Peripheral**: the footer's Theme, About, Changelog, GitHub, Report, and Homepage. **One panel at the foot of the page, divided equally between icon-only controls, and the only place in the app where a word is not drawn** ([ADR-0023](adr/0023-the-footer-is-one-panel.md)). None of them acts on a puzzle, a room, or a seat, and six labels do not fit a 320px row at any type size the scale offers. The name is carried by the `aria-label` always and offered as a tooltip on hover. Theme's tooltip is its destination ("Dark theme"), like its name and its glyph. Asserted in `tests/game.spec.js`.
+
+**A tooltip is a surface, so it is drawn like one**: `--paper-raised` inside a 1.5px rule at `--radius-control`, `--text-sm` in `--font-ui`, no shadow (there is one shadow in this app and it is under the congrats modal), and no motion. `<pt-tooltip>` in `client/ui/pt-tooltip.js` wraps a control and shows it on pointer and on focus only: a touch browser holds emulated hover on whatever was tapped last, which would park a bubble over it indefinitely. The query is checked in JavaScript rather than in CSS, because what is being gated is a state and not a rule.
+
+**A bubble is centred on the control it names and moves only when a viewport edge makes it.** It is wider than an icon-only control, so the outermost one on a 320px screen would hang off the side; it measures itself as it appears and shifts by the overhang and no further. Aligning the end controls' bubbles to the bar instead was built and reverted: it moved two of the six on every screen, including the ones with 400px of clear space, to fix a case that arises on none of them.
 
 Three icons stand alone, and put the meaning entirely in the accessible name: the host's remove control, the warning triangle on a cautioned size, and the `?` on the puzzle header. The last is wordless because a question mark is already a word: it has offered to answer "how does this work" on every interface for thirty years, and a labelled button on the caption would compete with the caption. It is a question mark rather than the ⓘ it used to be because the caption beside it already says what the puzzle *is*; what is still wanted from it is the rules. Borderless and `--graphite` in a 2.25rem box, which is the size a secondary icon-only control takes here, the dialogs' close controls included.
 
-Every icon is `aria-hidden`; the control around it has a name. A twenty-second icon should be a decision, not a reflex.
+Every icon is `aria-hidden`; the control around it has a name. A twenty-eighth icon should be a decision, not a reflex, and a seventh type mark comes with a seventh puzzle type or not at all.
 
 **A caution is not an error.** The warning triangle marks a choice that works and costs something, so it is `--graphite` like any other note, never `--wrong`, and it never disables what it marks.
 
 **Two icons that mean different things must look different.** Puzzle Select is four squares, not a back arrow, because Leave Room sits in the same row wearing an arrow. Check is a tick rather than a magnifier, so it looks like the ticks and crosses it draws on the cells.
 
-**The one solid icon is the one that draws something solid.** `fill` is a filled square where every other icon is a stroked outline, because the mark it paints is a filled square.
+The six type marks are the deliberate inverse, and they are the exception that keeps the rule honest: they are meant to look **alike**, because they are one question's six answers and a host reads them side by side. Six unrelated drawings would be six things to learn; six boards told apart by what is printed in them is one thing to learn, six times.
+
+**The one solid icon is the one that draws something solid.** `fill` is a filled square where every other action icon is a stroked outline, because the mark it paints is a filled square. The type marks fill squares for the same reason and no other: a crossword block and a filled nonogram square are printed solid on the board.
 
 ### Marks that are not letters
 
@@ -269,6 +284,8 @@ An **action** says *do this*: Check, Reveal, Start another. A **setting** says *
 
 **The pressed state moves four channels, never a fill.** `border-color: var(--accent)`, the same 16% accent wash a selected cell carries, an icon filled to a 35% accent wash and stroked in `--accent-text`, and a label at `font-weight: 700`. The ground never fills with colour: colour belongs to people.
 
+**A control's ground is opaque, so every wash on one is mixed into `--paper-raised` rather than into `transparent`.** Same rule as "the grid is opaque" above and the same bug: the texture is drawn behind the whole page, so a ground that was 16% accent and 84% nothing let the ruling show through a pressed toggle, a chosen option, a chosen card, and the accent and danger buttons under the pointer. A control is a surface laid on the page, not a window onto it. What stays translucent is what really does sit over something: the washes inside the grid, the pressed glyph's 35% fill, and a dialog's backdrop.
+
 Four channels rather than one replaces the knob. A knob is a shape change and survives losing colour; a pressed button has only paint, so more than hue has to move. Two of the four are shape outright, which is what carries the grayscale check; `tests/game.spec.js` asserts the border and the ground both move.
 
 The icon fills to a wash rather than flat accent because the set is drawn as outlines: solid, `rebus` closes into a plain blue box and becomes the twin of `fill`. At 35% every interior stroke shows through. `cross` has no interior, so it takes the accent alone.
@@ -278,6 +295,8 @@ The icon fills to a wash rather than flat accent because the set is drawn as out
 **`--danger` is for a control that takes something away**, today Leave Room and nothing else. Outlined like every other button: the red is in the border, the word, and the icon, and the ground stays paper until the pointer is on it.
 
 It is its own token and not `--wrong`, which it currently matches to the byte. `--wrong` means *this answer is incorrect*: grid feedback, transient, and already refused for the caution triangle on those grounds. Keeping them apart costs a line of CSS and means either can move first.
+
+**`--accent` gets the same outlined treatment pointed the other way**, at the control that starts the next thing: Start another, and Puzzle Select's Start button. `accentButton` in `client/styles/controls.js` mirrors `dangerButton` field for field, reading `--accent-text` rather than `--accent` for the label and icon, since a button's text sits at body size and plain `--accent` only clears contrast for large text and borders.
 
 ### The focus ring
 
@@ -356,8 +375,10 @@ All five have been run:
 | A pressed setting gets an accent border | No accent border, because it read as a stuck focus ring | That finding applied to a control that already had a knob saying the same thing; the ground filling at the same time settles the ambiguity | Phase 4b, 2026-08-09 |
 | Every panel control carries a label under its icon | Wordless 44px icon squares in the panel | The icon-only bar was meant to buy a row of vertical space and bought none: panel height is set by the key rows below the bar ([ADR-0012](adr/0012-a-label-under-every-icon.md)) | Phase 4b, 2026-08-09 |
 | Hover rules sit behind `@media (hover: hover)` | Unguarded `:hover` | A touch browser holds emulated hover on the last-tapped element, leaving an accent border stuck on a toggle | Phase 4b, 2026-08-09 |
+| The footer is one panel of six wordless controls, named by tooltip | One bar of four labelled actions drawn with the panel's `.action` | Four boxes at the panel's width read as peers of the controls a solver presses all game, and six labels do not fit a 320px row: the words truncate, which looks like a defect rather than a decision ([ADR-0023](adr/0023-the-footer-is-one-panel.md)) | Phase 4b, 2026-09-03 |
 | The footer is one bar of four labelled actions | Two wordless 44px squares over a row of links at `--text-xs` | The split said "a button changes the app, a link leaves it" in a difference of *size*, which reads as a difference in importance: two footnotes under two controls nobody could name without hovering. The distinction survives in the markup, where the two that leave are still anchors | Phase 4b, 2026-08-31 |
 | The theme control is an action that names its destination | A labelled `role="switch"`, and before that a button whose label changed under you | A toggle made the icon genuinely ambiguous: a sun reads as "you are in light" as easily as "press for light" | Phase 4b, 2026-08-09 |
+| The puzzle types are a grid of tiles, each wearing a mark of its own board | A wrapping row of six words, sized like the size and difficulty rows below it | Six names in a row asked a host to know six games by their titles, and the row was the one place in the app that chooses between *games* rather than between values of one kind ([ADR-0022](adr/0022-a-type-wears-its-own-board.md)) | Phase 4b, 2026-09-02 |
 | Region rules are drawn as an overlay | A heavier border on the cell | As a border it changed the cell's box, misaligning rows by 1px in Firefox, and mitred with the hairline, notching the rule at every crossing | Phase 2 |
 | The grid is opaque | The page texture showed through the cells | It read as a second, unaligned ruling inside the real one | Phase 3 |
 | Nonogram's counting bands are the hairline's colour at 3× weight | `--ink`, like sudoku's region rules | In ink they read as thin filled squares competing with the picture they exist to help measure | Phase 3 |

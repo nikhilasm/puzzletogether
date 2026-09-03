@@ -233,8 +233,10 @@ flowchart TB
     KEYPAD -. "slot: actions" .-> BRUSH["pt-brush-bar<br/>nonogram"]
     KEYPAD -. "slot: actions" .-> REBUS["Rebus toggle<br/>+ All clues<br/>crossword"]
 
-    APP --> THEMESW["footer action bar<br/>theme, About, GitHub, Report"]
+    APP --> BAR["footer toolbar<br/>one panel, six icon controls<br/>theme, About, Changelog,<br/>GitHub, Report, Homepage"]
+    BAR -. wraps each .-> TIP["pt-tooltip<br/>names it on hover"]
     APP --> ABOUT["pt-about<br/>dialog"]
+    APP --> CHANGES["pt-changelog<br/>dialog"]
     APP --> SPACE["panel-space<br/>reserves the panel's height"]
     SEL --> PICKER["pt-puzzle-picker"]
     MODAL --> PICKER

@@ -10,6 +10,9 @@ export const APP_VERSION = '0.1.0';
 /** Repository link in the footer, and in About. */
 export const GITHUB_URL = 'https://github.com/nmurthy99/puzzletogether';
 
+/** The author's own site, linked from the footer toolbar. */
+export const HOMEPAGE_URL = 'https://nikmurthy.dev';
+
 /**
  * Where "Report an issue" goes.
  *

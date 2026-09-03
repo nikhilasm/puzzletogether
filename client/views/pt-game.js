@@ -580,13 +580,21 @@ export class PtGame extends LitElement {
      */
     #renderPanel(board, doc, state, isPlaying) {
         const letters = board.input === 'letters';
+        /*
+         * Only a digit puzzle has keys to count and cap.
+         *
+         * A brush type has no alphabet in its meta at all, so both of those have to be skipped
+         * rather than computed over nothing: keyCapacities iterating an absent alphabet is what
+         * threw during render and left nonogram with no game screen at all.
+         */
+        const digits = board.input === 'digits';
 
         return html`
             <pt-keypad
                 .layout=${letters ? 'letters' : 'digits'}
-                .alphabet=${(board.input !== 'brushes' && doc.meta.alphabet) || ''}
-                .counts=${letters ? {} : digitCounts(doc, state.view)}
-                .capacities=${letters ? {} : keyCapacities(doc, board)}
+                .alphabet=${board.input === 'brushes' ? '' : doc.meta.alphabet}
+                .counts=${digits ? digitCounts(doc, state.view) : {}}
+                .capacities=${digits ? keyCapacities(doc, board) : {}}
                 .canUndo=${state.canUndo}
                 .disabled=${!isPlaying}
                 @pt-keypad-key=${this.#onKeypadKey}

@@ -18,6 +18,20 @@ function toHex(rgb) {
     return `#${[r, g, b].map((v) => v.toString(16).padStart(2, '0')).join('')}`;
 }
 
+/**
+ * One colour's channels as 0 to 1, in whichever notation the engine serialised it.
+ *
+ * A gradient stop that came out of a color-mix() serialises as color(srgb r g b) in both engines,
+ * while a plain token stop stays rgb(); comparing two stops means putting them on one scale first.
+ */
+function channelsOf(color) {
+    const values = color
+        .match(/[\d.]+/g)
+        .map(Number)
+        .slice(0, 3);
+    return color.startsWith('color(') ? values : values.map((value) => value / 255);
+}
+
 /** The ring a control draws when it is focused from the keyboard. */
 async function focusRingOf(page, selector) {
     // Chromium only treats a programmatic focus as :focus-visible once the page has seen a key.
@@ -50,7 +64,7 @@ test.describe('shape and focus', () => {
             'pt-keypad .actions button',
             'pt-player-chips .chip',
             'pt-mode-toggle .action',
-            'footer .action',
+            'footer .toolbar',
             'pt-game .puzzle-actions button',
         ]) {
             expect(await radius(selector), selector).toBe('6px');
@@ -87,7 +101,7 @@ test.describe('shape and focus', () => {
             'pt-keypad .digits button',
             'pt-keypad .actions button',
             'pt-mode-toggle .action',
-            'footer .action',
+            'footer .tool',
             'pt-sudoku-board .grid',
             'pt-game .puzzle-actions button',
             // Leave room is red at rest and accent when focused: one ring, whatever the control.
@@ -95,7 +109,7 @@ test.describe('shape and focus', () => {
         ];
 
         for (const theme of ['light', 'dark']) {
-            if (theme === 'dark') await page.locator('footer .action').first().click();
+            if (theme === 'dark') await page.locator('footer .tool').first().click();
             const accent = await page.evaluate(() =>
                 getComputedStyle(document.documentElement).getPropertyValue('--accent').trim(),
             );
@@ -113,8 +127,8 @@ test.describe('shape and focus', () => {
     }) => {
         await expect(page.locator('pt-keypad .action svg.icon')).toHaveCount(3);
         await expect(page.locator('pt-mode-toggle svg.icon')).toHaveCount(1);
-        // Theme, About, GitHub, Report: one bar, one icon each.
-        await expect(page.locator('footer svg.icon')).toHaveCount(4);
+        // Theme, About, Changelog, GitHub, Report, Homepage: one panel, one icon each and no word.
+        await expect(page.locator('footer svg.icon')).toHaveCount(6);
         await expect(page.locator('pt-game .puzzle-actions button.danger svg.icon')).toHaveCount(1);
 
         const total = await page.locator('svg.icon').count();
@@ -257,8 +271,8 @@ test.describe('shape and focus', () => {
     test('nothing is stranded underneath the panel', async ({ page }) => {
         await page.mouse.wheel(0, 5000);
 
-        // The last thing on the page is the footer's action bar, which is below the game screen
-        // and so below any spacer the game screen could have reserved for itself.
+        // The last thing on the page is the footer's toolbar, which is below the game screen and so
+        // below any spacer the game screen could have reserved for itself.
         const clear = async (selector) => {
             const panel = await page.locator('pt-keypad').boundingBox();
             const box = await page.locator(selector).boundingBox();
@@ -268,7 +282,7 @@ test.describe('shape and focus', () => {
         await expect
             .poll(() => clear('pt-game .puzzle-actions button.danger'))
             .toBeGreaterThanOrEqual(0);
-        await expect.poll(() => clear('footer .footer-actions')).toBeGreaterThanOrEqual(0);
+        await expect.poll(() => clear('footer .toolbar')).toBeGreaterThanOrEqual(0);
     });
 });
 
@@ -443,51 +457,114 @@ test.describe('the footer', () => {
     test('the theme button switches, names the switch, and remembers it', async ({ page }) => {
         await createRoom(page);
 
-        const theme = page.locator('footer .action').first();
+        const theme = page.locator('footer .tool').first();
         await expect(theme).toHaveAttribute('aria-label', 'Switch to dark theme');
         expect(await theme.getAttribute('aria-pressed'), 'not a toggle').toBeNull();
-
-        await expect(theme.locator('.action-label')).toHaveText('Dark');
 
         await theme.click();
         await expect
             .poll(() => page.evaluate(() => document.documentElement.dataset.theme))
             .toBe('dark');
         await expect(theme).toHaveAttribute('aria-label', 'Switch to light theme');
-        await expect(theme.locator('.action-label')).toHaveText('Light');
         expect(await page.evaluate(() => localStorage.getItem('pt:theme'))).toBe('dark');
     });
 
     /**
-     * Four controls on one row, each with its word, each big enough for a thumb.
+     * Six controls dividing one panel equally, wordless, each big enough for a thumb.
      *
-     * The bar replaced two wordless squares over two links set a step smaller, so what is asserted
-     * here is what that swap was for: one row, and nothing on it that has to be hovered to be
-     * named. The two that leave the app are still anchors, which is the one part of the old
-     * division that survived: a button changes the app, a link leaves it, and only the drawing
-     * stopped saying so.
+     * The panel is what makes the wordlessness affordable (ADR-0023): these are peripheral, they
+     * are named by a tooltip on hover and by an accessible name always, and drawn as divisions of
+     * one surface they do not read as six decisions of the puzzle's own weight. Equal widths are
+     * what "regularly spaced regardless of how many there are" comes to, so they are asserted
+     * rather than left to a gap value.
      */
-    test('the footer is one bar of four labelled actions', async ({ page }) => {
+    test('the footer is one panel of six evenly spaced icon controls', async ({ page }) => {
         await createRoom(page);
 
-        const actions = page.locator('footer .footer-actions > *');
-        await expect(actions.locator('.action-label')).toHaveText([
-            'Dark',
-            'About',
-            'GitHub',
-            'Report',
-        ]);
+        const tools = page.locator('footer .tool');
+        await expect(tools).toHaveCount(6);
+        await expect(tools).toHaveText(['', '', '', '', '', '']);
+        await expect(tools.locator('svg.icon')).toHaveCount(6);
 
-        const boxes = await actions.evaluateAll((els) =>
-            els.map((el) => el.getBoundingClientRect()),
-        );
+        const boxes = await tools.evaluateAll((els) => els.map((el) => el.getBoundingClientRect()));
         expect(new Set(boxes.map((box) => Math.round(box.top))).size, 'one row').toBe(1);
+        expect(new Set(boxes.map((box) => Math.round(box.width))).size, 'even widths').toBe(1);
         for (const box of boxes) expect(box.height).toBeGreaterThanOrEqual(44);
 
-        const links = await actions.evaluateAll((els) =>
+        const links = await tools.evaluateAll((els) =>
             els.filter((el) => el.tagName === 'A').map((el) => el.getAttribute('target')),
         );
-        expect(links, 'the two that leave are anchors, in a new tab').toEqual(['_blank', '_blank']);
+        expect(links, 'the three that leave are anchors, in a new tab').toEqual([
+            '_blank',
+            '_blank',
+            '_blank',
+        ]);
+    });
+
+    /**
+     * Every control still carries its name; on this bar the name arrives on hover.
+     *
+     * The tooltip is not the accessible name and never the only copy of it: the button underneath
+     * carries an aria-label, and the bubble is aria-hidden so it is not read twice. What is checked
+     * here is that it appears at all, says the word, and leaves when the pointer does.
+     */
+    test('a tooltip names the control the pointer is on', async ({ page }) => {
+        await createRoom(page);
+
+        const bubble = page.locator('footer pt-tooltip .bubble');
+        await expect(bubble).toHaveCount(0);
+
+        await page.locator('footer .tool').nth(2).hover();
+        await expect(bubble).toHaveText('Changelog');
+
+        // Away from the bar entirely, since the next control along would only swap the word.
+        await page.locator('h1').hover();
+        await expect(bubble).toHaveCount(0);
+    });
+
+    /**
+     * The bubble is centred on the control it names, the first one included.
+     *
+     * The first and last were aligned to the panel's edge for one revision, to keep them off the
+     * side of a phone screen. That is a real constraint and the wrong fix: it moved two of the six
+     * where nothing was overflowing, so the theme control's label sat visibly left of the icon it
+     * belonged to on every desktop. The bubble measures itself instead, and the phone case is held
+     * by "a tooltip stays on screen at 320px" below.
+     */
+    test('the tooltip is centred on its control', async ({ page }) => {
+        await createRoom(page);
+
+        for (const index of [0, 2, 5]) {
+            const tool = page.locator('footer .tool').nth(index);
+            await tool.hover();
+            const bubble = page.locator('footer pt-tooltip .bubble');
+            await expect(bubble).toHaveCount(1);
+
+            const [toolBox, bubbleBox] = await Promise.all([
+                tool.boundingBox(),
+                bubble.boundingBox(),
+            ]);
+            const centre = (box) => box.x + box.width / 2;
+            // A pixel of tolerance: a half-width is rounded differently by the two engines.
+            expect(
+                Math.abs(centre(toolBox) - centre(bubbleBox)),
+                `control ${index}`,
+            ).toBeLessThanOrEqual(1);
+        }
+    });
+
+    /** The changelog is the sibling of About: what this app has been, next to what it is. */
+    test('Changelog opens, lists a release, and closes', async ({ page }) => {
+        await createRoom(page);
+
+        await page.locator('footer .tool').nth(2).click();
+        const dialog = page.locator('pt-changelog dialog');
+        await expect(dialog).toBeVisible();
+        await expect(dialog.locator('.version').first()).toHaveText(/^v\d+\.\d+\.\d+$/);
+        expect(await dialog.locator('li').count()).toBeGreaterThan(0);
+
+        await page.keyboard.press('Escape');
+        await expect(dialog).not.toBeVisible();
     });
 
     /**
@@ -497,7 +574,7 @@ test.describe('the footer', () => {
     test('About opens, states the version, and closes', async ({ page }) => {
         await createRoom(page);
 
-        await page.locator('footer .action').nth(1).click();
+        await page.locator('footer .tool').nth(1).click();
         const dialog = page.locator('pt-about dialog');
         await expect(dialog).toBeVisible();
         await expect(dialog).toContainText('PuzzleTogether');
@@ -611,11 +688,38 @@ test.describe('on a phone', () => {
         for (const selector of [
             'pt-mode-toggle .action',
             'pt-keypad .actions button',
-            'footer .action',
+            'footer .tool',
         ]) {
             const box = await page.locator(selector).first().boundingBox();
             expect(box.height, selector).toBeGreaterThanOrEqual(44);
         }
+    });
+
+    /**
+     * ...and a tooltip on the control nearest an edge does not push the page sideways.
+     *
+     * "Report issue" is wider than the 48px control it names at this width, so centred it hangs off
+     * the right of the screen. It shifts back by the overhang and no further, which is why the
+     * centring test above still holds everywhere there is room.
+     */
+    test('a tooltip stays on screen at 320px', async ({ page }) => {
+        await createRoom(page);
+
+        const bubble = page.locator('footer pt-tooltip .bubble');
+        for (const index of [0, 5]) {
+            await page.locator('footer .tool').nth(index).hover();
+            await expect(bubble).toHaveCount(1);
+
+            const box = await bubble.boundingBox();
+            expect(box.x, `control ${index}`).toBeGreaterThanOrEqual(0);
+            expect(box.x + box.width, `control ${index}`).toBeLessThanOrEqual(320);
+        }
+
+        const overflow = await page.evaluate(() => ({
+            scroll: document.documentElement.scrollWidth,
+            client: document.documentElement.clientWidth,
+        }));
+        expect(overflow.scroll).toBeLessThanOrEqual(overflow.client);
     });
 
     /**
@@ -700,12 +804,12 @@ test.describe('given squares', () => {
 
 test.describe('the congrats modal', () => {
     /**
-     * Every way out of the modal in one row, each with an icon.
+     * The host's two ways on from here in one row, each with an icon.
      *
      * Driven against the element on its own rather than through a solve: reaching this modal for
      * real means finishing a puzzle, and what is being checked here is layout.
      */
-    test('puts all of its buttons in one row, with icons', async ({ page }) => {
+    test('puts the host buttons in one row, with icons', async ({ page }) => {
         await createRoom(page);
         await page.evaluate(() => {
             const modal = document.createElement('pt-congrats-modal');
@@ -717,14 +821,177 @@ test.describe('the congrats modal', () => {
         });
 
         const buttons = page.locator('pt-congrats-modal .buttons button');
-        await expect(buttons).toHaveCount(3);
-        await expect(buttons).toHaveText(['Start another', 'Puzzle Select', 'See the grid']);
-        await expect(page.locator('pt-congrats-modal .buttons svg.icon')).toHaveCount(3);
+        await expect(buttons).toHaveCount(2);
+        await expect(buttons).toHaveText(['Puzzle Select', 'Start another']);
+        await expect(page.locator('pt-congrats-modal .buttons svg.icon')).toHaveCount(2);
 
         const tops = await buttons.evaluateAll((els) =>
             els.map((el) => Math.round(el.getBoundingClientRect().top)),
         );
-        expect(new Set(tops).size, 'all three share a row').toBe(1);
+        expect(new Set(tops).size, 'both share a row').toBe(1);
+
+        // Start another is the one the row is built around, and wears the accent for it. The label
+        // is body-sized, so it takes --accent-text rather than --accent (brand.md §2).
+        const start = await buttons.last().evaluate((el) => ({
+            color: getComputedStyle(el).color,
+            accentText: getComputedStyle(document.documentElement)
+                .getPropertyValue('--accent-text')
+                .trim(),
+        }));
+        expect(toHex(start.color)).toBe(start.accentText.toLowerCase());
+    });
+
+    /**
+     * The way out is the corner close every other panel wears, not a labelled button in the row.
+     *
+     * Run as a non-host, which is the case with no button row at all: dismissing has to work
+     * without one. The corner is checked by geometry because the button hangs off .sheet rather
+     * than off the dialog, and nothing about a wrong containing block fails loudly.
+     */
+    test('is dismissed by a close button in the corner', async ({ page }) => {
+        await createRoom(page);
+        await page.evaluate(() => {
+            const modal = document.createElement('pt-congrats-modal');
+            modal.solved = { elapsedMs: 61_000, streak: 2, assists: 0, revealed: false };
+            modal.isHost = false;
+            modal.addEventListener('pt-dismiss', () => modal.setAttribute('data-dismissed', ''));
+            document.body.append(modal);
+        });
+
+        await expect(
+            page.locator('pt-congrats-modal .buttons'),
+            'a non-host gets no row',
+        ).toHaveCount(0);
+
+        const close = page.locator('pt-congrats-modal button.close');
+        await expect(close).toHaveAttribute('aria-label', 'Close');
+
+        const corner = await page.locator('pt-congrats-modal dialog').evaluate((el) => {
+            const dialog = el.getBoundingClientRect();
+            const button = el.getRootNode().querySelector('.close').getBoundingClientRect();
+            return { fromTop: button.top - dialog.top, fromRight: dialog.right - button.right };
+        });
+        expect(corner.fromTop).toBeGreaterThan(0);
+        expect(corner.fromTop).toBeLessThan(32);
+        expect(corner.fromRight).toBeGreaterThan(0);
+        expect(corner.fromRight).toBeLessThan(32);
+
+        await close.click();
+        await expect(page.locator('pt-congrats-modal')).toHaveAttribute('data-dismissed', '');
+    });
+
+    /**
+     * The streak is the line the modal is loudest about, and the assists sit quietly under it.
+     *
+     * The paint is worth asserting rather than eyeballing: the wave is a gradient clipped to the
+     * glyphs over a transparent fill, so an engine that did not clip it would leave the text
+     * invisible over a gradient band rather than fail in any way a layout test would notice.
+     */
+    test('lights the streak line and keeps the assists under it', async ({ page }) => {
+        await createRoom(page);
+        await page.evaluate(() => {
+            const modal = document.createElement('pt-congrats-modal');
+            modal.solved = { elapsedMs: 61_000, streak: 7, assists: 2, revealed: false };
+            document.body.append(modal);
+        });
+
+        await expect(page.locator('pt-congrats-modal .streak-line')).toHaveText('Solve streak 7');
+        await expect(page.locator('pt-congrats-modal .detail')).toHaveText('2 assists');
+
+        const seen = await page.locator('pt-congrats-modal').evaluate((el) => {
+            const line = el.renderRoot.querySelector('.streak-line');
+            const detail = el.renderRoot.querySelector('.detail');
+            const style = getComputedStyle(line);
+            const root = getComputedStyle(document.documentElement);
+            return {
+                clip: style.webkitBackgroundClip || style.backgroundClip,
+                animation: style.animationName,
+                glow: style.textShadow,
+                gradient: style.backgroundImage,
+                ink: root.getPropertyValue('--ink').trim(),
+                lineTop: line.getBoundingClientRect().top,
+                detailTop: detail.getBoundingClientRect().top,
+                lineSize: Number.parseFloat(style.fontSize),
+                detailSize: Number.parseFloat(getComputedStyle(detail).fontSize),
+                timeSize: Number.parseFloat(
+                    getComputedStyle(el.renderRoot.querySelector('.time')).fontSize,
+                ),
+            };
+        });
+
+        expect(seen.clip, 'the gradient is clipped to the glyphs').toBe('text');
+        expect(seen.animation).toContain('streak-wave');
+        expect(seen.glow, 'a streak of 7 carries a glow').not.toBe('none');
+        expect(seen.lineTop, 'assists sit below the streak').toBeLessThan(seen.detailTop);
+
+        // Between the two lines it sits between: under the time, over the assists.
+        expect(seen.detailSize).toBeLessThan(seen.lineSize);
+        expect(seen.lineSize).toBeLessThan(seen.timeSize);
+
+        /*
+         * The crest of the wave is the accent, not a shade of the ink it passes over.
+         *
+         * Mixed in proportion to the streak it came out a few percent of accent against near-black
+         * ink, so the light theme ran the animation and nothing visibly moved. Measured as how far
+         * blue leads red, which tells the accent from the ink in either theme.
+         */
+        const stops = seen.gradient.match(/rgba?\([^)]*\)|color\([^)]*\)/g) ?? [];
+        expect(stops, 'three stops resolved').toHaveLength(3);
+
+        const crest = channelsOf(stops[1]);
+        const ends = channelsOf(stops[0]);
+        const blueLead = (rgb) => rgb[2] - rgb[0];
+        expect(blueLead(crest), 'the crest is accent').toBeGreaterThan(0.15);
+        expect(blueLead(crest), 'against ink that is not').toBeGreaterThan(blueLead(ends) + 0.15);
+    });
+
+    /** A reveal broke the streak, and gets none of what a streak earns. */
+    test('says the streak broke on a reveal', async ({ page }) => {
+        await createRoom(page);
+        await page.evaluate(() => {
+            const modal = document.createElement('pt-congrats-modal');
+            modal.solved = { elapsedMs: 61_000, streak: 0, assists: 1, revealed: true };
+            document.body.append(modal);
+        });
+
+        await expect(page.locator('pt-congrats-modal h2')).toHaveText('Revealed');
+        await expect(page.locator('pt-congrats-modal .streak-line')).toHaveText('Streak broken!');
+        await expect(page.locator('pt-congrats-modal .detail')).toHaveText('1 assist');
+
+        // Streak 0 is --streak-t 0, so every effect scaled off it collapses on its own.
+        const glow = await page
+            .locator('pt-congrats-modal')
+            .evaluate(
+                (el) => getComputedStyle(el.renderRoot.querySelector('.streak-line')).textShadow,
+            );
+        expect(glow).toContain('0px 0px 0px');
+    });
+
+    /**
+     * The heading is drawn per solve, not per render: recomputing it on every update would reroll
+     * the word each time the picker or the busy flag changed under it.
+     */
+    test('draws its heading from the word bank and then holds it still', async ({ page }) => {
+        await createRoom(page);
+        const headings = new Set();
+
+        for (let i = 0; i < 12; i += 1) {
+            await page.evaluate(() => {
+                document.querySelector('pt-congrats-modal')?.remove();
+                const modal = document.createElement('pt-congrats-modal');
+                modal.solved = { elapsedMs: 61_000, streak: 3, assists: 0, revealed: false };
+                document.body.append(modal);
+            });
+            headings.add(await page.locator('pt-congrats-modal h2').textContent());
+        }
+        expect(headings.size, 'the bank holds more than one word').toBeGreaterThan(1);
+
+        const before = await page.locator('pt-congrats-modal h2').textContent();
+        await page.locator('pt-congrats-modal').evaluate((el) => {
+            el.busy = true;
+            return el.updateComplete;
+        });
+        expect(await page.locator('pt-congrats-modal h2').textContent()).toBe(before);
     });
 
     /** It is the one modal allowed to be seen arriving. */

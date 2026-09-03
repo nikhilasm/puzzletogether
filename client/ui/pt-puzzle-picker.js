@@ -32,7 +32,7 @@ import {
 import { controls, optionGroup } from '../styles/controls.js';
 
 import { helpFor } from './help-text.js';
-import { iconStyle, warningIcon } from './icons.js';
+import { iconStyle, puzzleTypeIcons, typeIconStyle, warningIcon } from './icons.js';
 
 /** Sentence-cases a token for display without touching the value that travels over the wire. */
 function titleCase(value) {
@@ -75,6 +75,7 @@ export class PtPuzzlePicker extends LitElement {
         controls,
         optionGroup,
         iconStyle,
+        typeIconStyle,
         css`
             :host {
                 display: block;
@@ -90,6 +91,76 @@ export class PtPuzzlePicker extends LitElement {
             .option .icon {
                 width: 1em;
                 height: 1em;
+            }
+
+            /*
+             * The puzzle types are a grid of tiles rather than a row of words (ADR-0022).
+             *
+             * Three columns and two rows, fixed rather than auto-fit: six types wrapping to
+             * whatever the width allows put four on one line and two on the next, which read as two
+             * groups of puzzles rather than one set of six. Three and three is the same shape at
+             * every width the fieldset takes, and the breakpoint below turns it into two and three
+             * where three columns stop holding a mark and its word.
+             *
+             * A type that is not on offer is left out entirely, so the last row can be short. That
+             * is the row-major gap a missing crossword bank leaves, and it is the honest one: the
+             * grid is a set of what exists, not a board with a hole in it.
+             */
+            .types {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: var(--space-2);
+            }
+
+            /*
+             * The mark over its word, like every other control in the app that had room for both
+             * (ADR-0012). Beside it, the tile would be as wide as its longest label and the six
+             * would stop being one size.
+             *
+             * box-sizing because the reset does not cross the shadow boundary: the min-height is
+             * what keeps the six tiles one height whatever the marks measure, and a content box
+             * would add the padding and the border to it.
+             */
+            .type {
+                display: flex;
+                box-sizing: border-box;
+                flex-direction: column;
+                gap: var(--space-2);
+                align-items: center;
+                justify-content: center;
+                min-height: 5.25rem;
+                padding: var(--space-3) var(--space-2);
+                font-size: var(--text-sm);
+            }
+
+            /*
+             * A fixed 2rem, not iconStyle's 1.25em, for the reason the panel's controls are fixed:
+             * this is a strip of controls rather than an icon inside a sentence, and the picker is
+             * drawn at one font size in Puzzle Select and another inside the congrats modal.
+             */
+            .type .icon {
+                width: 2.25rem;
+                height: 2.25rem;
+            }
+
+            /*
+             * The chosen type's mark goes accent, the way a pressed setting's glyph does in the
+             * input panel (brand.md §4). One property does all of it: every part of a type mark is
+             * painted from currentColor, its blocks and its digits included, so the whole drawing
+             * moves rather than the outlines alone.
+             *
+             * --accent-text and not --accent, because these are small marks with 7px digits in them
+             * and plain --accent is only cleared for large text and borders (brand.md §2).
+             */
+            .type[aria-pressed='true'] .icon {
+                color: var(--accent-text);
+            }
+
+            /* Where three columns stop holding a mark and a word like Crossword side by side. */
+            @media (max-width: 30rem) {
+                .types {
+                    grid-template-columns: repeat(2, 1fr);
+                }
             }
 
             /*
@@ -121,9 +192,9 @@ export class PtPuzzlePicker extends LitElement {
             /*
              * A row of options is comfortable at a reading measure and centres in whatever width it
              * is given, so the picker can be handed the whole column without the short rows
-             * sprawling across it. 28rem rather than 26 for one reason: it is where the four puzzle
-             * types stop wrapping, and Crossword alone on a second line read as a different kind of
-             * choice from the other three.
+             * sprawling across it. 28rem rather than 26 for one reason: it is what the puzzle-type
+             * grid wants. Three tiles across 28rem come to about 9rem each, which holds the mark
+             * with the longest type name under it and no wrapping.
              */
             fieldset {
                 max-width: 28rem;
@@ -217,10 +288,14 @@ export class PtPuzzlePicker extends LitElement {
                 }
             }
 
-            /* Chosen is the same accent wash every other option in the app uses (brand.md §3). */
+            /*
+             * Chosen is the same accent wash every other option in the app uses (brand.md §3), and
+             * mixed into the card's own ground like all of them: over transparent, the page texture
+             * showed through the chosen card.
+             */
             .card[aria-pressed='true'] {
                 border-color: var(--accent);
-                background: color-mix(in srgb, var(--accent) 16%, transparent);
+                background: color-mix(in srgb, var(--accent) 16%, var(--paper-raised));
             }
 
             .card .title {
@@ -704,12 +779,13 @@ export class PtPuzzlePicker extends LitElement {
     }
 
     /**
-     * The puzzle-type row, which only earns its space once there is more than one type.
+     * The puzzle-type grid, which only earns its space once there is more than one type.
      *
-     * The chosen type's goal sentence sits under it, because the row is the one place in the app
-     * that asks somebody to choose between puzzles they may never have played. It is the same
-     * sentence the game screen's help dialog opens with, so what the host reads here and what the
-     * room reads mid-solve cannot drift apart.
+     * Every other row here chooses between values of one kind, so a word is the whole of what an
+     * option needs. This one chooses between *games*, and a host who has not played one cannot read
+     * its name and know what they are asking for, so each type wears a mark of its own board
+     * (ADR-0022). The chosen type's goal sentence still sits under the grid, because the mark says
+     * what the puzzle looks like and only the sentence says what it asks.
      */
     #renderTypes(current) {
         const goal = helpFor(current.type)?.goal ?? null;
@@ -717,28 +793,49 @@ export class PtPuzzlePicker extends LitElement {
         return html`
             <fieldset>
                 <legend>Puzzle</legend>
-                <div class="options">
-                    ${this.#types.map((type) =>
-                        this.#renderOption({
-                            label: PUZZLE_TYPE_NAMES[type] ?? titleCase(type),
-                            isChosen: current.type === type,
-                            // Switching type starts that type's selection over rather than carrying
-                            // anything across, because almost nothing survives the trip: a 9×9
-                            // nonogram is not on offer, a bank has only the difficulties its files
-                            // happen to carry, and a puzzle id from one type names nothing in
-                            // another. #current supplies the new type's own default either way.
-                            // The filters go with it, for the same reason: they narrow one type's
-                            // list, and holding them across would hide most of the next one.
-                            onPick: () => {
-                                this.sizeFilter = null;
-                                this.difficultyFilter = null;
-                                this.#chooseWhole(this.#defaultSpec(type));
-                            },
-                        }),
-                    )}
+                <div class="types">
+                    ${this.#types.map((type) => this.#renderType(type, current))}
                 </div>
                 ${goal ? html`<p class="goal">${goal}</p>` : nothing}
             </fieldset>
+        `;
+    }
+
+    /**
+     * One puzzle type: its mark over its name.
+     *
+     * Still an .option, so the accent wash marking the chosen one is the same paint every other
+     * choice on this screen carries, and the mark is aria-hidden with the name under it in the
+     * button, so nothing here is conveyed by the drawing alone (brand.md §4).
+     *
+     * The name is in a span of its own rather than a bare text node, because a mark that prints
+     * digits puts them in the button's textContent: unwrapped, the Sudoku tile reads as "1234
+     * Sudoku" to anything matching on text. The accessible name was never affected, the svg being
+     * aria-hidden, but a test or a selector matching on text is, and so is anything that copies it.
+     */
+    #renderType(type, current) {
+        return html`
+            <button
+                type="button"
+                class="option type"
+                aria-pressed=${current.type === type}
+                ?disabled=${this.disabled}
+                @click=${() => {
+                    // Switching type starts that type's selection over rather than carrying anything
+                    // across, because almost nothing survives the trip: a 9×9 nonogram is not on
+                    // offer, a bank has only the difficulties its files happen to carry, and a
+                    // puzzle id from one type names nothing in another. #current supplies the new
+                    // type's own default either way. The filters go with it, for the same reason:
+                    // they narrow one type's list, and holding them across would hide most of the
+                    // next one.
+                    this.sizeFilter = null;
+                    this.difficultyFilter = null;
+                    this.#chooseWhole(this.#defaultSpec(type));
+                }}
+            >
+                ${puzzleTypeIcons[type] ?? nothing}
+                <span class="type-label">${PUZZLE_TYPE_NAMES[type] ?? titleCase(type)}</span>
+            </button>
         `;
     }
 

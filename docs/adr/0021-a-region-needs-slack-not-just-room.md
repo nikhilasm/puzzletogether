@@ -1,6 +1,7 @@
 # ADR-0021: A region needs slack, not just room
 
-**Status**: accepted · **Date**: 2026-08-31 · **Phase**: 5
+**Status**: accepted, `hard`'s pool revised 2026-09-02 · **Date**: 2026-08-31 · **Phase**: 5. See
+Revisions.
 
 ## Context
 
@@ -32,8 +33,8 @@ propagation the small-region goal did not seem to justify on its own.
 
 **Region size is a fillability budget the generator spends, and it spends more of it at easy than
 at hard.** `easy` draws from `[5, 5, 6]`, sizes measured to fill reliably; `hard` draws from
-`[3, 4, 4, 5]`, leaning on the sizes that ask more of the fill search and, not incidentally, more of
-a solver too. This inverts kenken's cage-size intuition, where a harder puzzle earns bigger,
+`[4, 4, 5, 6]` (originally `[3, 4, 4, 5]`; see Revisions), leaning on the sizes that ask more of the
+fill search and, not incidentally, more of a solver too. This inverts kenken's cage-size intuition, where a harder puzzle earns bigger,
 looser-feeling groups: here a harder suguru is smaller, more varied regions, because size is not
 free to assign by feel once it is also what makes a partition constructible at all. A 1- or 2-cell
 region can still happen, capped by `SMALL_REGION_ALLOWANCE` the way kenken caps single-cell cages,
@@ -63,6 +64,10 @@ one inner call refusing to return; a cut search is never mistaken for a proof of
 - Suguru's offered sizes are `5, 6, 7, 8, 9` and every difficulty is reachable at every one of them
   (`DIFFICULTY_MIN_SIDE.suguru = 0`), measured in `suguru.test.js`'s timing case: worst case is under
   two seconds at a 9×9 hard, the size and difficulty that spends region size most aggressively.
+- **A fillability budget is per grid size, not per puzzle type.** The measurements this decision
+  rests on were taken at 6×6, and the pool they chose did not survive being carried to 9×9; see
+  Revisions. A future size-pool change is measured across the whole offered range or it is not
+  measured.
 
 ## Alternatives rejected
 
@@ -80,3 +85,11 @@ respected the fillability finding above.
 rarely to be a pool's only or dominant size; a single distribution cannot serve every difficulty
 reliably when the sizes that make a partition constructible and the sizes a designer might reach for
 by feel are not the same sizes.
+
+## Revisions
+
+| Change | Original | Why | When |
+|---|---|---|---|
+| `hard` draws from `[4, 4, 5, 6]` | `[3, 4, 4, 5]` | The pool was measured at 6×6, where it filled 9% of the time and 2000 redraws hid the cost. Carried to the larger offered sizes it collapses: 2.7% at 7×7 and 0 of 300 draws at both 8×8 and 9×9, where `countSolutions` proves the partition unfillable rather than running out of budget (54 of 60 draws at 8×8, 59 of 60 at 9×9). 9 of 25 hard 9×9 requests then produced no puzzle at all. The revised pool is still smaller than `medium`'s `[4, 5, 5, 6]`, so the inversion this decision is about stands, and 120 draws per size now come back on the band asked for at every offered size, hard 9×9 averaging 291ms against 867ms before | 2026-09-02 |
+| A whole run that fills nothing falls back to `easy`'s pool, and `generateSuguru` throws rather than returning `null` | Returned `null`, which `suguru/index.js` dereferenced | Nothing filled is a fact about the pool and the size, not about luck, so the rest of the budget is better spent on sizes measured to fill. `null` was never in the function's JSDoc, so `checkJs` did not catch the dereference | 2026-09-02 |
+| The fillability finding, the 2×2 Hall check, the node budget, and the redraw-the-whole-attempt loop all stand | n/a | Only the numbers the pool was tuned to moved; nothing about why size is a fillability budget changed | n/a |

@@ -15,19 +15,25 @@
  * mutually-touching cells and always needs four pairwise-distinct values. A region of size k gives
  * its own cells a domain of only 1..k, so a partition drawn entirely from size-3 regions cannot ever
  * place a 4 anywhere: every 2×2 block, and there is always at least one, is unfillable *before a
- * single value is tried*, regardless of the rest of the grid or how many times it is redrawn.
- * Measured across the sizes this module offers, a distribution leaning on 3s and 4s filled well
- * under 10% of the time; one leaning on 5s and 6s filled 3 to 4 times in 5. So **easy leans on the
- * sizes that are reliably fillable, and hard leans smaller**, which inverts kenken's cage-size
- * intuition but is the shape the fill search actually rewards: a harder suguru is smaller, more
- * varied regions asking more of the solver, not a bigger search asking more of the generator.
+ * single value is tried*, regardless of the rest of the grid or how many times it is redrawn. So
+ * **easy leans on the sizes that are reliably fillable, and hard leans smaller**, which inverts
+ * kenken's cage-size intuition but is the shape the fill search actually rewards: a harder suguru is
+ * smaller, more varied regions asking more of the solver, not a bigger search asking more of the
+ * generator.
+ *
+ * **How much smaller is bounded by the grid, not by taste, and the bound moves with the grid.** A
+ * pool holding a 3 costs little at 6×6 and costs everything at 9×9: measured over 300 draws per
+ * size, [3, 4, 4, 5] filled 18% of the time at 5×5, 9% at 6×6, 2.7% at 7×7, and not once at 8×8 or
+ * 9×9, where the partitions it draws are provably unfillable rather than merely hard. Hard therefore
+ * floors at 4, which fills at every offered size and still measures hard once dug, since the rating
+ * is carried by the dig and not by region size (ADR-0021 Revisions).
  */
 
 /** Region sizes to draw from, per difficulty. */
 const REGION_SIZES = {
     easy: [5, 5, 6],
     medium: [4, 5, 5, 6],
-    hard: [3, 4, 4, 5],
+    hard: [4, 4, 5, 6],
 };
 
 /**
@@ -159,7 +165,7 @@ function sizeOfCell(groups, n) {
  * representatives exists for the block iff, sorting its four region sizes ascending, the i-th
  * smallest is at least i. Two adjacent 2-cell regions filling a 2×2 block between them is the
  * simplest failing case: sizes [2, 2, 2, 2] needs a third distinct value at the third smallest and
- * has none. Flooring REGION_SIZES at 3 makes this rare, since it now takes two accidental strand
+ * has none. Flooring REGION_SIZES at 4 makes this rare, since it now takes two accidental strand
  * leftovers landing in the same block rather than an ordinary difficulty draw; it is kept as a cheap
  * defence against exactly that rather than removed.
  *

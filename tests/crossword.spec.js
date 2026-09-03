@@ -576,7 +576,7 @@ test.describe('crossword', () => {
 
         const modal = page.locator('pt-congrats-modal dialog');
         await expect(modal).toBeVisible({ timeout: 15_000 });
-        await modal.locator('button', { hasText: 'See the grid' }).click();
+        await modal.locator('button.close').click();
         await expect(modal).toBeHidden();
 
         // Tapping a square still moves the cursor.

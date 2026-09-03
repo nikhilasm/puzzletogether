@@ -96,7 +96,9 @@ Cream paper rather than white, warm near-black ink, no cool gray. Fraunces (disp
     - `Check` grades current entries; `Reveal` opens a confirm dialog naming the streak consequence; `Puzzle Select` is host-only and labelled as its destination, matching the congrats modal's button for the same action.
     - `Leave Room` is last and marked in `--danger`, the same size as the buttons beside it. With a host's full set the four come to about 618px against the row's 480px, so **Leave Room wraps to its own line**: same size, same rule, same reading order.
     - The row renders only the actions a given player has, and never disappears, because every player has Leave Room.
-- **Footer**: a hairline, then the app's own controls. A **theme button** and an **About** button as icon buttons on one line, with **GitHub** and **Report an issue** as small links beneath. A button changes the app; a link leaves it.
+- **Footer**: a hairline, then **one 22rem panel holding the app's own controls, icon-only and evenly spaced** ([ADR-0023](adr/0023-the-footer-is-one-panel.md)): **theme · About · Changelog · GitHub · Report an issue · Homepage**. Nothing here acts on a puzzle, a room, or a seat, which is what buys the wordlessness; the panel is the box, so each control is a division of it rather than a button on it. The three that leave the app are anchors, so a middle click still opens a tab.
+    - **Each one is named by a `<pt-tooltip>` on hover and by its `aria-label` always.** The bubble is `aria-hidden`, shown on pointer and focus only, centred on its control, and nudged back inside the viewport by exactly its overhang when centring would hang it off a 320px screen.
+    - **`<pt-changelog>`** is About's sibling: what this app has been, next to what it is, as a native `<dialog>` over releases held as a constant in the file.
 
 Actions are buttons and settings are pressed buttons; see [brand.md §4](brand.md#controls-actions-settings-and-the-one-that-takes-something-away).
 
@@ -112,7 +114,9 @@ Where the host picks a puzzle while everyone waits, and where the room returns b
 
 **A generated type is described; a banked type is browsed** ([ADR-0009](adr/0009-a-bank-is-browsed-not-described.md)). `<pt-puzzle-picker>` renders two shapes and **which one follows the provider, not the puzzle type**: a catalog entry carrying a `puzzles` array becomes a scrolling list of cards, one without keeps the size and difficulty rows.
 
-**The puzzle-type row says what each type asks of a solver.** The chosen type's one-sentence goal sits under the row, in `--graphite` at a reading measure and not italic: it answers the question the row is asking rather than qualifying it, which is what separates it from the size caution below. It is the same sentence `<pt-help>` opens with, out of the same table, so what the host reads here and what the room reads mid-solve cannot drift apart.
+**The puzzle types are a grid of tiles, and each one wears a mark of its own board** ([ADR-0022](adr/0022-a-type-wears-its-own-board.md)). Three columns by two rows, dropping to two columns below 30rem; each tile is a mark over the type's name, at `min-height: 5.25rem`. Every other row on this screen chooses between values of one kind, where a word is the whole of what an option needs; this one chooses between games. A type the server has nothing behind is left out entirely, so the grid can end short, and it is a set of what exists rather than a board with a hole in it.
+
+**The type grid says what each type asks of a solver.** The chosen type's one-sentence goal sits under the grid, in `--graphite` at a reading measure and not italic: it answers the question the grid is asking rather than qualifying it, which is what separates it from the size caution below. It is the same sentence `<pt-help>` opens with, out of the same table, so what the host reads here and what the room reads mid-solve cannot drift apart. The mark says what a puzzle *looks like*; only the sentence says what it asks.
 
 **A choice can be offered and still carry a caveat.** A 20×20 nonogram is a good puzzle on a laptop and a cramped one on a phone, so the option wears a small warning triangle and explains itself in a line beneath the row once picked. It is not disabled: the host may well be on a laptop, and is often the one person in the room who cannot see the problem. The note is `--graphite` and never `--wrong`, because nothing has gone wrong, and the triangle rides in the option's accessible name. A type **defaults to its largest uncautioned size**.
 
@@ -122,7 +126,7 @@ Where the host picks a puzzle while everyone waits, and where the room returns b
 - **An option that would empty the list is disabled, not hidden.** That is also what guarantees the list is never empty, so Start can never point at a puzzle no longer on screen. Filtering the chosen card away moves the selection to the first one still visible, and the picker announces it.
 - **The count appears only while a filter is on**: `Choose a puzzle · 2 of 12`.
 
-**The list gets the whole column; the option rows keep a reading measure.** A card carries a title, an author, and a publication, so `<pt-puzzle-picker>` is given the full 40rem in Puzzle Select and in the congrats modal, and caps its own `fieldset`s at 28rem and centres them. 28 because that is where the four puzzle types stop wrapping.
+**The list gets the whole column; the option rows keep a reading measure.** A card carries a title, an author, and a publication, so `<pt-puzzle-picker>` is given the full 40rem in Puzzle Select and in the congrats modal, and caps its own `fieldset`s at 28rem and centres them. 28 because that is what the type grid wants: three tiles across it come to about 9rem each, which holds a mark with the longest type name under it.
 
 ### The input panel
 
@@ -197,11 +201,13 @@ The value grows to fit the square down to a floor: two to five characters are se
 
 ### Completion modal
 
-On server-verified completion, **every player** gets a dismissable congrats modal showing the **solve time**, the **room's solve streak**, and the assist count. The host additionally sees controls to start a new puzzle, defaulting to the one just finished. Its three buttons are one row, all with icons. Dismissing leaves the completed grid on screen; non-hosts wait until the host starts the next puzzle or returns the room to select.
+On server-verified completion, **every player** gets a dismissable congrats modal showing the **solve time**, the **room's solve streak**, and the assist count. The host additionally sees controls to start a new puzzle, defaulting to the one just finished. It is dismissed by the corner close button `pt-about` and `pt-help` also use, not by a labelled button in the row below: dismissing is not one of the answers the row offers. The host's two buttons are one row, both with icons, with the accent-bordered `Start another` last; a non-host gets no row. Dismissing leaves the completed grid on screen; non-hosts wait until the host starts the next puzzle or returns the room to select.
+
+**The heading is drawn from a word bank** ("Solved!", "Terrific!", and the like) rather than a fixed line, with a rare "Light Work 😤" among them; a reveal always heads with "Revealed" instead. **The streak line grows more animated as it climbs**, a glow and a moving accent wave, capped at streak 20. It sits between the time above it and the assists below it in size: the emphasis is colour and motion rather than type.
 
 **The grid celebrates first.** A wave of colour crosses the finished grid and the modal waits for it; see [brand.md §5](brand.md#5-motion). A reveal never celebrates.
 
-**Streak semantics**: increments per solved puzzle. Resets to 0 on **Reveal** or on abandoning an unfinished puzzle via Puzzle Select. **Check is free.** The streak lives on the room and dies with it.
+**Streak semantics**: increments per solved puzzle. Resets to 0 on **Reveal** or on abandoning an unfinished puzzle via Puzzle Select, shown in the modal as "Streak broken!". **Check is free.** The streak lives on the room and dies with it.
 
 ---
 
@@ -241,8 +247,10 @@ puzzletogether/
    ├─ styles/{tokens.css,base.css,controls.js}   # the brand system, as custom properties
    ├─ theme.js                       # light/dark, persisted
    ├─ store/{room-store.js,store-controller.js,ops.js,undo-stack.js}
-   ├─ views/{pt-app,pt-landing,pt-puzzle-select,pt-game,pt-congrats-modal,pt-confirm,pt-about}.js
+   ├─ views/{pt-app,pt-landing,pt-puzzle-select,pt-game,pt-congrats-modal,pt-confirm}.js
+   │  └─ {pt-about,pt-changelog}.js      # what this app is, and what it has been: the footer's dialogs
    ├─ ui/{pt-player-chips,pt-timer,pt-keypad,pt-mode-toggle,pt-brush-bar,pt-puzzle-picker,icons}.js
+   │  ├─ pt-tooltip.js                   # names the footer's icon-only controls on hover (ADR-0023)
    │  # pt-keypad is the pinned input panel for every type: clue slot, action bar, keys (ADR-0010)
    │  ├─ {pt-clue-bar,pt-clue-list}.js   # crossword's clue strip and its clue dialog
    │  └─ {help-text,pt-help}.js          # goal/rules/input per type, and the dialog over the grid
@@ -440,7 +448,7 @@ Measured over 192 puzzles across four sizes and three difficulties: runs average
 
 **Suguru's difficulty is measured**, the same way nonogram's and kakuro's are. A technique solver sweeps two deductions to a fixpoint: naked singles, a cell narrowed to one candidate, whether by adjacency or by its own region running out of room; and region hidden singles, a digit with one legal cell left in its region. How many sweeps that took is the rating. Every generated Suguru is required to be solvable by those two alone, so hard is the top of a sweep count rather than a puzzle the rules cannot finish, the same guarantee kakuro makes for itself.
 
-**Region size is a fillability budget, not a free difficulty knob, and spending it inverts kenken's own intuition.** Every cell touches up to eight others, so any 2×2 block is a clique needing four distinct values, and a region of size k offers its own cells only 1..k: a partition drawn entirely from size-3 regions cannot ever place a 4, so every 2×2 block on the grid is unfillable before a single value is tried, and size-4 fills almost as rarely for the same reason with less margin to prove it. Measurement found size 5 fillable about 1 in 5 tries and size 6 about 3 to 4 in 5. So `easy` draws from the sizes that are reliably fillable (`[5, 5, 6]`) and `hard` draws from the sizes that ask more of both the fill search and the solver (`[3, 4, 4, 5]`), the opposite direction from kenken's cages. A 1- or 2-cell region can still happen, capped the way kenken caps single-cell cages, but is never drawn on purpose ([ADR-0021](adr/0021-a-region-needs-slack-not-just-room.md)).
+**Region size is a fillability budget, not a free difficulty knob, and spending it inverts kenken's own intuition.** Every cell touches up to eight others, so any 2×2 block is a clique needing four distinct values, and a region of size k offers its own cells only 1..k: a partition drawn entirely from size-3 regions cannot ever place a 4, so every 2×2 block on the grid is unfillable before a single value is tried, and size-4 fills almost as rarely for the same reason with less margin to prove it. Measurement found size 5 fillable about 1 in 5 tries and size 6 about 3 to 4 in 5. So `easy` draws from the sizes that are reliably fillable (`[5, 5, 6]`) and `hard` draws from the sizes that ask more of both the fill search and the solver (`[4, 4, 5, 6]`), the opposite direction from kenken's cages. **How far hard can lean is set by the largest grid offered, not the smallest.** An earlier `hard` pool holding a 3 filled 9% of the time at 6×6, which redraws hid, and not once in 300 draws at 8×8 or 9×9, which they could not; the pool is floored at 4 for that reason and every pool change is measured across the whole offered range. A 1- or 2-cell region can still happen, capped the way kenken caps single-cell cages, but is never drawn on purpose ([ADR-0021](adr/0021-a-region-needs-slack-not-just-room.md)).
 
 Sizes offered are `5, 6, 7, 8, 9`, every difficulty reachable at every one of them. Worst measured case is under two seconds at a 9×9 hard, the size and difficulty that leans hardest on the sizes fillability makes scarce; a node budget on the backtracking search itself (`solver.js`, kakuro's own `NODE_BUDGET` shape) is what keeps a single unlucky draw from running away, after an early version without one took over three minutes on one attempt.
 
@@ -591,7 +599,7 @@ Phase 1 is a vertical slice deliberately: the co-op sync model is the risky part
 - **Nobody gets word suggestions, swipe typing, or dictation in a crossword.** This is the sharpest edge of ADR-0010 and the one it cannot mitigate.
 - **The catalog grows with the bank, and nothing bounds it.** Every player receives every puzzle's title, author, and source on join, including players who cannot start anything. There is no pagination and no search. The filters do not help: they narrow what is drawn, out of a catalog already sent whole. → [ADR-0009](adr/0009-a-bank-is-browsed-not-described.md)
 - **The streak is room-scoped and dies with the room.** Surviving an empty room would mean revisiting the no-database decision.
-- **Suguru's region size is a fillability constraint, discovered rather than designed for.** A region below a certain size can make its own partition mathematically unfillable regardless of the rest of the grid, which is why `easy` and `hard` draw from different, non-overlapping region-size pools rather than a single spectrum. → [ADR-0021](adr/0021-a-region-needs-slack-not-just-room.md)
+- **Suguru's region size is a fillability constraint, discovered rather than designed for.** A region below a certain size can make its own partition mathematically unfillable regardless of the rest of the grid, and how small is too small depends on the grid it sits in, which is why each difficulty draws from its own region-size pool, floored at 4, rather than from a single spectrum. → [ADR-0021](adr/0021-a-region-needs-slack-not-just-room.md)
 - **Attribution as a lens is designed and not built**, including its cost of hiding the cursor while raised. → [ADR-0013](adr/0013-attribution-is-a-lens.md)
 
 Settled by measurement or playtest: LWW does not feel bad; per-player forward-only undo does not surprise people; clue lists behind a button work as a launching point; Lit is fast enough for a 25×25; KenKen at 7×7 fits inside a pool refill; Fraunces `WONK` and the paper texture are both kept. Details in [TODO.md](TODO.md#open-questions).
@@ -631,6 +639,7 @@ Settled by measurement or playtest: LWW does not feel bad; per-player forward-on
 | Your own cursor is drawn in your own colour | Every cursor was `--accent` | Two people over one screen could not tell whose cursor was whose, and a player's colour now means one thing everywhere | Phase 4b, 2026-08-07 |
 | Room code, seat count, and roster are one panel with a rule and no fill | Three centred lines with nothing grouping them, on `--paper-raised` | The stack read as a screen above the real one, and a filled panel read as a card to be dealt with rather than a caption on the room | Phase 4b, 2026-08-07 |
 | `Leave Room` sits in the action row at full size, marked `--danger` | Smaller and set apart below the row | It was the only button on the screen at its own size, which read as an afterthought rather than as quiet | Phase 4b, 2026-08-09 |
+| The footer is one panel of six wordless controls named by tooltip | One bar of four labelled actions drawn with the input panel's `.action` | The bar could not take a fifth or a sixth without truncating its words, and at the panel's own width it read as a row of decisions of the puzzle's weight ([ADR-0023](adr/0023-the-footer-is-one-panel.md)) | Phase 4b, 2026-09-03 |
 | The footer is one action bar: Theme, About, GitHub, Report | Two wordless icon buttons over two links a type step smaller | Every one of the four says what it is instead of waiting to be hovered, and the row the links cost is given back; the two that leave stay anchors, so a middle click still opens a tab | Phase 4b, 2026-08-31 |
 | `game:start` covers starting and restarting | A separate `game:newPuzzle` event | Starting from `select` and from `solved` differ in nothing but the state they leave | Phase 2 |
 | A cell holds a value or marks, never both | A `marks` op preserved the cell's value | Undoing back to a marks-only state silently left the old digit in place; one op per cell state is what makes undo a single write | Phase 2 |

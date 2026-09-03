@@ -98,6 +98,58 @@ function resolvedSpec(page) {
     return page.locator('pt-puzzle-picker').evaluate((picker) => picker.spec);
 }
 
+/**
+ * The type grid, which is the one row on this screen that chooses between games rather than between
+ * values of one kind, and the only place the six type marks are drawn (ADR-0022).
+ *
+ * Measured in both engines, like every other grid in this app: the tiles are laid out on a CSS grid
+ * with a mark of a fixed size over a label, and "all six are one box" is the property that makes the
+ * set readable as a set.
+ */
+test.describe('the puzzle-type grid', () => {
+    test.beforeEach(async ({ page }) => {
+        await createRoom(page);
+    });
+
+    test('gives every type a mark, and every tile the same box', async ({ page }) => {
+        const tiles = page.locator('pt-puzzle-picker .type');
+        // The label, not the button: a mark that prints digits puts them in the button's own text.
+        await expect(tiles.locator('.type-label')).toHaveText([
+            'Sudoku',
+            'KenKen',
+            'Nonogram',
+            'Kakuro',
+            'Crossword',
+            'Suguru',
+        ]);
+        // The mark is drawn, and it is drawn silently: the tile is named by its word alone.
+        await expect(tiles.locator('svg.icon[aria-hidden="true"]')).toHaveCount(6);
+        await expect(tiles.first()).toHaveAccessibleName('Sudoku');
+
+        const boxes = await tiles.evaluateAll((nodes) =>
+            nodes.map((node) => {
+                const box = node.getBoundingClientRect();
+                return `${Math.round(box.width)}x${Math.round(box.height)}`;
+            }),
+        );
+        expect(new Set(boxes).size).toBe(1);
+    });
+
+    /** Three columns and two rows, which is the shape the grid holds at every width above 30rem. */
+    test('lays the six out three across', async ({ page }) => {
+        const tops = await page
+            .locator('pt-puzzle-picker .type')
+            .evaluateAll((nodes) =>
+                nodes.map((node) => Math.round(node.getBoundingClientRect().y)),
+            );
+
+        expect(new Set(tops).size).toBe(2);
+        expect(tops[0]).toBe(tops[2]);
+        expect(tops[3]).toBe(tops[5]);
+        expect(tops[3]).toBeGreaterThan(tops[0]);
+    });
+});
+
 test.describe('the card list', () => {
     test.beforeEach(async ({ page }) => {
         await createRoom(page);

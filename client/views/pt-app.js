@@ -9,6 +9,7 @@ import { LitElement, css, html, nothing } from 'lit';
 
 import {
     GITHUB_URL,
+    HOMEPAGE_URL,
     ISSUES_URL,
     MAX_PLAYERS_PER_ROOM,
     ROOM_CODE_LENGTH,
@@ -16,12 +17,23 @@ import {
 import { ROOM_STATE } from '../../shared/protocol.js';
 import { roomStore } from '../store/room-store.js';
 import { StoreController } from '../store/store-controller.js';
-import { actionButton, controls } from '../styles/controls.js';
+import { controls } from '../styles/controls.js';
 import { THEME, currentTheme, toggleTheme } from '../theme.js';
-import { flagIcon, githubIcon, iconStyle, infoIcon, moonIcon, sunIcon } from '../ui/icons.js';
+import {
+    changelogIcon,
+    flagIcon,
+    githubIcon,
+    homeIcon,
+    iconStyle,
+    infoIcon,
+    moonIcon,
+    sunIcon,
+} from '../ui/icons.js';
 
 import '../ui/pt-player-chips.js';
+import '../ui/pt-tooltip.js';
 import './pt-about.js';
+import './pt-changelog.js';
 import './pt-game.js';
 import './pt-landing.js';
 import './pt-puzzle-select.js';
@@ -43,11 +55,11 @@ export class PtApp extends LitElement {
         /** How tall the game screen's pinned input panel is, or 0 when there is none. */
         panelHeight: { state: true },
         showingAbout: { state: true },
+        showingChangelog: { state: true },
     };
 
     static styles = [
         controls,
-        actionButton,
         iconStyle,
         css`
             :host {
@@ -141,19 +153,11 @@ export class PtApp extends LitElement {
             }
 
             /*
-             * The app's own controls, and the two ways out of it, on one bar.
+             * The app's own controls, and the three ways out of it, on one bar.
              *
              * Everything above the footer belongs to a room or a puzzle. What is left down here is
-             * the handful of things that are true of the *app*: how it looks, what it is, where it
-             * came from, and where to say it is broken.
-             *
-             * They were two rows, two wordless squares over two links set a step smaller. The rule
-             * that split them, a button changes the app and a link leaves it, is still true of the
-             * markup and no longer costs a row: it was drawn as a difference in size, which reads
-             * as a difference in importance, and what it produced was a pair of footnotes under a
-             * pair of controls nobody could name without hovering. One bar of four labelled
-             * controls says all four things at once, and the two that leave are still anchors, so a
-             * middle click still opens them in a tab.
+             * the handful of things that are true of the *app*: how it looks, what it is, what it
+             * has been, where it came from, where to say it is broken, and who made it.
              *
              * The version line that used to be here has moved into About, where it sits with the
              * rest of the answer to the question it was half of.
@@ -161,7 +165,6 @@ export class PtApp extends LitElement {
             footer {
                 display: flex;
                 flex-direction: column;
-                gap: var(--space-3);
                 align-items: center;
                 padding: var(--space-6) 0;
                 border-top: var(--border);
@@ -170,23 +173,89 @@ export class PtApp extends LitElement {
             }
 
             /*
-             * Capped rather than left to the column: the buttons share the row equally, and a
-             * full-width column would stretch four peripheral controls into paddles. At the cap
-             * they come out the width the input panel's controls are, which is what this app draws
-             * a bar of labelled actions at wherever one appears.
+             * One panel across the column, not a row of separate buttons (ADR-0023).
+             *
+             * The controls in it are peripheral and unrelated to each other; six outlined boxes
+             * side by side read as six decisions of the same weight as the puzzle's own actions.
+             * Drawn as divisions of one surface they read as what they are: the strip the app keeps
+             * its own switches on.
+             *
+             * Capped at 22rem, the width the footer's bar has always taken, rather than left to the
+             * column. Across the full 640px these are six small drawings adrift in a wide empty
+             * rule, which makes the quietest thing on the page the widest.
+             *
+             * No padding of its own: the controls run edge to edge and their own 2.75rem is the
+             * whole of the panel's height. A ring of padding around a strip of icons is 8px of
+             * nothing, and this bar is a footnote to the page rather than a surface holding
+             * anything.
              */
-            .footer-actions {
+            .toolbar {
                 display: flex;
-                gap: var(--space-2);
-                justify-content: center;
                 width: 100%;
                 max-width: 22rem;
+                padding: 0;
+                border: var(--border);
+                border-radius: var(--radius-control);
+                background: var(--paper-raised);
             }
 
-            /* Two of the four are anchors wearing .action, so only the underline has to go: the
-               colour, the box, and the hover all come from the shared fragment. */
-            .footer-actions a {
+            /* The wrappers are the flex items, so the bar divides itself between however many
+               controls it holds and each button fills the wrapper it is in. */
+            .toolbar pt-tooltip {
+                flex: 1 1 0;
+                min-width: 0;
+            }
+
+            /*
+             * A division of the panel rather than a button on it: no border, no ground, and no
+             * radius until it is pressed. The panel is the box; drawing a second one inside it is
+             * what made the old footer read as a row of separate controls.
+             */
+            .tool {
+                display: flex;
+                flex: 1 1 auto;
+                align-items: center;
+                justify-content: center;
+                min-height: 2.75rem;
+                padding: 0;
+                border: none;
+                border-radius: var(--radius-control);
+                background: none;
+                color: var(--graphite);
                 text-decoration: none;
+                cursor: pointer;
+                touch-action: manipulation;
+                /* The platform's tap flash is off wherever this file draws an :active of its own;
+                   see the same rule on .action in controls.js. */
+                -webkit-tap-highlight-color: transparent;
+            }
+
+            /*
+             * A fixed 1.25rem, for the reason .action's icons are a fixed 1rem: nothing in a strip
+             * of controls wants to scale with whatever type size it inherits. Larger than the
+             * panel's, because here the drawing is the whole of the control and there is no word
+             * under it to be read instead.
+             */
+            .tool .icon {
+                width: 1.25rem;
+                height: 1.25rem;
+            }
+
+            @media (hover: hover) {
+                .tool:hover {
+                    color: var(--ink);
+                }
+            }
+
+            /*
+             * What answers a tap, since a touch browser has no hover to give and the tooltip stands
+             * down there too. Mixed into --paper-raised, never into transparent: the page's texture
+             * is drawn behind everything, and a control is a surface laid on the page rather than a
+             * window onto it (brand.md §4).
+             */
+            .tool:active {
+                background: color-mix(in srgb, var(--ink) 10%, var(--paper-raised));
+                color: var(--ink);
             }
 
             .notice {
@@ -257,6 +326,7 @@ export class PtApp extends LitElement {
         this.announcement = '';
         this.panelHeight = 0;
         this.showingAbout = false;
+        this.showingChangelog = false;
     }
 
     /** Starts routing once the element is live, and reads back the theme already applied. */
@@ -308,53 +378,84 @@ export class PtApp extends LitElement {
             </div>
             <p class="visually-hidden" role="status" aria-live="polite">${this.announcement}</p>
             <footer>
-                <div class="footer-actions">
+                <div class="toolbar">
                     <!--
                       An action, not a toggle. "Dark theme, pressed" was a state to be read; this is
                       a button that does one thing, so it says which thing and wears the icon of the
                       theme it would leave you in. That also settles which of the two icons to draw,
                       which as a toggle was genuinely ambiguous: the sun could as easily have meant
-                      "you are in light" as "press for light", and it meant the first. The label is
-                      the destination for the same reason the icon is.
+                      "you are in light" as "press for light", and it meant the first. The tooltip
+                      is the destination for the same reason the icon is.
                     -->
-                    <button
-                        class="action"
-                        type="button"
-                        aria-label=${this.#themeAction}
-                        @click=${this.#onToggleTheme}
-                    >
-                        ${this.theme === THEME.DARK ? sunIcon : moonIcon}
-                        <span class="action-label">
-                            ${this.theme === THEME.DARK ? 'Light' : 'Dark'}
-                        </span>
-                    </button>
-                    <button
-                        class="action"
-                        type="button"
-                        aria-label="About PuzzleTogether"
-                        @click=${() => {
-                            this.showingAbout = true;
-                        }}
-                    >
-                        ${infoIcon}
-                        <span class="action-label">About</span>
-                    </button>
-                    <a class="action" href=${GITHUB_URL} rel="noreferrer" target="_blank">
-                        ${githubIcon}
-                        <span class="action-label">GitHub</span>
-                    </a>
-                    <!-- One visible word, because four labels share a 320px row; the accessible
-                         name is the sentence, because "Report" alone does not say what of. -->
-                    <a
-                        class="action"
-                        href=${ISSUES_URL}
-                        rel="noreferrer"
-                        target="_blank"
-                        aria-label="Report an issue"
-                    >
-                        ${flagIcon}
-                        <span class="action-label">Report</span>
-                    </a>
+                    <pt-tooltip .text=${this.#themeDestination}>
+                        <button
+                            class="tool"
+                            type="button"
+                            aria-label=${this.#themeAction}
+                            @click=${this.#onToggleTheme}
+                        >
+                            ${this.theme === THEME.DARK ? sunIcon : moonIcon}
+                        </button>
+                    </pt-tooltip>
+                    <pt-tooltip text="About">
+                        <button
+                            class="tool"
+                            type="button"
+                            aria-label="About PuzzleTogether"
+                            @click=${() => {
+                                this.showingAbout = true;
+                            }}
+                        >
+                            ${infoIcon}
+                        </button>
+                    </pt-tooltip>
+                    <pt-tooltip text="Changelog">
+                        <button
+                            class="tool"
+                            type="button"
+                            aria-label="What has changed"
+                            @click=${() => {
+                                this.showingChangelog = true;
+                            }}
+                        >
+                            ${changelogIcon}
+                        </button>
+                    </pt-tooltip>
+                    <!-- The three that leave the app are anchors, so a middle click still opens
+                         them in a tab. Each carries the sentence its one-word tooltip abbreviates. -->
+                    <pt-tooltip text="GitHub">
+                        <a
+                            class="tool"
+                            href=${GITHUB_URL}
+                            rel="noreferrer"
+                            target="_blank"
+                            aria-label="PuzzleTogether on GitHub"
+                        >
+                            ${githubIcon}
+                        </a>
+                    </pt-tooltip>
+                    <pt-tooltip text="Report issue">
+                        <a
+                            class="tool"
+                            href=${ISSUES_URL}
+                            rel="noreferrer"
+                            target="_blank"
+                            aria-label="Report an issue"
+                        >
+                            ${flagIcon}
+                        </a>
+                    </pt-tooltip>
+                    <pt-tooltip text="Homepage">
+                        <a
+                            class="tool"
+                            href=${HOMEPAGE_URL}
+                            rel="noreferrer"
+                            target="_blank"
+                            aria-label="The author's homepage"
+                        >
+                            ${homeIcon}
+                        </a>
+                    </pt-tooltip>
                 </div>
             </footer>
             <pt-about
@@ -363,6 +464,12 @@ export class PtApp extends LitElement {
                     this.showingAbout = false;
                 }}
             ></pt-about>
+            <pt-changelog
+                .open=${this.showingChangelog}
+                @pt-changelog-close=${() => {
+                    this.showingChangelog = false;
+                }}
+            ></pt-changelog>
             <div
                 class="panel-space"
                 style="height: ${this.#showsPanel ? this.panelHeight : 0}px"
@@ -397,6 +504,11 @@ export class PtApp extends LitElement {
     /** What the theme button would do, which is its whole name. */
     get #themeAction() {
         return this.theme === THEME.DARK ? 'Switch to light theme' : 'Switch to dark theme';
+    }
+
+    /** The theme the button would leave you in, which is what its tooltip says and its icon draws. */
+    get #themeDestination() {
+        return this.theme === THEME.DARK ? 'Light theme' : 'Dark theme';
     }
 
     /** Switches theme and remembers it; the attribute on <html> does the rest. */

@@ -1,14 +1,16 @@
 /**
  * The icon set: inline SVG, drawn here rather than pulled from a pack.
  *
- * There are twenty-one of them, they are all simple geometry, and a dependency would cost more
+ * There are twenty-nine of them, they are all simple geometry, and a dependency would cost more
  * than it saves. Emoji are banned as UI icons (brand.md §1) because they render as somebody else's
  * artwork at somebody else's weight; these inherit currentColor and the app's line weight, so an
  * icon inside a disabled control greys out with it and the dark theme needs no second asset.
  *
  * Every icon is aria-hidden, and the control around it carries the accessible name. A one-word
- * label sits under the icon wherever these are drawn as a bar of controls, in the input panel and
- * in the footer (ADR-0012). The three that stand alone put everything in that name.
+ * label sits under the icon wherever these are drawn as a bar of controls in the app's own working
+ * surface, which since ADR-0012 means the input panel. The footer's toolbar is the exception and
+ * ADR-0023 is why: peripheral controls, pressed once a session or never, named by a tooltip on
+ * hover and by their accessible name always.
  *
  * Geometry lives here; size and weight live in iconStyle, which each consuming component composes
  * into its own styles: shadow roots inherit properties, not rules.
@@ -282,6 +284,37 @@ export const githubIcon = html`
 `;
 
 /**
+ * The changelog: a written record, drawn as a sheet with a turned corner and three ruled lines.
+ *
+ * The turned corner is what keeps it apart from the list icon, which is also ruled lines and means
+ * the crossword's clues (brand.md §4). List has no page around it and hangs a bullet off each rule;
+ * this is a page first and lines second, which is what a log is: a document you read, not a set of
+ * items you pick from. The two never share a row, and the rule is app-wide regardless.
+ */
+export const changelogIcon = html`
+    <svg viewBox="0 0 24 24" class="icon" aria-hidden="true">
+        <path
+            d="M14 3.5H6.5A1.5 1.5 0 0 0 5 5v14a1.5 1.5 0 0 0 1.5 1.5h11A1.5 1.5 0 0 0 19 19V8.5Z"
+        />
+        <path d="M14 3.5V8.5h5" />
+        <path d="M8.5 12.5h7M8.5 16.5h7" />
+    </svg>
+`;
+
+/**
+ * The author's homepage: a house, which is the one shape that means "home" without a word.
+ *
+ * Not an arrow and not a globe. An arrow would say "back", which this is not: it leaves the app. A
+ * globe says "somewhere on the web", which the GitHub mark two buttons along already says better.
+ */
+export const homeIcon = html`
+    <svg viewBox="0 0 24 24" class="icon" aria-hidden="true">
+        <path d="M4 10.5 12 4l8 6.5V19a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 19Z" />
+        <path d="M9.5 20.5v-6h5v6" />
+    </svg>
+`;
+
+/**
  * Reporting an issue: a flag, which is what "report this" has looked like on the web for years.
  *
  * Deliberately not the warning triangle. That one marks a choice the app is cautioning you about
@@ -295,3 +328,162 @@ export const flagIcon = html`
         <path d="M5.5 4.5h11l-2.2 4 2.2 4h-11Z" />
     </svg>
 `;
+
+/*
+ * The six puzzle-type marks, which are one icon drawn six ways (ADR-0022).
+ *
+ * Every one of them is the same 2x2 of rounded cells on the same 24x24 box, and what tells them
+ * apart is what is printed in the four squares: the type's own vocabulary, at the scale a solver
+ * meets it on the board. They are identity marks rather than action icons, so they are the one
+ * group here that carries letterforms, and they only ever appear on the puzzle-type tiles with the
+ * type's name under them.
+ *
+ * Their parts need rules iconStyle does not give: a filled square, a washed one, a printed
+ * character, and a region rule heavier than a grid line. Those live in typeIconStyle, which a
+ * shadow root composes alongside iconStyle.
+ */
+
+/** Sizing and paint for the parts a type mark is built from. Compose alongside iconStyle. */
+export const typeIconStyle = css`
+    /*
+     * The square the puzzle prints solid: a crossword block, a filled nonogram square.
+     *
+     * It keeps the stroke it inherits rather than dropping it, unlike the fill icon. A stroke is
+     * drawn centred on the path, so an outlined cell is half a stroke bigger than its rect on every
+     * side; a block with stroke: none came out a stroke narrower than the outlined square beside it,
+     * which is visible at this size and reads as a wonky grid.
+     */
+    .icon .block {
+        fill: currentColor;
+    }
+
+    /* A square that came with the puzzle, at the weight --given-fill gives a given on the board. */
+    .icon .wash {
+        fill: currentColor;
+        fill-opacity: 0.18;
+    }
+
+    /* A character printed in a square. Filled, since iconStyle strokes everything else. */
+    .icon .glyph {
+        fill: currentColor;
+        stroke: none;
+        font-family: var(--font-ui);
+        font-weight: 700;
+        text-anchor: middle;
+    }
+
+    /* A region boundary, which outranks the cell edges the way it does inside a suguru. */
+    .icon .heavy {
+        stroke-width: calc(var(--stroke-icon) * 2);
+    }
+`;
+
+/** Crossword: blocks on the diagonal, letters in the squares that take one. */
+export const crosswordIcon = html`
+    <svg viewBox="0 0 24 24" class="icon" aria-hidden="true">
+        <rect class="block" x="1.5" y="1.5" width="10" height="10" rx="2" />
+        <rect x="12.5" y="1.5" width="10" height="10" rx="2" />
+        <text class="glyph" x="17.5" y="9" font-size="7">A</text>
+        <rect x="1.5" y="12.5" width="10" height="10" rx="2" />
+        <text class="glyph" x="6.5" y="20" font-size="7">B</text>
+        <rect class="block" x="12.5" y="12.5" width="10" height="10" rx="2" />
+    </svg>
+`;
+
+/** Sudoku: four digits, two of them printed as givens. */
+export const sudokuIcon = html`
+    <svg viewBox="0 0 24 24" class="icon" aria-hidden="true">
+        <rect class="wash" x="1.5" y="1.5" width="10" height="10" rx="2" />
+        <text class="glyph" x="6.5" y="9" font-size="7">1</text>
+        <rect x="12.5" y="1.5" width="10" height="10" rx="2" />
+        <text class="glyph" x="17.5" y="9" font-size="7">2</text>
+        <rect x="1.5" y="12.5" width="10" height="10" rx="2" />
+        <text class="glyph" x="6.5" y="20" font-size="7">3</text>
+        <rect class="wash" x="12.5" y="12.5" width="10" height="10" rx="2" />
+        <text class="glyph" x="17.5" y="20" font-size="7">4</text>
+    </svg>
+`;
+
+/** Nonogram: the two marks a solver makes, filled and crossed, and a square still undecided. */
+export const nonogramIcon = html`
+    <svg viewBox="0 0 24 24" class="icon" aria-hidden="true">
+        <rect x="1.5" y="1.5" width="10" height="10" rx="2" />
+        <rect class="block" x="12.5" y="1.5" width="10" height="10" rx="2" />
+        <rect class="block" x="1.5" y="12.5" width="10" height="10" rx="2" />
+        <rect x="12.5" y="12.5" width="10" height="10" rx="2" />
+        <path d="m15 15 5 5" />
+        <path d="m20 15-5 5" />
+    </svg>
+`;
+
+/** KenKen: the four operators a cage can carry, one to a square. */
+export const kenkenIcon = html`
+    <svg viewBox="0 0 24 24" class="icon" aria-hidden="true">
+        <rect x="1.5" y="1.5" width="10" height="10" rx="2" />
+        <path d="M3.5 6.5h6M6.5 3.5v6" />
+        <rect x="12.5" y="1.5" width="10" height="10" rx="2" />
+        <path d="M14.5 6.5h6" />
+        <rect x="1.5" y="12.5" width="10" height="10" rx="2" />
+        <path d="M3.5 17.5h6" />
+        <path d="M6.5 14.9v.01" />
+        <path d="M6.5 20.1v.01" />
+        <rect x="12.5" y="12.5" width="10" height="10" rx="2" />
+        <path d="m15.2 15.2 4.6 4.6" />
+        <path d="m19.8 15.2-4.6 4.6" />
+    </svg>
+`;
+
+/**
+ * Kakuro: the split clue square, the digits answering it, and a square still to fill.
+ *
+ * The diagonal is what makes this one a kakuro rather than a crossword: it is the square that holds
+ * two sums, which is the whole of what the type asks of a solver (ADR-0014).
+ */
+export const kakuroIcon = html`
+    <svg viewBox="0 0 24 24" class="icon" aria-hidden="true">
+        <rect x="1.5" y="1.5" width="10" height="10" rx="2" />
+        <path d="m3 3 7 7" />
+        <rect x="12.5" y="1.5" width="10" height="10" rx="2" />
+        <text class="glyph" x="17.5" y="9" font-size="7">1</text>
+        <rect x="1.5" y="12.5" width="10" height="10" rx="2" />
+        <text class="glyph" x="6.5" y="20" font-size="7">2</text>
+        <rect x="12.5" y="12.5" width="10" height="10" rx="2" />
+    </svg>
+`;
+
+/**
+ * Suguru: three squares drawn as one region, beside a fourth that is not in it.
+ *
+ * The region is the type, so it is one outline rather than three cells with a rule between them:
+ * that is how a suguru board draws it, and it is the only thing separating this mark from the
+ * sudoku one. Its digits run 1..n over the region, which is why the three inside it can hold 2, 1,
+ * and 3 with no row or column saying otherwise.
+ */
+export const suguruIcon = html`
+    <svg viewBox="0 0 24 24" class="icon" aria-hidden="true">
+        <path
+            class="heavy"
+            d="M3.5 1.5H20.5a2 2 0 0 1 2 2V20.5a2 2 0 0 1-2 2H14.5a2 2 0 0 1-2-2V13.5a2 2 0 0 0-2-2H3.5a2 2 0 0 1-2-2V3.5a2 2 0 0 1 2-2Z"
+        />
+        <text class="glyph" x="6.5" y="9" font-size="7">2</text>
+        <text class="glyph" x="17.5" y="9" font-size="7">1</text>
+        <text class="glyph" x="17.5" y="20" font-size="7">3</text>
+        <rect x="1.5" y="12.5" width="10" height="10" rx="2" />
+    </svg>
+`;
+
+/**
+ * The mark for each puzzle type, keyed by the value that travels over the wire.
+ *
+ * A map rather than a switch in the picker, so a new type adds a drawing here and nothing else.
+ * A type with no entry renders no mark rather than a broken one, which is what makes the tile
+ * degrade to the labelled button it used to be.
+ */
+export const puzzleTypeIcons = {
+    crossword: crosswordIcon,
+    sudoku: sudokuIcon,
+    nonogram: nonogramIcon,
+    kenken: kenkenIcon,
+    kakuro: kakuroIcon,
+    suguru: suguruIcon,
+};

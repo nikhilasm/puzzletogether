@@ -196,9 +196,19 @@ export const actionButton = css`
         }
     }
 
+    /*
+     * Mixed into --paper-raised, not into transparent.
+     *
+     * This is the same rule the grid follows in "the grid is opaque" (brand.md §4), and it is the
+     * same bug: the page texture is drawn behind the whole page, so a ground that is 16% accent and
+     * 84% nothing let the ruling show through the button. A control is a surface laid on the page,
+     * not a window onto it. Every wash on a control's ground below is mixed the same way; the ones
+     * that stay translucent are the washes inside the grid and the fill on a pressed glyph, which
+     * really are meant to let what is under them through.
+     */
     .action[aria-pressed='true'] {
         border-color: var(--accent);
-        background: color-mix(in srgb, var(--accent) 16%, transparent);
+        background: color-mix(in srgb, var(--accent) 16%, var(--paper-raised));
         color: var(--ink);
     }
 
@@ -254,7 +264,7 @@ export const actionButton = css`
 `;
 
 /**
- * The accent for a control that gives something up: Leave room, and nothing else.
+ * The colour for a control that gives something up: Leave room, and nothing else.
  *
  * Outlined rather than filled, like every other button in the app: the red is in the border, the
  * word, and the icon, and the ground stays paper until the pointer is on it. A solid red button
@@ -277,7 +287,7 @@ export const dangerButton = css`
     @media (hover: hover) {
         button.danger:hover:not(:disabled) {
             border-color: var(--danger);
-            background: color-mix(in srgb, var(--danger) 10%, transparent);
+            background: color-mix(in srgb, var(--danger) 10%, var(--paper-raised));
         }
     }
 
@@ -285,7 +295,34 @@ export const dangerButton = css`
        state is already red, and a neutral darkening on top of it read as the red going muddy. */
     button.danger:active:not(:disabled) {
         border-color: var(--danger);
-        background: color-mix(in srgb, var(--danger) 18%, transparent);
+        background: color-mix(in srgb, var(--danger) 18%, var(--paper-raised));
+    }
+`;
+
+/**
+ * The colour for a control that starts the next thing: Start another, and Puzzle Select's Start
+ * button.
+ *
+ * dangerButton pointed at what a control takes away; this is the same outlined shape pointed at
+ * what a solver presses most. --accent-text rather than --accent, since a button label sits at
+ * body size and --accent alone is only cleared for large text and borders (brand.md §2).
+ */
+export const accentButton = css`
+    button.accent {
+        border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+        color: var(--accent-text);
+    }
+
+    @media (hover: hover) {
+        button.accent:hover:not(:disabled) {
+            border-color: var(--accent);
+            background: color-mix(in srgb, var(--accent) 10%, var(--paper-raised));
+        }
+    }
+
+    button.accent:active:not(:disabled) {
+        border-color: var(--accent);
+        background: color-mix(in srgb, var(--accent) 18%, var(--paper-raised));
     }
 `;
 
@@ -319,7 +356,7 @@ export const optionGroup = css`
 
     .option[aria-pressed='true'] {
         border-color: var(--accent);
-        background: color-mix(in srgb, var(--accent) 16%, transparent);
+        background: color-mix(in srgb, var(--accent) 16%, var(--paper-raised));
         color: var(--ink);
         font-weight: 700;
     }

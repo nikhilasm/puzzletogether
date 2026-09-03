@@ -8,7 +8,7 @@
 
 import { LitElement, css, html, nothing } from 'lit';
 
-import { controls } from '../styles/controls.js';
+import { accentButton, controls } from '../styles/controls.js';
 import { closeIcon, iconStyle, puzzlesIcon, startIcon } from '../ui/icons.js';
 
 import '../ui/pt-puzzle-picker.js';
@@ -17,6 +17,28 @@ import '../ui/pt-puzzle-picker.js';
 function formatElapsed(elapsedMs) {
     const totalSeconds = Math.floor(elapsedMs / 1000);
     return `${Math.floor(totalSeconds / 60)}:${String(totalSeconds % 60).padStart(2, '0')}`;
+}
+
+/** Headings a solve can open with. Plain enough to say "solved" without repeating the word every time. */
+const SOLVED_TITLES = [
+    'Solved!',
+    'Impressive!',
+    'Nice work!',
+    'Terrific!',
+    'Exemplary!',
+    'Marvelous!',
+    'Brilliant!',
+    'Well done!',
+];
+
+/** Rare on purpose: one draw in twenty, so it stays a surprise rather than becoming the usual heading. */
+const RARE_TITLE = 'Light Work 😤';
+const RARE_CHANCE = 0.05;
+
+/** Picks the heading for one solve: mostly the word bank, occasionally the rare line. */
+function pickSolvedTitle() {
+    if (Math.random() < RARE_CHANCE) return RARE_TITLE;
+    return SOLVED_TITLES[Math.floor(Math.random() * SOLVED_TITLES.length)];
 }
 
 export class PtCongratsModal extends LitElement {
@@ -32,16 +54,22 @@ export class PtCongratsModal extends LitElement {
 
     static styles = [
         controls,
+        accentButton,
         iconStyle,
         css`
             /*
              * As wide as Puzzle Select's column, because it holds the same picker and "start
              * another" should offer the same list at the same size rather than a cramped copy of it.
              * Everything above the picker is centred short text, which does not mind the room.
+             *
+             * No position here, deliberately, for the reason pt-about records: a modal dialog is
+             * centred by the UA's own dialog:modal rule, and position: relative to hang the close
+             * button off overrides it and drops the panel into the document. The padding moved to
+             * .sheet so the close button has a containing block that owns it.
              */
             dialog {
                 width: min(40rem, calc(100vw - 2 * var(--space-4)));
-                padding: var(--space-6);
+                padding: 0;
                 border: var(--border);
                 border-radius: var(--radius-modal);
                 background: var(--paper-raised);
@@ -72,6 +100,42 @@ export class PtCongratsModal extends LitElement {
                 animation: fade var(--motion-celebrate) ease-out;
             }
 
+            /* The positioned box the close button hangs off, and the panel's padding. */
+            .sheet {
+                position: relative;
+                padding: var(--space-6);
+            }
+
+            /*
+             * The close control, in the corner rather than as a button in the row below, matching
+             * pt-about and pt-help.
+             *
+             * It used to be a labelled "See the grid" sharing the row with the host's two start
+             * controls, which put a way out of the dialog next to two ways on to the next puzzle
+             * and made the row read as three answers to one question. Dismissing is not one of the
+             * answers, so it moved to the corner every other panel keeps it in.
+             */
+            .close {
+                position: absolute;
+                top: var(--space-3);
+                right: var(--space-3);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 2.25rem;
+                min-height: 2.25rem;
+                padding: 0;
+                border: none;
+                background: none;
+                color: var(--graphite);
+            }
+
+            @media (hover: hover) {
+                .close:hover {
+                    color: var(--ink);
+                }
+            }
+
             h2 {
                 margin: 0 0 var(--space-2);
                 font-family: var(--font-display);
@@ -84,6 +148,58 @@ export class PtCongratsModal extends LitElement {
                 margin: 0 0 var(--space-1);
                 font-size: var(--text-lg);
                 font-variant-numeric: tabular-nums;
+            }
+
+            /*
+             * The streak, lit to carry the emphasis the old one-line detail text couldn't. Both
+             * effects are set inline per render, and a broken streak sets both to 0, which is what
+             * leaves it plain ink rather than faintly lit.
+             *
+             * Between the time above it and the assists below: emphasis here is colour and motion,
+             * so the type does not also have to be the largest thing in the dialog.
+             *
+             * The wave is a gradient clipped to the text rather than an animated colour, since a
+             * flat colour tween cannot put a moving band of accent across a fixed word; both
+             * clip properties are set because Firefox and Chromium disagree on which one they
+             * accept unprefixed.
+             *
+             * --accent-text and not --accent, because at the wave's peak the accent *is* the text
+             * colour, and this line is body-sized (brand.md §2). On dark the two tokens are the
+             * same value, so only the light theme sees a difference.
+             */
+            .streak-line {
+                margin: 0 0 var(--space-2);
+                font-size: var(--text-base);
+                background-image: linear-gradient(
+                    90deg,
+                    var(--ink) 0%,
+                    color-mix(in srgb, var(--accent-text) calc(var(--wave-t, 0) * 100%), var(--ink))
+                        50%,
+                    var(--ink) 100%
+                );
+                background-size: 220% 100%;
+                background-clip: text;
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                color: transparent;
+                text-shadow: 0 0 calc(var(--streak-t, 0) * 18px)
+                    color-mix(in srgb, var(--accent) calc(var(--streak-t, 0) * 90%), transparent);
+                animation: streak-wave 3.2s linear infinite;
+            }
+
+            @keyframes streak-wave {
+                from {
+                    background-position: 0% 0;
+                }
+                to {
+                    background-position: -220% 0;
+                }
+            }
+
+            @media (prefers-reduced-motion: reduce) {
+                .streak-line {
+                    animation: none;
+                }
             }
 
             .detail {
@@ -99,15 +215,12 @@ export class PtCongratsModal extends LitElement {
             }
 
             /*
-             * Every way out of this modal, in one row.
-             *
-             * Not two rows with "See the grid" set apart below: three buttons under one picker are
-             * three answers to one question, and the odd one out sitting alone read as a footer to
-             * a dialog that has no footer. Dismissing is still what you do *after* deciding, and
-             * the order carries that, since it is last.
+             * The host's two ways on from here, in one row under the picker. Start another is last
+             * and accent-bordered: it is the action most rooms take, and last is where reading the
+             * row left to right lands you.
              *
              * It wraps rather than shrinking, because the modal is as narrow as 320px on a phone and
-             * three labelled buttons do not fit that.
+             * two labelled buttons do not always fit that.
              */
             .buttons {
                 display: flex;
@@ -191,25 +304,70 @@ export class PtCongratsModal extends LitElement {
                 aria-labelledby="congrats-heading"
                 @cancel=${() => this.#emit('pt-dismiss', {})}
             >
-                <h2 id="congrats-heading">${solved.revealed ? 'Revealed' : 'Solved!'}</h2>
-                <p class="time">${formatElapsed(solved.elapsedMs)}</p>
-                <p class="detail">${this.#detailLine(solved)}</p>
-                ${this.isHost ? this.#renderPicker() : this.#renderWaiting()}
-                <div class="buttons">
-                    ${this.isHost ? this.#renderHostButtons() : nothing}
-                    <button type="button" @click=${() => this.#emit('pt-dismiss', {})}>
-                        ${closeIcon} See the grid
+                <div class="sheet">
+                    <button
+                        class="close"
+                        type="button"
+                        aria-label="Close"
+                        title="Close"
+                        @click=${() => this.#emit('pt-dismiss', {})}
+                    >
+                        ${closeIcon}
                     </button>
+
+                    <h2 id="congrats-heading">${solved.revealed ? 'Revealed' : this.#title}</h2>
+                    <p class="time">${formatElapsed(solved.elapsedMs)}</p>
+                    <p class="streak-line" style=${this.#streakPaint(solved)}>
+                        ${this.#streakLine(solved)}
+                    </p>
+                    <p class="detail">${this.#assistsLine(solved)}</p>
+                    ${this.isHost ? this.#renderPicker() : this.#renderWaiting()}
+                    ${
+                        this.isHost
+                            ? html`<div class="buttons">${this.#renderHostButtons()}</div>`
+                            : nothing
+                    }
                 </div>
             </dialog>
         `;
     }
 
-    /** Streak and assists in one line, saying plainly why a reveal left the streak at zero. */
-    #detailLine(solved) {
-        const assists = solved.assists === 1 ? '1 assist' : `${solved.assists} assists`;
-        if (solved.revealed) return `Streak reset to 0 · ${assists}`;
-        return `Solve streak ${solved.streak} · ${assists}`;
+    /** The heading text for the current solve, picked once and stable until a new one arrives. */
+    #titleValue = null;
+    #titleFor = null;
+    get #title() {
+        if (this.solved !== this.#titleFor) {
+            this.#titleFor = this.solved;
+            this.#titleValue = pickSolvedTitle();
+        }
+        return this.#titleValue;
+    }
+
+    /**
+     * The two numbers the streak line is painted from, as an inline style.
+     *
+     * They climb together to a streak of 20 and are both 0 for a broken one, but they do not climb
+     * the same way. The glow is a shadow *behind* ink, so scaling it straight off the streak reads
+     * correctly the whole way up. The wave is the ink, and mixing accent into it in proportion to a
+     * low streak is a few percent of accent against near-black: invisible in the light theme, which
+     * is the bug this split fixes. So the wave starts already mostly accent and the streak decides
+     * how much further toward pure accent it goes.
+     */
+    #streakPaint(solved) {
+        const climb = Math.min(solved.streak, 20) / 20;
+        const wave = solved.streak === 0 ? 0 : 0.55 + 0.45 * climb;
+        return `--streak-t: ${climb}; --wave-t: ${wave}`;
+    }
+
+    /** What changed the streak, or what broke it. Its size and motion carry the emphasis (see .streak-line). */
+    #streakLine(solved) {
+        if (solved.revealed) return 'Streak broken!';
+        return `Solve streak ${solved.streak}`;
+    }
+
+    /** The assist count, its own line under the streak. */
+    #assistsLine(solved) {
+        return solved.assists === 1 ? '1 assist' : `${solved.assists} assists`;
     }
 
     /** What the host chooses from: the same picker Puzzle Select shows, over the same catalog. */
@@ -228,22 +386,29 @@ export class PtCongratsModal extends LitElement {
     }
 
     /**
-     * The host's two choices, which share the button row with everybody's way out.
+     * The host's two choices, and the whole of the button row. A non-host gets no row at all: the
+     * corner close is their only control, and an empty flex box would still reserve its margin.
      *
      * The icons are the ones these actions already wear on the game screen: Puzzle Select is the
-     * same four squares in both places, because it is the same action.
+     * same four squares in both places, because it is the same action. Start another carries the
+     * accent border and icon (accentButton in controls.js): it is the one this row is built around.
      */
     #renderHostButtons() {
         return html`
-            <button type="button" ?disabled=${this.busy} @click=${this.#onStartAnother}>
-                ${startIcon} ${this.busy ? 'finding a puzzle…' : 'Start another'}
-            </button>
             <button
                 type="button"
                 ?disabled=${this.busy}
                 @click=${() => this.#emit('pt-back-to-select', {})}
             >
                 ${puzzlesIcon} Puzzle Select
+            </button>
+            <button
+                class="accent"
+                type="button"
+                ?disabled=${this.busy}
+                @click=${this.#onStartAnother}
+            >
+                ${startIcon} ${this.busy ? 'finding a puzzle…' : 'Start another'}
             </button>
         `;
     }

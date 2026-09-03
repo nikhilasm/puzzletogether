@@ -58,9 +58,26 @@ const MAX_ATTEMPTS = 2000;
 /** Wall-clock ceiling on the search for a puzzle at the difficulty asked for. */
 const TIME_BUDGET_MS = 5000;
 
+/**
+ * How long to spend drawing from the requested difficulty's own region pool before falling back to
+ * easy's, once nothing has filled at all.
+ *
+ * Nothing filled means every draw so far was an unfillable partition rather than an off-difficulty
+ * one, which is a fact about the pool and the grid size, not about luck: the remaining budget spent
+ * on the same pool would buy more of the same. Easy's sizes are the ones measured to fill at every
+ * offered size (regions.js), and the dig still decides the rating, so falling back to them costs
+ * the region layout's character and not the difficulty the puzzle is labelled with.
+ */
+const FALLBACK_AFTER_MS = TIME_BUDGET_MS / 2;
+
 /** Difficulty as a comparable rank. */
 function rank(difficulty) {
     return ['easy', 'medium', 'hard'].indexOf(difficulty);
+}
+
+/** How far a measured rating sits from the one asked for, counted in bands. */
+function bandsApart(measured, wanted) {
+    return Math.abs(rank(measured) - rank(wanted));
 }
 
 /**
@@ -117,14 +134,19 @@ function digHoles(solution, regions, n, difficulty, rng) {
  * @param {import('../rng.js').Rng} options.rng - Seeded generator.
  * @returns {{ cells: Uint8Array, solution: Uint8Array, regions: object[], difficulty: string,
  *   clues: number }} The dug puzzle, its solution, its regions, its measured difficulty, and its
- *   clue count.
+ *   clue count. Never null: a search that finds nothing on the band asked for settles for the
+ *   nearest band it did find, the way the pool settles (pool.js).
+ * @throws {Error} If neither the requested pool nor the fallback filled a single partition inside
+ *   the budget. Callers dereference the result, so this is thrown rather than returned as null:
+ *   create propagates it and the socket handler acks a failure with its message.
  */
 export function generateSuguru({ difficulty, n, rng }) {
     const started = Date.now();
     let best = null;
 
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
-        const regions = buildRegions(n, difficulty, rng);
+        const pool = best || Date.now() - started < FALLBACK_AFTER_MS ? difficulty : 'easy';
+        const regions = buildRegions(n, pool, rng);
 
         // A partition can pack small regions tightly enough that no filling satisfies both of them
         // at once: a 2×2 block split into two dominoes needs four distinct values from the two
@@ -144,9 +166,16 @@ export function generateSuguru({ difficulty, n, rng }) {
         const candidate = { ...dug, solution, regions };
 
         if (dug.difficulty === difficulty) return candidate;
-        if (!best || rank(dug.difficulty) > rank(best.difficulty)) best = candidate;
+
+        // Nearest band, not hardest seen: an easy request that never rates easy is better served by
+        // a medium puzzle than by the hard one a rank comparison would have preferred.
+        const nearer =
+            !best ||
+            bandsApart(dug.difficulty, difficulty) < bandsApart(best.difficulty, difficulty);
+        if (nearer) best = candidate;
         if (Date.now() - started > TIME_BUDGET_MS) break;
     }
 
+    if (!best) throw new Error(`no fillable ${n}x${n} suguru partition found within budget`);
     return best;
 }
