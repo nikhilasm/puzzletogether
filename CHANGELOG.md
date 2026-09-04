@@ -12,6 +12,7 @@
 - Fixed a case where keypad numbers would be incorrectly greyed-out in Suguru
 - Fixed players not receiving adequate feedback when they are involuntarily removed from a room
 - Updated `README`
+- Improved server-side logging and diagnostics
 
 ## 1.1.0 - 2026-09-01
 

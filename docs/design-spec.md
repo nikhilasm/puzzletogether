@@ -233,7 +233,7 @@ puzzletogether/
 │  ├─ puzzle-doc.js            # idx↔(r,c), cell helpers; nothing type-specific
 │  └─ board-reducer.js         # applyOp(), shared by server and client
 ├─ server/
-│  ├─ index.js  config.js
+│  ├─ index.js  config.js  log.js   # log.js: one record per event, PT_LOG_LEVEL (ADR-0026)
 │  ├─ rooms/{store,lifecycle,codes,progress}.js
 │  ├─ net/{handlers,auth,ratelimit}.js
 │  └─ puzzles/

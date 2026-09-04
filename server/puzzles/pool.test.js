@@ -71,6 +71,7 @@ describe('taking a puzzle at a difficulty', () => {
 
         expect(doc.difficulty).toBe('easy');
         expect(solution).toHaveLength(16);
+        expect(warn).toHaveBeenCalledWith(expect.stringContaining('puzzle.difficulty.settled'));
         expect(warn).toHaveBeenCalledWith(expect.stringContaining('sudoku:hard:4x4'));
     }, 30000);
 

@@ -14,6 +14,7 @@
 import { Worker } from 'node:worker_threads';
 
 import { DIFFICULTIES } from '../../shared/constants.js';
+import { log } from '../log.js';
 
 import kakuro from './kakuro/index.js';
 import kenken from './kenken/index.js';
@@ -129,7 +130,9 @@ export class GeneratorPool {
                     this.#ready.set(key, current);
                 })
                 .catch((error) => {
-                    console.warn(`[pool] refill failed for ${key}: ${error.message}`);
+                    // A refill nobody is waiting on, so the room that asked was served; what it
+                    // costs is the next take being a cold generation on the request path.
+                    log.error('puzzle.generate.failed', { spec: key, err: error });
                 })
                 .finally(() => {
                     this.#inFlight.set(key, Math.max(0, (this.#inFlight.get(key) ?? 1) - 1));
@@ -162,10 +165,12 @@ export class GeneratorPool {
             if (nearer) best = puzzle;
         }
 
-        console.warn(
-            `[pool] ${poolKey(spec)}: nothing on that band in ${DIFFICULTY_ATTEMPTS} draws, ` +
-                `serving ${best.doc.difficulty}`,
-        );
+        log.warn('puzzle.difficulty.settled', {
+            spec: poolKey(spec),
+            wanted: spec.difficulty,
+            served: best.doc.difficulty,
+            draws: DIFFICULTY_ATTEMPTS,
+        });
         return best;
     }
 
@@ -175,7 +180,7 @@ export class GeneratorPool {
         try {
             return await this.#generateInWorker({ ...spec, seed });
         } catch (error) {
-            console.warn(`[pool] worker generation failed, falling back inline: ${error.message}`);
+            log.warn('puzzle.worker.fallback', { spec: poolKey(spec), err: error });
             return generateInline({ ...spec, seed });
         }
     }
@@ -207,10 +212,20 @@ export class GeneratorPool {
                 waiter.resolve({ doc: reply.doc, solution: reply.solution });
             }
         });
-        worker.on('error', (error) => this.#failAllPending(error));
+        worker.on('error', (error) => {
+            log.error('puzzle.worker.died', { pending: this.#pending.size, err: error });
+            this.#failAllPending(error);
+        });
         worker.on('exit', (code) => {
-            if (code !== 0) this.#failAllPending(new Error(`generator worker exited (${code})`));
+            // A worker this pool released is already off the field, and close() terminating it is
+            // a nonzero exit that means nothing. An exit while it is still the current worker is
+            // the one worth saying out loud: generation has moved onto the event loop.
+            const wasReleased = this.#worker !== worker;
             this.#worker = null;
+            if (code === 0 || wasReleased) return;
+
+            log.error('puzzle.worker.died', { code, pending: this.#pending.size });
+            this.#failAllPending(new Error(`generator worker exited (${code})`));
         });
         // The worker must never be the reason the process stays alive.
         worker.unref();

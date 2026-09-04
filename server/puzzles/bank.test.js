@@ -116,7 +116,8 @@ describe('refusing broken files', () => {
         broken.file.doc.meta.entries[0].cells = [0, 1];
 
         expect(loadBank([bankDir([soundPuzzle('good'), broken])])).toBe(1);
-        expect(warn).toHaveBeenCalledWith(expect.stringMatching(/broken: refused/));
+        expect(warn).toHaveBeenCalledWith(expect.stringContaining('bank.puzzle.refused'));
+        expect(warn).toHaveBeenCalledWith(expect.stringContaining('broken'));
     });
 
     it('refuses a black square that carries an answer', () => {

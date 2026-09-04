@@ -254,7 +254,8 @@ export function toSnapshot(room) {
  * @param {number} options.sweepIntervalMs - How often to sweep.
  * @param {number} options.idleLimitMs - Idle time after which an empty room is collected.
  * @param {number} options.maxAgeMs - Absolute room age limit.
- * @param {(room: Room) => void} [options.onDelete] - Called with each room before it is deleted.
+ * @param {(room: Room, reason: 'idle'|'aged') => void} [options.onDelete] - Called with each room
+ *   before it is deleted, and why it is being collected.
  * @returns {() => void} A function that stops the sweep.
  */
 export function startRoomGc({ sweepIntervalMs, idleLimitMs, maxAgeMs, onDelete }) {
@@ -267,7 +268,9 @@ export function startRoomGc({ sweepIntervalMs, idleLimitMs, maxAgeMs, onDelete }
             const isExpired = now - room.createdAt > maxAgeMs;
             if (!isAbandoned && !isExpired) continue;
 
-            onDelete?.(room);
+            // Age wins when a room is both: it is the limit that collects a room out from under
+            // people, which is the only collection anybody is present to notice.
+            onDelete?.(room, isExpired ? 'aged' : 'idle');
             deleteRoom(room.code);
         }
     }

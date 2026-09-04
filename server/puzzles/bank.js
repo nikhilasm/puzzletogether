@@ -20,6 +20,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { MAX_CELL_VALUE_LENGTH } from '../../shared/constants.js';
+import { log } from '../log.js';
 
 import { ALPHABET, DOC_VERSION } from './crossword/index.js';
 import { checkNumbering } from './crossword/numbering.js';
@@ -103,7 +104,7 @@ function readDir(dir) {
 
     const manifestPath = join(dir, 'index.json');
     if (!existsSync(manifestPath)) {
-        console.warn(`[bank] ${dir} has no index.json: skipping the directory`);
+        log.warn('bank.dir.skipped', { dir, reason: 'no_manifest' });
         return [];
     }
 
@@ -111,7 +112,7 @@ function readDir(dir) {
     try {
         manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
     } catch (error) {
-        console.warn(`[bank] ${manifestPath} is not valid JSON: ${error.message}`);
+        log.warn('bank.dir.skipped', { dir, reason: 'invalid_manifest', err: error });
         return [];
     }
 
@@ -121,7 +122,7 @@ function readDir(dir) {
     for (const entry of listed) {
         const file = join(dir, entry.file ?? `${entry.id}.json`);
         if (!existsSync(file)) {
-            console.warn(`[bank] ${entry.id}: ${file} is listed in the manifest but missing`);
+            log.warn('bank.puzzle.refused', { id: entry.id, file, reason: 'missing' });
             continue;
         }
 
@@ -129,7 +130,12 @@ function readDir(dir) {
         try {
             parsed = JSON.parse(readFileSync(file, 'utf8'));
         } catch (error) {
-            console.warn(`[bank] ${entry.id}: not valid JSON: ${error.message}`);
+            log.warn('bank.puzzle.refused', {
+                id: entry.id,
+                file,
+                reason: 'invalid_json',
+                err: error,
+            });
             continue;
         }
 
@@ -138,7 +144,7 @@ function readDir(dir) {
         // because a bank quietly one puzzle short is how this rots.
         const problem = validatePuzzle(parsed);
         if (problem) {
-            console.warn(`[bank] ${entry.id}: refused: ${problem}`);
+            log.warn('bank.puzzle.refused', { id: entry.id, reason: 'unsound', problem });
             continue;
         }
 

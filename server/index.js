@@ -14,10 +14,13 @@ import { Server } from 'socket.io';
 
 import { DEFAULT_SETTINGS } from '../shared/constants.js';
 
+import pkg from '../package.json' with { type: 'json' };
 import { config } from './config.js';
+import { log } from './log.js';
 import { closeRoom, registerConnectionHandler } from './net/handlers.js';
 import { closeProvider, loadBankFrom, prewarm } from './puzzles/provider.js';
-import { startRoomGc } from './rooms/lifecycle.js';
+import { connectedCount, startRoomGc } from './rooms/lifecycle.js';
+import { allRooms, roomCount } from './rooms/store.js';
 
 const app = express();
 const httpServer = createServer(app);
@@ -45,12 +48,21 @@ const stopGc = startRoomGc({
     sweepIntervalMs: config.gcSweepIntervalMs,
     idleLimitMs: config.roomIdleLimitMs,
     maxAgeMs: config.roomMaxAgeMs,
-    onDelete: (room) => {
+    onDelete: (room, reason) => {
         // Before the delete, not after: once the room is out of the map there is no channel left to
         // say anything on, and anybody still in it would be left holding a screen that has stopped
         // being connected to anything (ADR-0025).
         closeRoom(io, room);
-        if (config.isDev) console.info(`[gc] collecting room ${room.code}`);
+        // connected is the field to read: an aged-out room takes live seats with it, and that is
+        // the collection somebody felt.
+        log.info('room.collected', {
+            roomCode: room.code,
+            reason,
+            ageMs: Date.now() - room.createdAt,
+            idleMs: Date.now() - room.lastActivityAt,
+            players: room.players.size,
+            connected: connectedCount(room),
+        });
     },
 });
 
@@ -61,24 +73,49 @@ prewarm(DEFAULT_SETTINGS);
 const banked = loadBankFrom(config.bankDirs);
 
 httpServer.listen(config.port, () => {
-    const mode = config.isDev ? 'development' : 'production';
-    console.info(`PuzzleTogether server listening on :${config.port} (${mode})`);
-    // Zero is a normal state, not a failure: a build with no licensed bank offers three puzzle
+    // The version and the pid are what a deployment is identified by afterwards: the first question
+    // asked of a log is which build wrote it.
+    log.info('server.started', {
+        version: pkg.version,
+        port: config.port,
+        mode: config.isDev ? 'development' : 'production',
+        node: process.version,
+        pid: process.pid,
+        logLevel: config.logLevel,
+    });
+    // Zero is a normal state, not a failure: a build with no licensed bank offers five puzzle
     // types (ADR-0004). Said out loud so it is never a silent surprise.
-    console.info(
-        banked > 0
-            ? `crossword bank: ${banked} puzzle${banked === 1 ? '' : 's'}`
-            : 'crossword bank: empty, the type is not offered',
-    );
+    log.info('bank.loaded', { puzzles: banked, crosswordOffered: banked > 0 });
 });
 
+/** How many seats exist across every live room, connected or inside their grace period. */
+function seatCount() {
+    return allRooms().reduce((total, room) => total + room.players.size, 0);
+}
+
 // Releases the generator worker and the GC interval so node --watch and Docker stop cleanly.
-async function shutdown() {
+async function shutdown(signal) {
+    // Every room is in memory and goes with the process (ADR-0002), so what a restart cost is a
+    // number only this line can report.
+    log.info('server.stopping', { signal, rooms: roomCount(), seats: seatCount() });
     stopGc();
     await closeProvider();
     io.close();
     httpServer.close(() => process.exit(0));
 }
 
-process.on('SIGINT', shutdown);
-process.on('SIGTERM', shutdown);
+process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+
+// Node prints a bare stack and exits on an uncaught throw, which says nothing about what the
+// process was holding. Logged first, then the exit stands: the state after one is not trustworthy.
+process.on('uncaughtException', (error) => {
+    log.error('process.uncaughtException', { rooms: roomCount(), seats: seatCount(), err: error });
+    process.exit(1);
+});
+
+// A rejection nobody handled is survived rather than fatal, because the alternative is every room
+// in memory dying for one request's bug (ADR-0026).
+process.on('unhandledRejection', (reason) => {
+    log.error('process.unhandledRejection', { err: reason });
+});

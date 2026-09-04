@@ -54,6 +54,12 @@ const bankDirs = process.env.PT_BANK_DIRS
 
 export const config = {
     isDev,
+    /**
+     * Log threshold: debug, info, warn, or error. Development says everything; production says info
+     * and above, and turning that down to debug is an environment variable rather than a deploy of
+     * different code (ADR-0026). An unrecognised value falls back to info in log.js.
+     */
+    logLevel: process.env.PT_LOG_LEVEL ?? (isDev ? 'debug' : 'info'),
     port: intFromEnv('PORT', 3001),
     clientDist: fileURLToPath(new URL('../client/dist', import.meta.url)),
     bankDirs,

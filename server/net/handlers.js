@@ -8,9 +8,18 @@
 
 import { applyOp } from '../../shared/board-reducer.js';
 import { ASSIST_RATE_LIMIT, FOCUS_RATE_LIMIT, OP_RATE_LIMIT } from '../../shared/constants.js';
-import { CLIENT_EVENT, ERROR, ROOM_STATE, SERVER_EVENT, fail, ok } from '../../shared/protocol.js';
+import {
+    CLIENT_EVENT,
+    ERROR,
+    PROTOCOL_VERSION,
+    ROOM_STATE,
+    SERVER_EVENT,
+    fail,
+    ok,
+} from '../../shared/protocol.js';
 import { validate } from '../../shared/schema.js';
 import { config } from '../config.js';
+import { log } from '../log.js';
 import { catalog, getPuzzle, getPuzzleModule, prewarm } from '../puzzles/provider.js';
 import {
     addPlayer,
@@ -22,7 +31,7 @@ import {
     toSnapshot,
 } from '../rooms/lifecycle.js';
 import { abandonPuzzle, checkPuzzle, revealPuzzle, solvePuzzle } from '../rooms/progress.js';
-import { createRoom, getRoom, touchRoom } from '../rooms/store.js';
+import { createRoom, getRoom, roomCount, touchRoom } from '../rooms/store.js';
 
 import { currentSeat, isHost, isProtocolCompatible, readHandshake, restoreSeat } from './auth.js';
 import { createBuckets } from './ratelimit.js';
@@ -60,15 +69,40 @@ function takeSeat(socket, room, player) {
 }
 
 /**
- * Drops a player whose grace period expired, re-electing a host if it was theirs.
+ * Ends a seat for good, re-electing a host if it was theirs.
  *
- * This is the fix for the prototype's empty disconnect stub, which leaked players into rooms
- * permanently (design-spec.md §2).
+ * Every deliberate ending comes through here: leaving, being removed, and the grace period running
+ * out. That last one is the fix for the prototype's empty disconnect stub, which leaked players
+ * into rooms permanently (design-spec.md §2), and reason is what tells the three apart afterwards.
+ *
+ * @param {object} ending - The seat and why it is ending.
+ * @param {import('socket.io').Server} ending.io - The Socket.IO server, for the roster broadcast.
+ * @param {import('../rooms/store.js').Room} ending.room - The room the seat is in.
+ * @param {string} ending.playerId - The player losing the seat.
+ * @param {'left'|'kicked'|'grace_expired'} ending.reason - What ended it.
+ * @param {string} [ending.by] - The host who removed them, when somebody else decided it.
+ * @returns {void}
  */
-function onGraceExpired(io, room, playerId) {
+function releaseSeat({ io, room, playerId, reason, by }) {
+    const name = room.players.get(playerId)?.name;
     if (!dropPlayer(room, playerId)) return;
-    if (room.hostId === playerId) room.hostId = null;
-    electHost(room);
+
+    const previousHostId = room.hostId;
+    if (previousHostId === playerId) room.hostId = null;
+    const hostId = electHost(room);
+
+    log.info('player.dropped', {
+        roomCode: room.code,
+        playerId,
+        name,
+        reason,
+        by,
+        players: room.players.size,
+    });
+    if (hostId && hostId !== previousHostId) {
+        log.info('host.elected', { roomCode: room.code, playerId: hostId, previousHostId });
+    }
+
     broadcastRoom(io, room);
 }
 
@@ -91,7 +125,7 @@ function seatOrFail(socket, ack) {
  * Wraps a handler with payload validation and error containment, so no handler has to repeat
  * either.
  */
-function guard(event, handler) {
+function guard(socket, event, handler) {
     return async (payload, callback) => {
         const ack = typeof callback === 'function' ? callback : () => {};
         const body = payload ?? {};
@@ -105,7 +139,14 @@ function guard(event, handler) {
         try {
             await handler(body, ack);
         } catch (error) {
-            console.error(`[${event}] handler failed:`, error);
+            // The seat is on the record because an internal failure naming only its event says
+            // nothing about which room stopped working.
+            log.error('handler.failed', {
+                event,
+                roomCode: socket.data?.code ?? null,
+                playerId: socket.data?.playerId ?? null,
+                err: error,
+            });
             ack(fail(ERROR.INTERNAL, 'the server could not complete that request'));
         }
     };
@@ -128,21 +169,31 @@ export function registerHandlers(io, socket) {
     // Creates a room and seats the caller as its host.
     socket.on(
         CLIENT_EVENT.ROOM_CREATE,
-        guard(CLIENT_EVENT.ROOM_CREATE, (payload, ack) => {
+        guard(socket, CLIENT_EVENT.ROOM_CREATE, (payload, ack) => {
             const room = createRoom();
             const { player, token } = addPlayer(room, payload.name, socket.id);
             takeSeat(socket, room, player);
             ack(ok(joinPayload(room, player, token)));
             broadcastRoom(io, room);
+            log.info('room.created', {
+                roomCode: room.code,
+                playerId: player.id,
+                name: player.name,
+                rooms: roomCount(),
+            });
         }),
     );
 
     // Joins an existing room by code, issuing a fresh seat and reconnect token.
     socket.on(
         CLIENT_EVENT.ROOM_JOIN,
-        guard(CLIENT_EVENT.ROOM_JOIN, (payload, ack) => {
-            const room = getRoom(payload.code.toLowerCase());
+        guard(socket, CLIENT_EVENT.ROOM_JOIN, (payload, ack) => {
+            const code = payload.code.toLowerCase();
+            const room = getRoom(code);
             if (!room) {
+                // A mistyped code and a room that timed out arrive here identically; the count of
+                // these against room.collected is what tells them apart.
+                log.info('room.join.refused', { roomCode: code, reason: 'not_found' });
                 ack(fail(ERROR.ROOM_NOT_FOUND, `no room with code ${payload.code}`));
                 return;
             }
@@ -151,6 +202,11 @@ export function registerHandlers(io, socket) {
             try {
                 seat = addPlayer(room, payload.name, socket.id);
             } catch {
+                log.info('room.join.refused', {
+                    roomCode: code,
+                    reason: 'full',
+                    players: room.players.size,
+                });
                 ack(fail(ERROR.ROOM_FULL, 'that room is full'));
                 return;
             }
@@ -158,17 +214,23 @@ export function registerHandlers(io, socket) {
             takeSeat(socket, room, seat.player);
             ack(ok(joinPayload(room, seat.player, seat.token)));
             broadcastRoom(io, room);
+            log.info('player.joined', {
+                roomCode: room.code,
+                playerId: seat.player.id,
+                name: seat.player.name,
+                players: room.players.size,
+            });
         }),
     );
 
     // Leaves a room deliberately, which gives up the seat immediately rather than on grace expiry.
     socket.on(
         CLIENT_EVENT.ROOM_LEAVE,
-        guard(CLIENT_EVENT.ROOM_LEAVE, (_payload, ack) => {
+        guard(socket, CLIENT_EVENT.ROOM_LEAVE, (_payload, ack) => {
             const seat = seatOrFail(socket, ack);
             if (!seat) return;
 
-            onGraceExpired(io, seat.room, seat.player.id);
+            releaseSeat({ io, room: seat.room, playerId: seat.player.id, reason: 'left' });
             socket.leave(seat.room.code);
             socket.data = {};
             ack(ok());
@@ -178,7 +240,7 @@ export function registerHandlers(io, socket) {
     // Host-only: removes another player's seat outright, and tells them why.
     socket.on(
         CLIENT_EVENT.ROOM_KICK,
-        guard(CLIENT_EVENT.ROOM_KICK, (payload, ack) => {
+        guard(socket, CLIENT_EVENT.ROOM_KICK, (payload, ack) => {
             const seat = seatOrFail(socket, ack);
             if (!seat) return;
             if (!isHost(seat.room, seat.player.id)) {
@@ -203,7 +265,13 @@ export function registerHandlers(io, socket) {
                 message: 'The host removed you from the room.',
             });
 
-            onGraceExpired(io, seat.room, target.id);
+            releaseSeat({
+                io,
+                room: seat.room,
+                playerId: target.id,
+                reason: 'kicked',
+                by: seat.player.id,
+            });
             targetSocket?.leave(seat.room.code);
             if (targetSocket) targetSocket.data = {};
             ack(ok());
@@ -214,7 +282,7 @@ export function registerHandlers(io, socket) {
     // player in the payload: you cannot recolour anybody else.
     socket.on(
         CLIENT_EVENT.PLAYER_COLOR,
-        guard(CLIENT_EVENT.PLAYER_COLOR, (payload, ack) => {
+        guard(socket, CLIENT_EVENT.PLAYER_COLOR, (payload, ack) => {
             const seat = seatOrFail(socket, ack);
             if (!seat) return;
 
@@ -231,7 +299,7 @@ export function registerHandlers(io, socket) {
     // Host-only: fetches a puzzle and moves the room into playing.
     socket.on(
         CLIENT_EVENT.GAME_START,
-        guard(CLIENT_EVENT.GAME_START, async (payload, ack) => {
+        guard(socket, CLIENT_EVENT.GAME_START, async (payload, ack) => {
             const seat = seatOrFail(socket, ack);
             if (!seat) return;
             if (!isHost(seat.room, seat.player.id)) {
@@ -264,6 +332,15 @@ export function registerHandlers(io, socket) {
             } catch (error) {
                 // A generator refusing a size is a bug; a bank not holding one is a fact about the
                 // content, and the host is owed the difference rather than "something went wrong".
+                // The message, not the stack: what the bank holds is content, and a stack trace
+                // over it reads as a crash that did not happen.
+                log.warn('puzzle.unavailable', {
+                    roomCode: room.code,
+                    type: spec.type,
+                    difficulty: spec.difficulty,
+                    size: `${spec.size.rows}x${spec.size.cols}`,
+                    problem: error.message,
+                });
                 ack(fail(ERROR.WRONG_STATE, error.message));
                 return;
             }
@@ -291,7 +368,7 @@ export function registerHandlers(io, socket) {
     // Applies one cell op: the hot path (architecture.md §3).
     socket.on(
         CLIENT_EVENT.GAME_OP,
-        guard(CLIENT_EVENT.GAME_OP, (payload, ack) => {
+        guard(socket, CLIENT_EVENT.GAME_OP, (payload, ack) => {
             if (!buckets.op.tryConsume()) {
                 ack(fail(ERROR.RATE_LIMITED, 'slow down'));
                 return;
@@ -329,7 +406,7 @@ export function registerHandlers(io, socket) {
     // Broadcasts where a player is looking. Presence only; it locks nothing.
     socket.on(
         CLIENT_EVENT.GAME_FOCUS,
-        guard(CLIENT_EVENT.GAME_FOCUS, (payload, ack) => {
+        guard(socket, CLIENT_EVENT.GAME_FOCUS, (payload, ack) => {
             if (!buckets.focus.tryConsume()) {
                 ack(fail(ERROR.RATE_LIMITED, 'too many focus updates'));
                 return;
@@ -356,7 +433,7 @@ export function registerHandlers(io, socket) {
     // Serves a full snapshot after a client detects a seq gap.
     socket.on(
         CLIENT_EVENT.SYNC_REQUEST,
-        guard(CLIENT_EVENT.SYNC_REQUEST, (_payload, ack) => {
+        guard(socket, CLIENT_EVENT.SYNC_REQUEST, (_payload, ack) => {
             const seat = seatOrFail(socket, ack);
             if (!seat) return;
 
@@ -368,7 +445,7 @@ export function registerHandlers(io, socket) {
     // Grades every filled cell against the solution. Free: it never touches the streak.
     socket.on(
         CLIENT_EVENT.GAME_CHECK,
-        guard(CLIENT_EVENT.GAME_CHECK, (_payload, ack) => {
+        guard(socket, CLIENT_EVENT.GAME_CHECK, (_payload, ack) => {
             const seat = seatOrFail(socket, ack);
             if (!seat) return;
 
@@ -399,7 +476,7 @@ export function registerHandlers(io, socket) {
     // Host-only: fills the grid from the solution, which ends the puzzle and resets the streak.
     socket.on(
         CLIENT_EVENT.GAME_REVEAL,
-        guard(CLIENT_EVENT.GAME_REVEAL, (_payload, ack) => {
+        guard(socket, CLIENT_EVENT.GAME_REVEAL, (_payload, ack) => {
             const seat = seatOrFail(socket, ack);
             if (!seat) return;
             if (!isHost(seat.room, seat.player.id)) {
@@ -430,7 +507,7 @@ export function registerHandlers(io, socket) {
     // Host-only: abandons the current puzzle and returns the whole room to Puzzle Select.
     socket.on(
         CLIENT_EVENT.ROOM_BACK_TO_SELECT,
-        guard(CLIENT_EVENT.ROOM_BACK_TO_SELECT, (_payload, ack) => {
+        guard(socket, CLIENT_EVENT.ROOM_BACK_TO_SELECT, (_payload, ack) => {
             const seat = seatOrFail(socket, ack);
             if (!seat) return;
             if (!isHost(seat.room, seat.player.id)) {
@@ -452,14 +529,23 @@ export function registerHandlers(io, socket) {
     );
 
     // Holds the seat for the grace period rather than dropping it immediately.
-    socket.on('disconnect', () => {
+    socket.on('disconnect', (reason) => {
         const seat = currentSeat(socket);
         if (!seat || seat.player.socketId !== socket.id) return;
 
         markDisconnected(seat.room, seat.player.id, config.disconnectGraceMs, (room, playerId) =>
-            onGraceExpired(io, room, playerId),
+            releaseSeat({ io, room, playerId, reason: 'grace_expired' }),
         );
         broadcastPlayers(io, seat.room);
+        // Socket.IO's reason is the difference between a closed tab, a lost network, and a client
+        // that stopped answering pings, which is otherwise unknowable from this side.
+        log.info('player.disconnected', {
+            roomCode: seat.room.code,
+            playerId: seat.player.id,
+            name: seat.player.name,
+            reason,
+            graceMs: config.disconnectGraceMs,
+        });
     });
 }
 
@@ -506,6 +592,12 @@ export function registerConnectionHandler(io) {
         const handshake = readHandshake(socket);
 
         if (!isProtocolCompatible(handshake.protocolVersion)) {
+            // After a deploy this is the only thing that says clients are still on the old build.
+            log.warn('protocol.mismatch', {
+                socketId: socket.id,
+                client: handshake.protocolVersion,
+                server: PROTOCOL_VERSION,
+            });
             socket.emit(SERVER_EVENT.ERROR, {
                 code: ERROR.PROTOCOL_MISMATCH,
                 message: 'This page appears to be out of date. Please refresh.',
@@ -534,14 +626,25 @@ export function registerConnectionHandler(io) {
                 joinPayload(restored.room, restored.player, null),
             );
             broadcastPlayers(io, restored.room);
+            log.info('player.reconnected', {
+                roomCode: restored.room.code,
+                playerId: restored.player.id,
+                name: restored.player.name,
+                displaced: Boolean(restored.previousSocketId),
+            });
         } else if (handshake.token) {
             // A token that restores nothing means one of two things, and they are not the same
             // news: the room is gone, or the room is alive and the seat in it is not theirs any
             // more. Told apart here, because "that room has ended" said over a room full of people
             // sends the player away from one they could walk straight back into.
+            const roomAlive = Boolean(handshake.code && getRoom(handshake.code));
+            log.info('seat.stale', {
+                roomCode: handshake.code,
+                reason: roomAlive ? 'seat_gone' : 'room_gone',
+            });
             socket.emit(
                 SERVER_EVENT.ERROR,
-                handshake.code && getRoom(handshake.code)
+                roomAlive
                     ? {
                           code: ERROR.NOT_IN_ROOM,
                           message: 'Your seat timed out and was removed.',
@@ -556,8 +659,6 @@ export function registerConnectionHandler(io) {
 
         registerHandlers(io, socket);
 
-        if (config.isDev) {
-            console.info(`[socket] ${socket.id} connected, restored=${Boolean(restored)}`);
-        }
+        log.debug('socket.connected', { socketId: socket.id, restored: Boolean(restored) });
     });
 }

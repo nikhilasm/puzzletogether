@@ -212,6 +212,7 @@ One file, one concern. A module past ~300 lines is asking to be split.
 - **Never throw across the socket boundary.** A handler that throws kills the connection. Validate, then return an ack.
 - Validation and authorization are separate steps, both server-side. Shape first (`shared/schema.js`), authority second (`playerId === room.hostId`).
 - Never swallow an error. An empty `catch {}` needs a comment justifying itself.
+- **Server code logs through `server/log.js`**, never `console.*` directly: an event name plus flat fields, `roomCode` and `playerId` where they apply, and a thrown value under `err` ([ADR-0026](adr/0026-one-log-line-per-event.md)). Nothing on the op or focus path logs at all.
 - Throwing is for programmer errors, using the specific built-in (`TypeError`, `RangeError`), not bare `Error`.
 
 ---

@@ -292,7 +292,27 @@ The single-process design is a deliberate trade: it makes `seq` assignment, LWW 
 
 ---
 
-## 8. Design decisions
+## 8. Logging
+
+One module, `server/log.js`, and nothing else on the server writes to the console ([ADR-0026](adr/0026-one-log-line-per-event.md)). A record is an event name in `domain.action` form plus a flat object of fields: JSON per line in production, a readable line in development, threshold from `PT_LOG_LEVEL`.
+
+**What is logged is what a room's life is made of**, because that is what a report comes phrased as. Every room-scoped record carries `roomCode`, and every seat-scoped one carries `playerId`, so one room's history is a single filter:
+
+| Area | Events |
+|---|---|
+| Process | `server.started` · `server.stopping` · `process.uncaughtException` · `process.unhandledRejection` |
+| Rooms | `room.created` · `room.join.refused` (`not_found`, `full`) · `room.collected` (`idle`, `aged`) |
+| Seats | `player.joined` · `player.reconnected` · `player.disconnected` · `player.dropped` (`left`, `kicked`, `grace_expired`) · `host.elected` · `seat.stale` (`room_gone`, `seat_gone`) · `protocol.mismatch` |
+| Puzzles | `puzzle.unavailable` · `puzzle.generate.failed` · `puzzle.worker.died` · `puzzle.worker.fallback` · `puzzle.difficulty.settled` · `bank.loaded` · `bank.dir.skipped` · `bank.puzzle.refused` |
+| Failures | `handler.failed`, carrying the event and the seat that was holding it |
+
+**Nothing on the op or focus path logs.** Both run at rate-limit speed per socket, so a line per event would put I/O in the hot path of §3. What those paths produce is counted, not narrated: a desync shows up as `handler.failed` or as the client asking for a snapshot, never as a record per op.
+
+**A reconnect token and a solution are never fields.** A token is a seat credential; a solution is the puzzle. A room code is a join credential, and it is logged because a diagnostic without one is unusable, which makes the log itself semi-sensitive.
+
+---
+
+## 9. Design decisions
 
 | Decision | Original design | Why it changed | When |
 |---|---|---|---|
