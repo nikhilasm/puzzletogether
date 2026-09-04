@@ -1,6 +1,6 @@
 # ADR-0023: The footer is one panel, and its controls are wordless
 
-- **Status**: Accepted
+- **Status**: Accepted; the changelog's storage amended by [ADR-0024](0024-the-changelog-is-a-file.md), 2026-09-03
 - **Date**: 2026-09-03
 - **Context**: [ADR-0012](0012-a-label-under-every-icon.md), whose rule this qualifies · [ADR-0011](0011-icons-in-the-panel-words-in-the-page.md) · [brand.md §4](../brand.md#icons) · [design-spec.md §4](../design-spec.md#4-the-game-screen)
 
@@ -25,7 +25,7 @@ Two things were wrong with it, and the second is the one that matters.
 - **`<pt-tooltip>` is a new wrapper element**, `client/ui/pt-tooltip.js`. It shows a one- or two-word bubble above the control on `pointerenter` and on `focusin`, and hides it on the way out. The bubble is `aria-hidden` and is never the only copy of the name: the control inside carries an `aria-label`, which is what a screen reader reads and what `tests/game.spec.js` asserts.
 - **The hover query is checked in JavaScript**, not in CSS. `@media (hover: hover)` gates a *rule*; what has to be gated here is a *state*, and a touch browser that emulates hover on the last-tapped element would otherwise leave a bubble parked over it. The tooltips are therefore pointer-and-keyboard only, which is accepted: a phone has no hover to spend.
 - **Every bubble is centred on the control it names, and moves only when a viewport edge makes it.** It is wider than the control it sits over, so on a 320px screen the outermost one would hang off the side and give the page a horizontal scroll, which is the one thing the layout may not do (brand.md §7). The bubble measures itself on the frame it appears and shifts by the overhang and no more.
-- **A new `<pt-changelog>` dialog**, built on the native `<dialog>` like `<pt-about>` and holding its releases as a constant in the file. A changelog is written by hand when a version ships and is the same for everybody; fetching it would put a spinner in front of prose already in the bundle.
+- **A new `<pt-changelog>` dialog**, built on the native `<dialog>` like `<pt-about>` and holding its releases as a constant in the file. A changelog is written by hand when a version ships and is the same for everybody; fetching it would put a spinner in front of prose already in the bundle. *(Amended: the releases are `CHANGELOG.md` at the root, inlined at build time. The reasoning for keeping them in the bundle stands; the address was wrong. → [ADR-0024](0024-the-changelog-is-a-file.md))*
 
 ## The rule this qualifies
 

@@ -15,7 +15,7 @@ import { Server } from 'socket.io';
 import { DEFAULT_SETTINGS } from '../shared/constants.js';
 
 import { config } from './config.js';
-import { registerConnectionHandler } from './net/handlers.js';
+import { closeRoom, registerConnectionHandler } from './net/handlers.js';
 import { closeProvider, loadBankFrom, prewarm } from './puzzles/provider.js';
 import { startRoomGc } from './rooms/lifecycle.js';
 
@@ -46,6 +46,10 @@ const stopGc = startRoomGc({
     idleLimitMs: config.roomIdleLimitMs,
     maxAgeMs: config.roomMaxAgeMs,
     onDelete: (room) => {
+        // Before the delete, not after: once the room is out of the map there is no channel left to
+        // say anything on, and anybody still in it would be left holding a screen that has stopped
+        // being connected to anything (ADR-0025).
+        closeRoom(io, room);
         if (config.isDev) console.info(`[gc] collecting room ${room.code}`);
     },
 });

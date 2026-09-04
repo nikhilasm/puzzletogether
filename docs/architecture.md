@@ -153,14 +153,20 @@ sequenceDiagram
     alt token valid and room alive
         S->>R: reattach socket, restore name, color, host
         S-->>C: room state plus game:snapshot
-    else token unknown or room gone
-        S-->>C: error, client falls back to landing
+    else room gone
+        S-->>C: ROOM_NOT_FOUND, the seat ends
+    else room alive, token unknown
+        S-->>C: NOT_IN_ROOM, the seat ends
     end
 ```
 
 A disconnected player is not removed immediately. Their chip dims for a ~2 minute grace period, during which the token still reclaims their identity. Host status survives the grace period; only after it expires does the longest-connected player get promoted.
 
 **Being removed is leaving, decided by somebody else.** `room:kick` is host-only; the target is told over their own socket before the seat is dropped, and their reconnect token dies with it. The client treats that message the way it treats leaving, keeping only the reason, so there is one path out of a room and one shape of state after it.
+
+**Every other way a seat ends takes that same path** ([ADR-0025](adr/0025-a-seat-that-ends-is-announced.md)). Another tab claiming it, the room being collected, the server restarting, and the grace period running out are all announced rather than inferred: `SEAT_ENDED` in `shared/protocol.js` names the five codes, `#endSeat()` answers all five, and `<pt-seat-ended>` says which one it was. The alternative was the client working it out from refused requests, which is silent until the player touches something and leaves a grid on screen that can do nothing it offers.
+
+**A room the collector deletes is closed rather than dropped.** `closeRoom()` tells everyone still in it and then disconnects them, before the room leaves the map, because afterwards there is no channel left to say it on. Only an aged-out room ever ends under anybody: the idle sweep collects rooms with nobody connected.
 
 **Leaving is immediate, and the route is what triggers it.** `room:leave` gives up the seat now rather than on grace expiry, and the client sends it whenever the hash stops naming the room; the `Leave Room` button only navigates. That keeps the button, the wordmark, and the back button on one path. A reload is not that path: it fires no `hashchange`, so the reconnect token still does its job.
 
@@ -237,6 +243,8 @@ flowchart TB
     BAR -. wraps each .-> TIP["pt-tooltip<br/>names it on hover"]
     APP --> ABOUT["pt-about<br/>dialog"]
     APP --> CHANGES["pt-changelog<br/>dialog"]
+    CHANGES -. "?raw, at build time" .-> CLOG["CHANGELOG.md<br/>parsed by changelog-parse.js"]
+    APP --> ENDED["pt-seat-ended<br/>dialog · why the room went"]
     APP --> SPACE["panel-space<br/>reserves the panel's height"]
     SEL --> PICKER["pt-puzzle-picker"]
     MODAL --> PICKER

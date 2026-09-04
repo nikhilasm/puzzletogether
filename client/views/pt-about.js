@@ -18,7 +18,7 @@
 
 import { LitElement, css, html } from 'lit';
 
-import { APP_VERSION, GITHUB_URL } from '../../shared/constants.js';
+import { GITHUB_URL } from '../../shared/constants.js';
 import { controls } from '../styles/controls.js';
 import { closeIcon, iconStyle } from '../ui/icons.js';
 
@@ -201,7 +201,6 @@ export class PtAbout extends LitElement {
                         Everybody sees the same grid as it fills in: sudoku, KenKen, nonograms, and
                         crosswords. Nobody needs an account to join.
                     </p>
-                    <p class="version">v${APP_VERSION}</p>
 
                     <h3>Puzzles</h3>
                     <p>

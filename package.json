@@ -1,11 +1,12 @@
 {
     "name": "puzzletogether",
-    "version": "0.1.0",
+    "version": "1.2.0",
     "description": "Solve one shared puzzle grid together, in real time",
     "type": "module",
     "engines": {
         "node": ">=22"
     },
+    "license": "MIT",
     "scripts": {
         "dev": "concurrently -n server,client -c cyan,magenta \"npm:dev:server\" \"npm:dev:client\"",
         "dev:server": "node --watch server/index.js --dev",

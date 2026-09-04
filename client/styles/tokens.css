@@ -37,7 +37,9 @@
     --wrong: #c4442e;
 
     /*
-     * A control that takes something away: Leave room, and nothing else yet.
+     * A control that takes something away: Leave room, and nothing else yet. Also the one statement
+     * about something being taken away, the seat-ended dialog, which takes it as a rule and a
+     * heading rather than as a button.
      *
      * Deliberately its own token rather than --wrong, which it currently matches to the byte.
      * --wrong means *this answer is incorrect*: it is grid feedback, it is transient, and

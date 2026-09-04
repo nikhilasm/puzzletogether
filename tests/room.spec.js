@@ -215,12 +215,78 @@ test.describe('removing a player', () => {
 
         await expect.poll(async () => (await playersOf(page)).length).toBe(1);
 
-        // The removed player lands back at the join form, told what happened.
-        await expect(guest.page.locator('pt-landing')).toBeVisible();
+        // The removed player is told in a dialog, and the room is already gone behind it.
+        const dialog = guest.page.locator('pt-seat-ended dialog');
+        await expect(dialog).toBeVisible();
+        await expect(dialog.locator('h2')).toHaveText('You were removed');
+        await expect(dialog.locator('p')).toContainText('removed you');
         await expect(guest.page.locator('pt-player-chips')).toHaveCount(0);
-        await expect(guest.page.locator('.notice[role=alert]')).toContainText('removed you');
+
+        // And dismissing it lands where leaving a room lands, rather than on the room's own URL.
+        await dialog.locator('button').click();
+        await expect(dialog).toBeHidden();
+        await expect(guest.page.locator('pt-landing')).toBeVisible();
+        expect(await guest.page.evaluate(() => window.location.hash)).toBe('#/');
 
         await guest.context.close();
+    });
+});
+
+test.describe('a seat that ends under you', () => {
+    /*
+     * The bug this guards: a seat could end server-side while the client went on rendering the room
+     * it thought it was in, with every op it sent quietly refused. Two tabs is the one way to
+     * provoke it from a test, since the others need a room to be collected or a server to restart,
+     * but the client answers all of them on one path.
+     */
+    test('a second tab takes the seat, and the first is told rather than left behind', async ({
+        page,
+    }) => {
+        const code = await createRoom(page);
+
+        // The same context, so the second tab reads the first one's reconnect token and the server
+        // sees one seat being claimed twice.
+        const second = await page.context().newPage();
+        await second.goto(`/#/room/${code}`);
+        await second.locator('pt-player-chips').waitFor();
+
+        const dialog = page.locator('pt-seat-ended dialog');
+        await expect(dialog).toBeVisible();
+        await expect(dialog.locator('h2')).toHaveText('Another tab has the seat');
+        await expect(page.locator('.room-code')).toHaveCount(0);
+        await expect(page.locator('pt-puzzle-select')).toHaveCount(0);
+
+        // Red-accented: the heading takes --danger outright and the rule takes a mix of it, which
+        // is what separates this from the app's ordinary quiet notices.
+        const paint = await dialog.evaluate((element) => {
+            /* What a colour resolves to in this engine, since the two serialise a mix
+               differently: Chromium says rgba() where Firefox says color(srgb …). */
+            const resolve = (value) => {
+                const probe = document.createElement('span');
+                probe.style.color = value;
+                document.body.append(probe);
+                const color = getComputedStyle(probe).color;
+                probe.remove();
+                return color;
+            };
+            return {
+                danger: resolve('var(--danger)'),
+                dangerRule: resolve('color-mix(in srgb, var(--danger) 50%, transparent)'),
+                pageRule: resolve('var(--rule)'),
+                heading: getComputedStyle(element.querySelector('h2')).color,
+                rule: getComputedStyle(element).borderTopColor,
+            };
+        });
+        expect(paint.heading).toBe(paint.danger);
+        expect(paint.rule).toBe(paint.dangerRule);
+        expect(paint.rule).not.toBe(paint.pageRule);
+
+        // The tab that won keeps the seat, and the losing tab has not taken its token with it.
+        await expect(second.locator('.room-code code')).toHaveText(code);
+        await second.reload();
+        await expect(second.locator('pt-player-chips')).toBeVisible();
+
+        await second.close();
     });
 });
 

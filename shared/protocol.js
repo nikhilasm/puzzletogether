@@ -53,6 +53,8 @@ export const ERROR = {
     BAD_PAYLOAD: 'BAD_PAYLOAD',
     PROTOCOL_MISMATCH: 'PROTOCOL_MISMATCH',
     ROOM_NOT_FOUND: 'ROOM_NOT_FOUND',
+    /** Sent to everyone still in a room the server is deleting, never as an ack. */
+    ROOM_CLOSED: 'ROOM_CLOSED',
     ROOM_FULL: 'ROOM_FULL',
     NOT_IN_ROOM: 'NOT_IN_ROOM',
     SEAT_TAKEN: 'SEAT_TAKEN',
@@ -65,6 +67,25 @@ export const ERROR = {
     RATE_LIMITED: 'RATE_LIMITED',
     INTERNAL: 'INTERNAL',
 };
+
+/**
+ * The errors that end a seat rather than fail a request.
+ *
+ * Each arrives unasked for and says the same thing: the seat this socket held is gone. There is
+ * nothing to retry and nothing to acknowledge, so a client answers all five identically by giving
+ * the seat up and saying why (ADR-0025). A set here rather than five branches there, because the
+ * list is a fact about the protocol.
+ *
+ * NOT_IN_ROOM is also an ack code, where it means a request arrived without a seat. That is a
+ * different message on a different channel; only the ones pushed as an error event reach this.
+ */
+export const SEAT_ENDED = new Set([
+    ERROR.KICKED,
+    ERROR.ROOM_CLOSED,
+    ERROR.ROOM_NOT_FOUND,
+    ERROR.NOT_IN_ROOM,
+    ERROR.SEAT_TAKEN,
+]);
 
 /** Op types a client may send. fill is batched multi-cell (nonogram drag), unused in Phase 1. */
 export const OP_TYPE = {

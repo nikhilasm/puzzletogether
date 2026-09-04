@@ -98,7 +98,7 @@ Cream paper rather than white, warm near-black ink, no cool gray. Fraunces (disp
     - The row renders only the actions a given player has, and never disappears, because every player has Leave Room.
 - **Footer**: a hairline, then **one 22rem panel holding the app's own controls, icon-only and evenly spaced** ([ADR-0023](adr/0023-the-footer-is-one-panel.md)): **theme · About · Changelog · GitHub · Report an issue · Homepage**. Nothing here acts on a puzzle, a room, or a seat, which is what buys the wordlessness; the panel is the box, so each control is a division of it rather than a button on it. The three that leave the app are anchors, so a middle click still opens a tab.
     - **Each one is named by a `<pt-tooltip>` on hover and by its `aria-label` always.** The bubble is `aria-hidden`, shown on pointer and focus only, centred on its control, and nudged back inside the viewport by exactly its overhang when centring would hang it off a 320px screen.
-    - **`<pt-changelog>`** is About's sibling: what this app has been, next to what it is, as a native `<dialog>` over releases held as a constant in the file.
+    - **`<pt-changelog>`** is About's sibling: what this app has been, next to what it is, as a native `<dialog>` over the releases in `CHANGELOG.md`. The file is read at build time and parsed by `client/views/changelog-parse.js`, whose format is a `##` heading per release and a `-` bullet per change ([ADR-0024](adr/0024-the-changelog-is-a-file.md)). A change carries **bold, italic, code, strikethrough, and underline**, which nest; the parser returns spans and the component builds the elements, so those five are the whole of what a changelog can put in the page. The releases sit on an **accent timeline**: a rail down the left with a dot on each, large for a major or minor version and small for a patch.
 
 Actions are buttons and settings are pressed buttons; see [brand.md §4](brand.md#controls-actions-settings-and-the-one-that-takes-something-away).
 
@@ -220,6 +220,7 @@ puzzletogether/
 ├─ tests/                      # Playwright: the app in a real browser, two clients (§12)
 ├─ scripts/import-crossword.js # .puz/.ipuz → a bank file; run by hand, never at boot
 ├─ Dockerfile  .env.example  .github/workflows/ci.yml
+├─ CHANGELOG.md                # the releases, read into <pt-changelog> at build time (ADR-0024)
 ├─ docs/                       # see §1
 ├─ data/crosswords/
 │  ├─ index.json               # manifest: id, file, size, difficulty, title, author, source, license
@@ -249,6 +250,7 @@ puzzletogether/
    ├─ store/{room-store.js,store-controller.js,ops.js,undo-stack.js}
    ├─ views/{pt-app,pt-landing,pt-puzzle-select,pt-game,pt-congrats-modal,pt-confirm}.js
    │  └─ {pt-about,pt-changelog}.js      # what this app is, and what it has been: the footer's dialogs
+   │     # changelog-parse.js reads the root CHANGELOG.md into pt-changelog's releases (ADR-0024)
    ├─ ui/{pt-player-chips,pt-timer,pt-keypad,pt-mode-toggle,pt-brush-bar,pt-puzzle-picker,icons}.js
    │  ├─ pt-tooltip.js                   # names the footer's icon-only controls on hover (ADR-0023)
    │  # pt-keypad is the pinned input panel for every type: clue slot, action bar, keys (ADR-0010)
@@ -489,7 +491,7 @@ room = {
 
 **Host**: first joiner. On host disconnect past the grace window, promote the longest-connected player. Every host-only action (`game:start`, `room:backToSelect`, `room:kick`, `room:settings`, `game:reveal`) is authorized server-side against `playerId === room.hostId`. The client's `isHost` controls only whether the ★ and host buttons render.
 
-**GC**: a 60-second sweep deletes rooms with zero connected players for >10 minutes, or total age >12 hours, clearing every timer in `room.timers` first.
+**GC**: a 60-second sweep deletes rooms with zero connected players for >10 minutes, or total age >12 hours, clearing every timer in `room.timers` first. A room that ages out may still have people in it, so the sweep tells them and disconnects them before the delete ([ADR-0025](adr/0025-a-seat-that-ends-is-announced.md)); the idle half has nobody left to tell.
 
 ---
 
@@ -511,7 +513,9 @@ Server → client:
 
 **Crossword adds nothing else to the protocol.** No new event, no new op type, no new field: a letter is a `set` and a rebus is a longer `set`. The one deliberate omission is direction on `game:focus`.
 
-**`room:kick` is host-only and takes a `playerId`.** The removed player is told before their seat is dropped, via a `KICKED` error, which is the one error a client receives without having asked for anything. Their reconnect token dies with the seat; the room code still works, because a kick is a nudge rather than a ban.
+**`room:kick` is host-only and takes a `playerId`.** The removed player is told before their seat is dropped, via a `KICKED` error. Their reconnect token dies with the seat; the room code still works, because a kick is a nudge rather than a ban.
+
+**`KICKED` is one of five errors a client receives without having asked for anything**, and they are the whole of that category: `SEAT_ENDED` in `shared/protocol.js` also names `ROOM_CLOSED` (the collector is deleting this room), `ROOM_NOT_FOUND` (a token restoring nothing, and the room is gone), `NOT_IN_ROOM` (a token restoring nothing, and the room is alive), and `SEAT_TAKEN` (another tab claimed it). Each says the seat is gone, so each is answered identically: the client gives the seat up and says why ([ADR-0025](adr/0025-a-seat-that-ends-is-announced.md)). `NOT_IN_ROOM` is also an ack code, where it means a request arrived without a seat; only the pushed form ends anything.
 
 **`player:color` carries a palette index and nothing else.** A seat only speaks for itself, so there is no target player in the payload and the handler needs no authority check beyond "you hold a seat". The server refuses an index another player holds. The answer comes back as a `room:players` broadcast rather than an ack payload, since the client cannot know what the rest of the room holds.
 

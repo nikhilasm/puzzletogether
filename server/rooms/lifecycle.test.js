@@ -1,9 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { PLAYER_COLOR_COUNT } from '../../shared/constants.js';
 
-import { addPlayer, dropPlayer, setPlayerColor, toRoomView } from './lifecycle.js';
-import { createRoom } from './store.js';
+import { addPlayer, dropPlayer, setPlayerColor, startRoomGc, toRoomView } from './lifecycle.js';
+import { createRoom, getRoom } from './store.js';
 
 /** A room with the named players seated in order, so colours are assigned 0, 1, 2… */
 function roomWith(...names) {
@@ -24,6 +24,47 @@ describe('colour assignment', () => {
 
         const { player } = addPlayer(room, 'Alan', 'socket-alan');
         expect(player.colorIndex).toBe(0);
+    });
+});
+
+describe('garbage collection', () => {
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
+    /** Runs one sweep against rooms that already exist, with the given limits. */
+    function sweepOnce(limits) {
+        vi.useFakeTimers();
+        const collected = [];
+        const stop = startRoomGc({
+            sweepIntervalMs: 1000,
+            idleLimitMs: 60_000,
+            maxAgeMs: 60_000,
+            onDelete: (room) => collected.push(room.code),
+            ...limits,
+        });
+        vi.advanceTimersByTime(1000);
+        stop();
+        return collected;
+    }
+
+    it('announces a room that ages out under the people still sitting in it', () => {
+        const room = createRoom();
+        addPlayer(room, 'Ada', 'socket-ada');
+        room.createdAt = Date.now() - 120_000;
+
+        // The seat is live and the room goes anyway, which is the case that used to end in silence:
+        // the idle sweep only ever collects rooms with nobody left to tell.
+        expect(sweepOnce({})).toContain(room.code);
+        expect(getRoom(room.code)).toBeNull();
+    });
+
+    it('leaves a busy room alone', () => {
+        const room = createRoom();
+        addPlayer(room, 'Ada', 'socket-ada');
+
+        expect(sweepOnce({})).not.toContain(room.code);
+        expect(getRoom(room.code)).not.toBeNull();
     });
 });
 

@@ -23,6 +23,7 @@ import {
     INPUT_MODE,
     PROTOCOL_VERSION,
     ROOM_STATE,
+    SEAT_ENDED,
     SERVER_EVENT,
 } from '../../shared/protocol.js';
 
@@ -59,6 +60,9 @@ function initialState() {
     return {
         connection: 'idle',
         error: null,
+        // Why the seat ended, when it ended for a reason the player did not choose. Separate from
+        // error, which is a request that failed and a room still to go back to.
+        ended: null,
         notice: null,
         code: null,
         playerId: null,
@@ -517,6 +521,20 @@ export class RoomStore {
         this.#notify();
     }
 
+    /**
+     * Drops the reason a seat ended, once the player has read it.
+     *
+     * Everything else was given up when the seat was; the reason outlives it only for as long as it
+     * takes to say so.
+     *
+     * @returns {void}
+     */
+    dismissEnded() {
+        if (!this.#state.ended) return;
+        this.#state = initialState();
+        this.#notify();
+    }
+
     /** Opens a socket, replacing any existing one, with the handshake identity this room needs. */
     #connect({ code, token }) {
         this.#socket?.disconnect();
@@ -671,26 +689,42 @@ export class RoomStore {
 
     /** Surfaces a server error, dropping a dead room's token so the client can start over. */
     #acceptError(error) {
+        // The end of a seat is not a failed request, and it is the one error that arrives while a
+        // room is on screen. Held apart from every other error because the screen behind it has to
+        // go, rather than wait for something that is never coming (ADR-0025).
+        if (SEAT_ENDED.has(error.code) && this.#state.room) {
+            this.#endSeat(error);
+            return;
+        }
+
         if (error.code === ERROR.ROOM_NOT_FOUND && this.#state.code) {
             writeToken(this.#state.code, null);
         }
 
-        // Being removed is not a failed request but the end of a seat, so it clears the room the
-        // same way leaving does, keeping only the message, which is the only reason the player has
-        // to understand why the screen changed under them.
-        if (error.code === ERROR.KICKED) {
-            const code = this.#state.code;
-            if (code) writeToken(code, null);
-            this.#socket?.disconnect();
-            this.#socket = null;
-            this.#undo.clear();
-            clearTimeout(this.#noticeTimer);
-            this.#state = { ...initialState(), code, error, connection: 'error' };
-            this.#notify();
-            return;
-        }
-
         this.#set({ error, connection: 'error' });
+    }
+
+    /**
+     * Gives up a seat somebody else ended, keeping only the reason.
+     *
+     * The same shape of ending as leave(), deliberately: there is one path out of a room and one
+     * shape of state after it, whether the player chose it, the host did, or the room ran out.
+     *
+     * The socket is closed before the state is replaced, because closing it fires a disconnect that
+     * has to land on the state being thrown away rather than on the fresh one.
+     */
+    #endSeat(reason) {
+        const code = this.#state.code;
+        // Every ending kills the token with the seat, except the one that does not end the seat:
+        // another tab is sitting in it, holding this very token to do so, and the two tabs share
+        // one localStorage. Clearing here would take the identity out from under the tab that won.
+        if (code && reason.code !== ERROR.SEAT_TAKEN) writeToken(code, null);
+        this.#socket?.disconnect();
+        this.#socket = null;
+        this.#undo.clear();
+        clearTimeout(this.#noticeTimer);
+        this.#state = { ...initialState(), ended: reason };
+        this.#notify();
     }
 
     /**

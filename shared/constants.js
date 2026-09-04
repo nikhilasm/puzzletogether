@@ -5,7 +5,7 @@
  */
 
 /** Shown in the About dialog. Keep in step with package.json's version. */
-export const APP_VERSION = '0.1.0';
+export const APP_VERSION = '1.2.0';
 
 /** Repository link in the footer, and in About. */
 export const GITHUB_URL = 'https://github.com/nmurthy99/puzzletogether';

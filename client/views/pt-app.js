@@ -37,6 +37,7 @@ import './pt-changelog.js';
 import './pt-game.js';
 import './pt-landing.js';
 import './pt-puzzle-select.js';
+import './pt-seat-ended.js';
 
 /** Reads the current route out of the location hash. */
 function parseHash() {
@@ -315,6 +316,7 @@ export class PtApp extends LitElement {
         state.playerId,
         state.connection,
         state.error,
+        state.ended,
     ]);
     #onHashChange = () => this.#applyRoute();
     #announcedPlayers = [];
@@ -470,12 +472,33 @@ export class PtApp extends LitElement {
                     this.showingChangelog = false;
                 }}
             ></pt-changelog>
+            <!--
+              Held here rather than on a screen, because the screen it belongs to is the one that
+              has just gone: the store drops the room the moment a seat ends, so whatever was
+              rendering the grid is already unmounted by the time this opens.
+            -->
+            <pt-seat-ended
+                .reason=${this.#room.state.ended}
+                @pt-seat-ended-close=${this.#onSeatEndedClose}
+            ></pt-seat-ended>
             <div
                 class="panel-space"
                 style="height: ${this.#showsPanel ? this.panelHeight : 0}px"
                 aria-hidden="true"
             ></div>
         `;
+    }
+
+    /**
+     * Leaves the ended room's URL behind, once the player has read why they are out of it.
+     *
+     * The route is what would otherwise keep offering to rejoin: the hash still names a room whose
+     * seat is gone, and for a room that was collected there is nothing there to rejoin. This is
+     * where Leave Room lands too, which is the point: however a seat ends, it ends in one place.
+     */
+    #onSeatEndedClose() {
+        window.location.hash = '#/';
+        roomStore.dismissEnded();
     }
 
     /**

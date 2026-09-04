@@ -24,7 +24,7 @@ import {
 import { abandonPuzzle, checkPuzzle, revealPuzzle, solvePuzzle } from '../rooms/progress.js';
 import { createRoom, getRoom, touchRoom } from '../rooms/store.js';
 
-import { currentSeat, isHost, isProtocolCompatible, restoreSeat } from './auth.js';
+import { currentSeat, isHost, isProtocolCompatible, readHandshake, restoreSeat } from './auth.js';
 import { createBuckets } from './ratelimit.js';
 
 /** Pushes the current roster to everyone in a room. */
@@ -200,7 +200,7 @@ export function registerHandlers(io, socket) {
             const targetSocket = target.socketId ? io.sockets.sockets.get(target.socketId) : null;
             targetSocket?.emit(SERVER_EVENT.ERROR, {
                 code: ERROR.KICKED,
-                message: 'the host removed you from the room',
+                message: 'The host removed you from the room.',
             });
 
             onGraceExpired(io, seat.room, target.id);
@@ -473,6 +473,28 @@ function finishPuzzle(io, room) {
 }
 
 /**
+ * Tells everyone still in a room that it has ended, then cuts their sockets loose.
+ *
+ * The garbage collector calls this before deleting a room, because a room deleted under a player is
+ * otherwise silent: their client goes on drawing a grid whose every op the server now has nowhere to
+ * put, which is a screen that looks alive and is not (ADR-0025).
+ *
+ * The only room that ends under anybody is one that aged out. The other sweep collects rooms with
+ * nobody connected, so it has no one to tell, which is why the message names the age limit.
+ *
+ * @param {import('socket.io').Server} io - The Socket.IO server.
+ * @param {import('../rooms/store.js').Room} room - The room about to be deleted.
+ * @returns {void}
+ */
+export function closeRoom(io, room) {
+    io.to(room.code).emit(SERVER_EVENT.ERROR, {
+        code: ERROR.ROOM_CLOSED,
+        message: 'This room reached its time limit and was closed.',
+    });
+    io.in(room.code).disconnectSockets(true);
+}
+
+/**
  * Wires connection-time identity: protocol check, then reconnect-token restore.
  *
  * @param {import('socket.io').Server} io - The Socket.IO server.
@@ -481,11 +503,12 @@ function finishPuzzle(io, room) {
 export function registerConnectionHandler(io) {
     io.on('connection', (socket) => {
         socket.data = {};
+        const handshake = readHandshake(socket);
 
-        if (!isProtocolCompatible(socket.handshake.auth?.protocolVersion)) {
+        if (!isProtocolCompatible(handshake.protocolVersion)) {
             socket.emit(SERVER_EVENT.ERROR, {
                 code: ERROR.PROTOCOL_MISMATCH,
-                message: 'this page is out of date; please refresh',
+                message: 'This page appears to be out of date. Please refresh.',
             });
             socket.disconnect(true);
             return;
@@ -499,7 +522,7 @@ export function registerConnectionHandler(io) {
                 const previous = io.sockets.sockets.get(restored.previousSocketId);
                 previous?.emit(SERVER_EVENT.ERROR, {
                     code: ERROR.SEAT_TAKEN,
-                    message: 'this seat was claimed by another tab',
+                    message: 'This seat was claimed by another tab.',
                 });
                 previous?.disconnect(true);
             }
@@ -511,11 +534,24 @@ export function registerConnectionHandler(io) {
                 joinPayload(restored.room, restored.player, null),
             );
             broadcastPlayers(io, restored.room);
-        } else if (socket.handshake.auth?.token) {
-            socket.emit(SERVER_EVENT.ERROR, {
-                code: ERROR.ROOM_NOT_FOUND,
-                message: 'that room has ended',
-            });
+        } else if (handshake.token) {
+            // A token that restores nothing means one of two things, and they are not the same
+            // news: the room is gone, or the room is alive and the seat in it is not theirs any
+            // more. Told apart here, because "that room has ended" said over a room full of people
+            // sends the player away from one they could walk straight back into.
+            socket.emit(
+                SERVER_EVENT.ERROR,
+                handshake.code && getRoom(handshake.code)
+                    ? {
+                          code: ERROR.NOT_IN_ROOM,
+                          message: 'Your seat timed out and was removed.',
+                      }
+                    : {
+                          code: ERROR.ROOM_NOT_FOUND,
+                          message:
+                              'This room does not exist. It timed out or the server restarted.',
+                      },
+            );
         }
 
         registerHandlers(io, socket);

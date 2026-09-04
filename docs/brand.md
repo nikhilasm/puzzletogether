@@ -294,6 +294,8 @@ The icon fills to a wash rather than flat accent because the set is drawn as out
 
 **`--danger` is for a control that takes something away**, today Leave Room and nothing else. Outlined like every other button: the red is in the border, the word, and the icon, and the ground stays paper until the pointer is on it.
 
+**It paints one thing that is not a control**: `<pt-seat-ended>`, the dialog that says a room has stopped being yours, where it takes the rule at 50% and the heading outright ([ADR-0025](adr/0025-a-seat-that-ends-is-announced.md)). Same argument pointed at a statement rather than a button. What has happened is not a mistake, so it is not `--wrong`, and it is not urgent, so it is not filled; but it did take the room away, and the screen behind the dialog has already changed to the join form. In the page's ordinary quiet colours it would read as a note about a change the player is looking straight at.
+
 It is its own token and not `--wrong`, which it currently matches to the byte. `--wrong` means *this answer is incorrect*: grid feedback, transient, and already refused for the caution triangle on those grounds. Keeping them apart costs a line of CSS and means either can move first.
 
 **`--accent` gets the same outlined treatment pointed the other way**, at the control that starts the next thing: Start another, and Puzzle Select's Start button. `accentButton` in `client/styles/controls.js` mirrors `dangerButton` field for field, reading `--accent-text` rather than `--accent` for the label and icon, since a button's text sits at body size and plain `--accent` only clears contrast for large text and borders.

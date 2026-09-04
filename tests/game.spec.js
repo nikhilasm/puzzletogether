@@ -560,25 +560,8 @@ test.describe('the footer', () => {
         await page.locator('footer .tool').nth(2).click();
         const dialog = page.locator('pt-changelog dialog');
         await expect(dialog).toBeVisible();
-        await expect(dialog.locator('.version').first()).toHaveText(/^v\d+\.\d+\.\d+$/);
+        await expect(dialog.locator('.version').first()).toHaveText(/^\d+\.\d+\.\d+$/);
         expect(await dialog.locator('li').count()).toBeGreaterThan(0);
-
-        await page.keyboard.press('Escape');
-        await expect(dialog).not.toBeVisible();
-    });
-
-    /**
-     * About holds the version, which is the only reason it had to exist rather than being a nice
-     * idea: the footer used to say it and now nothing else does.
-     */
-    test('About opens, states the version, and closes', async ({ page }) => {
-        await createRoom(page);
-
-        await page.locator('footer .tool').nth(1).click();
-        const dialog = page.locator('pt-about dialog');
-        await expect(dialog).toBeVisible();
-        await expect(dialog).toContainText('PuzzleTogether');
-        await expect(dialog.locator('.version')).toHaveText(/^v\d+\.\d+\.\d+$/);
 
         await page.keyboard.press('Escape');
         await expect(dialog).not.toBeVisible();
