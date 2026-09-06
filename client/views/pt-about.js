@@ -198,29 +198,26 @@ export class PtAbout extends LitElement {
 
                     <p>
                         A room you can send someone, and a puzzle you solve in it together.
-                        Everybody sees the same grid as it fills in: sudoku, KenKen, nonograms, and
-                        crosswords. Nobody needs an account to join.
+                        Everybody sees the same grid as it fills in. Nobody needs an account to
+                        join.
                     </p>
 
                     <h3>Puzzles</h3>
                     <p>
-                        Sudoku, KenKen, and nonogram puzzles are generated here, on demand, and
-                        checked for a single solution before they are served. Crosswords come from a
-                        bank of imported files, each of which records its own author, source, and
-                        licence.
+                        Sudoku, KenKen, Nonogram, Kakuro, and Suguru puzzles are generated here, on
+                        demand, and checked for a single solution before they are served. Crosswords
+                        come from a bank of imported files, each of which records its own author,
+                        source, and license.
                     </p>
 
                     <h3>Built with</h3>
-                    <p>
-                        Lit, Express, and Socket.IO. Set in Fraunces, Karla, and DM Mono, all three
-                        self-hosted and open-licensed.
-                    </p>
+                    <p>Lit, Express, and Socket.IO. Typeset in Fraunces, Karla, and DM Mono.</p>
 
                     <h3>Source</h3>
                     <p>
                         The code is on
                         <a href=${GITHUB_URL} rel="noreferrer" target="_blank">GitHub</a>, under an
-                        open licence.
+                        open license.
                     </p>
                 </div>
             </dialog>

@@ -7,7 +7,7 @@
  * relative to the notes.
  *
  * The heavy rules are the same hook sudoku uses, asking a different question. Sudoku asks "is this
- * the edge of a region", which it computes from the region shape; kenken asks "is my neighbour in a
+ * the edge of a region", which it computes from the region shape; kenken asks "is my neighbor in a
  * different cage", which it reads off the cage map. Neither needed a change to <pt-board>; this
  * is the abstraction doing what design-spec.md §7 says it does.
  */

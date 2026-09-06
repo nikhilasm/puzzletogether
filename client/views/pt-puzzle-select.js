@@ -2,8 +2,8 @@
  * The screen between puzzles: where the host picks what the room plays next.
  *
  * The room returns here after a Back to Puzzle Select and sits here on first join. Non-hosts get
- * the streak and a plain statement that they are waiting, never controls that would be rejected
- * server-side (design-spec.md §4).
+ * the streak, the greyed list of puzzles this room can play, and a statement that they are waiting,
+ * never controls that would be rejected server-side (design-spec.md §4).
  */
 
 import { LitElement, css, html, nothing } from 'lit';
@@ -118,7 +118,7 @@ export class PtPuzzleSelect extends LitElement {
 
         return html`
             ${room?.streak ? html`<p class="streak">Solve streak: ${room.streak}</p>` : nothing}
-            ${roomStore.isHost ? this.#renderHostControls(isSolved) : this.#renderWaiting()}
+            ${roomStore.isHost ? this.#renderHostControls(isSolved) : this.#renderMemberView()}
             ${this.error ? html`<p class="error" role="alert">${this.error}</p>` : nothing}
             <div class="leave">
                 <button class="danger" type="button" @click=${this.#onLeave}>
@@ -161,9 +161,12 @@ export class PtPuzzleSelect extends LitElement {
         `;
     }
 
-    /** What everyone else sees while the host chooses. */
-    #renderWaiting() {
-        return html`<p class="waiting">waiting for the host to start a puzzle…</p>`;
+    /** What everyone else sees: the puzzles this room can play, and that the host has yet to start. */
+    #renderMemberView() {
+        return html`
+            <pt-puzzle-picker readonly .catalog=${this.#store.state.catalog}></pt-puzzle-picker>
+            <p class="waiting">waiting for the host to start a puzzle…</p>
+        `;
     }
 }
 

@@ -80,6 +80,17 @@ test.describe('crossword', () => {
         expect((await cursorOf(page)).cell).toBe(1);
     });
 
+    /**
+     * N is a letter here, not the Notes shortcut. The shortcut is gated to the digit types, whose
+     * squares cannot hold an N, so on a crossword the key falls straight through to input; a gate
+     * that leaked would eat the letter instead of writing it.
+     */
+    test('types N into a square rather than toggling Notes', async ({ page }) => {
+        await page.locator('pt-cell >> nth=1').click();
+        await page.keyboard.press('n');
+        await expect.poll(async () => (await valuesOf(page))[1]).toBe('N');
+    });
+
     test('numbers the squares that start an entry, and only those', async ({ page }) => {
         const labels = await page
             .locator('pt-cell')

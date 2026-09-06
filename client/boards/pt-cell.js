@@ -34,7 +34,7 @@ export class PtCell extends LitElement {
             /*
              * Border-box, and every cell keeps the same 1px hairlines whatever its region borders
              * are. Under content-box, aspect-ratio measured the content box, so a cell carrying a
-             * 2.5px region border came out shorter than its neighbours, which is the 1px vertical
+             * 2.5px region border came out shorter than its neighbors, which is the 1px vertical
              * misalignment Firefox showed and Chromium mostly rounded away.
              */
             box-sizing: border-box;
@@ -153,7 +153,7 @@ export class PtCell extends LitElement {
          * **min-width: 0, or none of that clipping happens.** This is a flex item, and a flex item's
          * min-width defaults to auto, its min-content width, which for white-space: nowrap
          * text is the whole unbroken string. min-width beats max-width, so past the font-size
-         * floor the span pushed the cell wider than its neighbours and threw the whole grid out of
+         * floor the span pushed the cell wider than its neighbors and threw the whole grid out of
          * alignment: one seven-letter rebus square visibly bent its row and every column crossing it.
          * The clipping was written for exactly this case and could never fire without it.
          */

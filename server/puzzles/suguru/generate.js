@@ -19,7 +19,7 @@
  * **Digging is what a bare partition-and-fill cannot skip.** A completed grid with no cell dug out
  * has no given anybody can read the puzzle from, and a suguru with no givens is essentially never
  * unique: nothing stops a whole region's digits from being relabelled by any permutation that still
- * respects its neighbours. Sudoku's dig loop is the shape this borrows, holes removed one at a time
+ * respects its neighbors. Sudoku's dig loop is the shape this borrows, holes removed one at a time
  * and uniqueness re-proved after each with a counting solver.
  */
 

@@ -394,6 +394,37 @@ test.describe('input mode', () => {
             )
             .toBeGreaterThan(0);
     });
+
+    /**
+     * N flips the same setting the button owns, so the two can never disagree.
+     *
+     * The mode lives in the store, and the button reads it back rather than holding it, so the
+     * assertion is the button's own pressed state moving under a key it never received: the shortcut
+     * and the control are the one setting seen twice.
+     */
+    test('the N key toggles Notes and writes a pencil mark', async ({ page }) => {
+        await createRoom(page);
+        await startPuzzle(page);
+
+        const notes = page.locator('pt-mode-toggle .action');
+        await expect(notes).toHaveAttribute('aria-pressed', 'false');
+
+        const cell = await firstEditableCell(page);
+        await page.locator(`pt-cell >> nth=${cell}`).click();
+
+        await page.keyboard.press('n');
+        await expect(notes).toHaveAttribute('aria-pressed', 'true');
+
+        await page.locator('pt-keypad .digits button').first().click();
+        await expect
+            .poll(() =>
+                page.locator(`pt-cell >> nth=${cell}`).evaluate((el) => (el.marks ?? []).length),
+            )
+            .toBeGreaterThan(0);
+
+        await page.keyboard.press('n');
+        await expect(notes).toHaveAttribute('aria-pressed', 'false');
+    });
 });
 
 /**
@@ -520,6 +551,37 @@ test.describe('the footer', () => {
         // Away from the bar entirely, since the next control along would only swap the word.
         await page.locator('h1').hover();
         await expect(bubble).toHaveCount(0);
+    });
+
+    /**
+     * The name arrives on hover and on keyboard focus, but not on the focus a mouse click leaves.
+     *
+     * A click focuses the control it lands on, and showing on every focus left the bubble stuck
+     * over a button the pointer had already left, worst of all when focus returned to the button
+     * after the modal it opened closed. The focus path is gated on focus-visible instead: the
+     * keyboard reading it exists to give, not the pointer the hover path already covers.
+     */
+    test('a mouse click leaves no tooltip, but keyboard focus shows one', async ({ page }) => {
+        await createRoom(page);
+
+        const bubble = page.locator('footer pt-tooltip .bubble');
+        const tool = page.locator('footer .tool').first();
+
+        // Click, then leave: the focus the click left behind must not keep the bubble up. The
+        // theme toggle is chosen because it stays on the page; the others open a modal or a tab.
+        await tool.hover();
+        await expect(bubble).toHaveCount(1);
+        await tool.click();
+        await page.mouse.move(1, 1);
+        await expect(bubble).toHaveCount(0);
+
+        // Programmatic focus is not focus-visible, so it names nothing; stepping away and back by
+        // keyboard lands focus-visible on the same control, and then the name returns.
+        await tool.focus();
+        await expect(bubble).toHaveCount(0);
+        await page.keyboard.press('Shift+Tab');
+        await page.keyboard.press('Tab');
+        await expect(bubble).toHaveCount(1);
     });
 
     /**

@@ -1,6 +1,6 @@
 {
     "name": "puzzletogether",
-    "version": "1.2.0",
+    "version": "1.3.0",
     "description": "Solve one shared puzzle grid together, in real time",
     "type": "module",
     "engines": {

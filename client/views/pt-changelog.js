@@ -71,6 +71,30 @@ export class PtChangelog extends LitElement {
                 color: var(--ink);
                 text-align: left;
                 box-shadow: var(--shadow-modal);
+                /* Firefox draws the scrollbar from these two; WebKit and Blink ignore them and
+                   take the pseudo-element rules below. Both aim at the same bar so the panel
+                   scrolls the same on every platform. */
+                scrollbar-width: thin;
+                scrollbar-color: color-mix(in srgb, var(--ink) 25%, transparent) transparent;
+            }
+
+            dialog::-webkit-scrollbar {
+                width: 0.5rem;
+            }
+
+            dialog::-webkit-scrollbar-track {
+                background: transparent;
+            }
+
+            dialog::-webkit-scrollbar-thumb {
+                border-radius: var(--radius-round);
+                background: color-mix(in srgb, var(--ink) 25%, transparent);
+            }
+
+            @media (hover: hover) {
+                dialog::-webkit-scrollbar-thumb:hover {
+                    background: color-mix(in srgb, var(--ink) 40%, transparent);
+                }
             }
 
             dialog[open] {

@@ -3,7 +3,7 @@
  * (design-spec.md §8), the same measured-not-requested approach nonogram and kakuro take.
  *
  * **Naked singles carries both of the design's first two named deductions.** A cell whose
- * candidates have narrowed to one is forced whether that narrowing came from a geometric neighbour
+ * candidates have narrowed to one is forced whether that narrowing came from a geometric neighbor
  * or from a region-mate, since both are peers in solver.js's sense; there is no separate "region's
  * one remaining empty cell" rule to write, because the moment a region has one cell left, that
  * cell's region-mates, all of them peers, have already struck every other value from it. The third
@@ -25,7 +25,7 @@ export const DIFFICULTY_ORDER = ['easy', 'medium', 'hard'];
  * Where the bands sit, as a fraction of the grid's side.
  *
  * Normalized the way kakuro's and nonogram's thresholds are: a deduction travels one region or one
- * neighbourhood at a time, so a larger grid needs more sweeps to say the same thing.
+ * neighborhood at a time, so a larger grid needs more sweeps to say the same thing.
  */
 const EASY_FRACTION = 0.5;
 const HARD_FRACTION = 0.85;

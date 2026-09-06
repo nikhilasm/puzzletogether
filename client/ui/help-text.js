@@ -14,7 +14,7 @@
 
 /** The three types typed the same way say the same thing about it. */
 const NOTES =
-    'Notes turns a key press into a small pencil mark rather than an answer, for the digits a square could still hold.';
+    'Notes turns a key press into a small pencil mark rather than an answer, for the digits a square could still hold. On a keyboard, press N to switch it on or off.';
 
 /** Goal, rules, and the type's one setting, per puzzle type. */
 export const HELP = {
@@ -68,7 +68,7 @@ export const HELP = {
         rules: [
             'A region of 4 squares uses the digits 1 to 4; a region of 6 uses 1 to 6.',
             'The same digit may never sit in two touching squares, including diagonally.',
-            'There is no row or column rule: a square is constrained only by its own region and its neighbours.',
+            'There is no row or column rule: a square is constrained only by its own region and its neighbors.',
         ],
         input: NOTES,
     },

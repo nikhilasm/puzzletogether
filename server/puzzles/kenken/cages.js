@@ -30,7 +30,7 @@ const CAGE_SIZES = {
  * How many single-cell cages a puzzle may keep, as a fraction of its cells.
  *
  * Growth strands singletons whatever the size distribution says: a cage that fills the last gap in
- * its corner leaves the cell beside it with no unclaimed neighbour to join. Left alone that produced
+ * its corner leaves the cell beside it with no unclaimed neighbor to join. Left alone that produced
  * nine free digits in a 7×7 easy and seven in a medium, an opening handful that solves itself. The
  * allowance is a ceiling on that accident, and zero at hard makes it a rule.
  */
@@ -54,8 +54,8 @@ const MAX_PRODUCT_TARGET = 999;
 /** How each operation is drawn in the corner of a cage's top-left cell. */
 const OP_SYMBOL = { '+': '+', '-': '−', '*': '×', '/': '÷', '=': '' };
 
-/** The orthogonal neighbours of a cell, clipped to the grid. */
-function neighbours(idx, n) {
+/** The orthogonal neighbors of a cell, clipped to the grid. */
+function neighbors(idx, n) {
     const row = Math.floor(idx / n);
     const col = idx % n;
     const list = [];
@@ -75,10 +75,10 @@ function isConnected(cells, n) {
     const queue = [cells[0]];
 
     while (queue.length > 0) {
-        for (const neighbour of neighbours(queue.pop(), n)) {
-            if (!members.has(neighbour) || seen.has(neighbour)) continue;
-            seen.add(neighbour);
-            queue.push(neighbour);
+        for (const neighbor of neighbors(queue.pop(), n)) {
+            if (!members.has(neighbor) || seen.has(neighbor)) continue;
+            seen.add(neighbor);
+            queue.push(neighbor);
         }
     }
 
@@ -151,8 +151,8 @@ function partition(n, difficulty, rng) {
         while (cells.length < wanted) {
             const options = [];
             for (const cell of cells) {
-                for (const neighbour of neighbours(cell, n)) {
-                    if (owner[neighbour] === -1) options.push(neighbour);
+                for (const neighbor of neighbors(cell, n)) {
+                    if (owner[neighbor] === -1) options.push(neighbor);
                 }
             }
             if (options.length === 0) break;
@@ -169,9 +169,9 @@ function partition(n, difficulty, rng) {
 }
 
 /**
- * Folds stranded single-cell groups into a neighbour, down to the difficulty's allowance.
+ * Folds stranded single-cell groups into a neighbor, down to the difficulty's allowance.
  *
- * Each one joins its *smallest* eligible neighbour, so absorbing a stray cell does not turn a
+ * Each one joins its *smallest* eligible neighbor, so absorbing a stray cell does not turn a
  * three-cell cage into an unwieldy six-cell one.
  */
 function mergeSingletons(groups, n, maxSize, allowed) {
@@ -187,8 +187,8 @@ function mergeSingletons(groups, n, maxSize, allowed) {
     groups.forEach((cells, id) => {
         if (cells.length !== 1 || dropped.has(id) || singletons <= allowed) return;
 
-        const hosts = neighbours(cells[0], n)
-            .map((neighbour) => owner[neighbour])
+        const hosts = neighbors(cells[0], n)
+            .map((neighbor) => owner[neighbor])
             .filter((host) => host !== id && !dropped.has(host) && merged[host].length < maxSize)
             .sort((a, b) => merged[a].length - merged[b].length);
 

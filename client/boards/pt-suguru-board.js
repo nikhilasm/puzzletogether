@@ -92,7 +92,7 @@ export class PtSuguruBoard extends PtBoard {
     /**
      * Washes the focused cell's own region, not a row and column: suguru drops the row/column rule
      * every other digit type has, so the row and column mean nothing to a solver here, and what they
-     * actually scan before writing a digit is the region and its neighbours (design-spec.md §7).
+     * actually scan before writing a digit is the region and its neighbors (design-spec.md §7).
      */
     isHighlighted(idx) {
         if (this.selection == null) return false;

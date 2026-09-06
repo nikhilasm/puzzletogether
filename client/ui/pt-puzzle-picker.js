@@ -54,6 +54,11 @@ export class PtPuzzlePicker extends LitElement {
         spec: { type: Object },
         disabled: { type: Boolean },
         /**
+         * Show only the types this room can play, greyed and unpressable, with no size, difficulty,
+         * or list. What a member sees while the host chooses: the options on offer, not a control.
+         */
+        readonly: { type: Boolean },
+        /**
          * What the server can actually serve, per type, from the join ack.
          *
          * A generator can make any size it offers, which a constant could state; a bank offers
@@ -350,6 +355,7 @@ export class PtPuzzlePicker extends LitElement {
         super();
         this.spec = null;
         this.disabled = false;
+        this.readonly = false;
         this.catalog = null;
         this.sizeFilter = null;
         this.difficultyFilter = null;
@@ -493,6 +499,8 @@ export class PtPuzzlePicker extends LitElement {
      * It converges after one pass: what it emits is what #current reads back.
      */
     updated() {
+        // A readonly picker announces nothing: it holds no working selection to converge on.
+        if (this.readonly) return;
         const current = this.#current;
         if (!current.size || this.#sameSpec(current, this.spec)) return;
         this.#chooseWhole(current);
@@ -544,6 +552,8 @@ export class PtPuzzlePicker extends LitElement {
     }
 
     render() {
+        if (this.readonly) return this.#renderAvailable();
+
         const current = this.#current;
         const banked = this.#puzzlesFor(current.type);
 
@@ -774,6 +784,34 @@ export class PtPuzzlePicker extends LitElement {
                     <span class="size">${size}</span>
                     <span class="level">${level}</span>
                 </span>
+            </button>
+        `;
+    }
+
+    /**
+     * The puzzles this room can play, for a member watching the host choose.
+     *
+     * The same type grid the host gets, but a member is not picking: there is no size or difficulty
+     * to set, no selection to mark, and the tiles are greyed and unpressable. It shows even for a
+     * single type, since saying what the one puzzle is beats an empty screen (design-spec.md §4).
+     */
+    #renderAvailable() {
+        return html`
+            <fieldset>
+                <legend>Available puzzles</legend>
+                <div class="types">
+                    ${this.#types.map((type) => this.#renderReadonlyType(type))}
+                </div>
+            </fieldset>
+        `;
+    }
+
+    /** One available type as a static tile: the mark over its name, greyed and never pressed. */
+    #renderReadonlyType(type) {
+        return html`
+            <button type="button" class="option type" aria-pressed="false" disabled>
+                ${puzzleTypeIcons[type] ?? nothing}
+                <span class="type-label">${PUZZLE_TYPE_NAMES[type] ?? titleCase(type)}</span>
             </button>
         `;
     }

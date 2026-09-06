@@ -41,7 +41,7 @@ Generators reject any puzzle they cannot prove uniquely solvable. For nonogram t
 - **Licensing is a real blocker, split in two.** Shipping still requires hand-authored puzzles, public-domain sources, or permission; that half is open. Building is unblocked: freely-distributed `.puz` files are what the importer is developed against, which proves the format, loader, validator, and board without waiting on the answer.
 - KenKen uniqueness verification is expensive and grows sharply with grid size. Measured in Phase 3: ~170ms median and 870ms worst at a 7×7 hard, absorbed by the pool. Sizes above 7 are not offered.
 
-**The split is mechanical, not a promise.** The server reads two bank directories: `data/crosswords/`, tracked, holding only puzzles whose licence is known; and `data/crosswords-local/`, `.gitignore`d wholesale, where prototype imports land. `scripts/import-crossword.js` requires `--license` as an argument and never infers it from a copyright string. Building against copyrighted files stays possible and committing one stays impossible, which matters because that is the failure that cannot be undone. Freely downloadable is not freely redistributable, and a commit is a redistribution.
+**The split is mechanical, not a promise.** The server reads two bank directories: `data/crosswords/`, tracked, holding only puzzles whose license is known; and `data/crosswords-local/`, `.gitignore`d wholesale, where prototype imports land. `scripts/import-crossword.js` requires `--license` as an argument and never infers it from a copyright string. Building against copyrighted files stays possible and committing one stays impossible, which matters because that is the failure that cannot be undone. Freely downloadable is not freely redistributable, and a commit is a redistribution.
 
 ## Alternatives rejected
 
@@ -58,5 +58,5 @@ Generators reject any puzzle they cannot prove uniquely solvable. For nonogram t
 | Change | Original | Why | When |
 |---|---|---|---|
 | Licensing split into "may we build" and "may we ship" | One open blocker on the whole phase | Freely-distributed `.puz` files answer the pipeline question without answering the content question | 2026-08-03 |
-| Two bank directories, `--license` required by the importer | One bank directory, licence inferable from the source | The split needed a mechanism, not an intention: committing a copyrighted puzzle is the one unrecoverable failure | Phase 4, 2026-08-05 |
+| Two bank directories, `--license` required by the importer | One bank directory, license inferable from the source | The split needed a mechanism, not an intention: committing a copyrighted puzzle is the one unrecoverable failure | Phase 4, 2026-08-05 |
 | A banked type's module has three methods | The interface was four methods for every type | `create` produces a puzzle and the other three rule on one; a banked type produces nothing | Phase 4, 2026-08-05 |

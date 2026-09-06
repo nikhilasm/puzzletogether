@@ -30,7 +30,7 @@ Legend: `[ ]` pending · `[x]` done · `[~]` in progress · `[!]` blocked · `[-
 ### Carried open
 
 - [~] **Suguru** (sixth puzzle type): server module, generator, and client board built; format, lint, typecheck, and unit tests are green. Region partition plus a no-touch adjacency rule, no row/column constraint, per-cell alphabet bound to region size, difficulty measured by a two-technique solver. Region size leans large at easy and small at hard, a fillability constraint discovered during implementation rather than a taste choice. Not yet run through the build or the browser suite. → [ADR-0019](adr/0019-a-region-bounds-its-own-alphabet.md), [ADR-0020](adr/0020-suguru-is-drawn-and-verified-not-tightened.md), [ADR-0021](adr/0021-a-region-needs-slack-not-just-room.md)
-- [~] **Crossword shipping licence.** Building is unblocked; what may legally ship is not. The tracked bank holds only puzzles whose licence is known. → [ADR-0004](adr/0004-hybrid-puzzle-supply.md)
+- [~] **Crossword shipping license.** Building is unblocked; what may legally ship is not. The tracked bank holds only puzzles whose license is known. → [ADR-0004](adr/0004-hybrid-puzzle-supply.md)
 - [ ] **Attribution lens** (`<pt-attribution-layer>`): designed, tabled before implementation. Needs three checks before acceptance: measure the layer at 25×25, look at a finished nonogram with it on, play a crossword with it. → [ADR-0013](adr/0013-attribution-is-a-lens.md)
 - [-] **Panel collapse handle.** The lever if 16rem proves too much. Not built: a state a player can be stuck in and a control to explain.
 

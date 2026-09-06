@@ -4,7 +4,7 @@
  *
  * These are the assertions that a screenshot would have made for us if screenshots were reliable
  * across engines. Every one of them corresponds to something that went wrong once: cells a pixel
- * out in Firefox, marks that moved when their neighbours changed, dots that only landed on the top
+ * out in Firefox, marks that moved when their neighbors changed, dots that only landed on the top
  * row. They are worth their runtime in both browsers.
  */
 
@@ -106,7 +106,7 @@ test.describe('pencil marks', () => {
 
         expect((await markPositions(page, cell))['4']).toEqual(alone);
 
-        // And back down again: removing its neighbours must not move it either.
+        // And back down again: removing its neighbors must not move it either.
         await page.locator('pt-keypad .digits button', { hasText: '1' }).click();
         await expect
             .poll(async () => Object.keys(await markPositions(page, cell)).sort())

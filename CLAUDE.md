@@ -9,6 +9,7 @@ Applies to everything: chat responses, prose in `docs/`, code, comments, JSDoc, 
 - **Be as concise as possible.** Direct language, no flashy wording. Convey the needed information and nothing more. No preamble, no restating the request, no summary of work already visible in the diff.
 - **Never use an em-dash character.** Not in prose, not in comments, not in docs. Split the sentence, or join the thoughts with a semicolon or colon.
 - **Never use backticks in a code comment.** This is a build breaker inside Lit `css` and `html` template strings; see Known traps below. Refer to identifiers in comments by bare name.
+- **Keep code comments to one or two sentences.** Code comments should be used ONLY to convey details that are not immediately apparent in the code itself.
 - Concise code too: no defensive scaffolding nobody asked for, no options object for one caller, no abstraction ahead of its second use.
 
 Existing prose in `docs/` predates these rules and uses em-dashes throughout. Leave it alone unless you are editing that passage anyway.

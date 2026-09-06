@@ -146,6 +146,8 @@ Because the panel is out of the flow it takes no room, so **the page reserves it
 
 **Undo is in the button bar**, beside Erase, because Ctrl+Z is not a thing a phone has and putting Undo with Erase keeps every way of changing a cell in one place. Ctrl+Z still works when the grid has keyboard focus.
 
+**Notes has a keyboard shortcut, `N`**, for the digit types that carry the setting. It flips the same store value the on-screen toggle owns, so the two can never disagree, and it is gated to those types: a letter puzzle has no Notes setting and takes N as a letter, so the key falls straight through to input there. The shortcut is named in each type's help text.
+
 **Every control in the panel suppresses focus on `pointerdown`.** Without it, pressing Notes or Rebus blurs the grid and the next physical keystroke goes nowhere: invisible on a touch screen, immediate on a desktop.
 
 Input routes through the same op path as physical keyboard input and respects the current setting. The panel stays visible on desktop, where for the digit types it doubles as an affordance showing which digits remain available.
@@ -462,7 +464,7 @@ Sizes offered are `5, 6, 7, 8, 9`, every difficulty reachable at every one of th
 
 **The importer refuses more than it converts, and that is the point.** From `.puz` it reads the header, the solution and player grids, the clue list, and the extension sections. It **carries** `GRBS`/`RTBL` rebus squares and `GEXT` circled squares, which is where a themed puzzle keeps its theme. It **ignores** `LTIM` and `RUSR`, a saved timer and a stranger's partial solve. It **refuses**, by name and with the reason: a scrambled puzzle, a grid outside the schema's 25×25 bound, a rebus longer than `MAX_CELL_VALUE_LENGTH`, and any file whose derived numbering does not match its own clue count.
 
-**It also refuses to write a bank file without an explicit licence.** `--license` is a required argument, not a field guessed from the source's copyright string, and the string is carried into the manifest as `source` alongside it. This is [ADR-0004](adr/0004-hybrid-puzzle-supply.md)'s split made mechanical: the pipeline can be developed against any file, and nothing reaches `data/crosswords/` without somebody having answered the question of what may be served.
+**It also refuses to write a bank file without an explicit license.** `--license` is a required argument, not a field guessed from the source's copyright string, and the string is carried into the manifest as `source` alongside it. This is [ADR-0004](adr/0004-hybrid-puzzle-supply.md)'s split made mechanical: the pipeline can be developed against any file, and nothing reaches `data/crosswords/` without somebody having answered the question of what may be served.
 
 ---
 

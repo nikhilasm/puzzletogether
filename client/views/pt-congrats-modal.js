@@ -177,7 +177,7 @@ export class PtCongratsModal extends LitElement {
                         50%,
                     var(--ink) 100%
                 );
-                background-size: 220% 100%;
+                background-size: 200% 100%;
                 background-clip: text;
                 -webkit-background-clip: text;
                 -webkit-text-fill-color: transparent;
@@ -192,7 +192,7 @@ export class PtCongratsModal extends LitElement {
                     background-position: 0% 0;
                 }
                 to {
-                    background-position: -220% 0;
+                    background-position: -200% 0;
                 }
             }
 
@@ -350,12 +350,12 @@ export class PtCongratsModal extends LitElement {
      * the same way. The glow is a shadow *behind* ink, so scaling it straight off the streak reads
      * correctly the whole way up. The wave is the ink, and mixing accent into it in proportion to a
      * low streak is a few percent of accent against near-black: invisible in the light theme, which
-     * is the bug this split fixes. So the wave starts already mostly accent and the streak decides
-     * how much further toward pure accent it goes.
+     * is the bug this split fixes. So the wave has a small floor that keeps it visible from a streak
+     * of 1 while starting subtle, and the streak decides how much further toward pure accent it goes.
      */
     #streakPaint(solved) {
         const climb = Math.min(solved.streak, 20) / 20;
-        const wave = solved.streak === 0 ? 0 : 0.55 + 0.45 * climb;
+        const wave = solved.streak === 0 ? 0 : 0.15 + 0.85 * climb;
         return `--streak-t: ${climb}; --wave-t: ${wave}`;
     }
 
@@ -413,10 +413,11 @@ export class PtCongratsModal extends LitElement {
         `;
     }
 
-    /** What everyone else sees: the host is choosing, and there is nothing to press. */
+    /** What everyone else sees: the puzzles on offer, greyed, and that the host is choosing. */
     #renderWaiting() {
         return html`
             <hr class="divider" />
+            <pt-puzzle-picker readonly .catalog=${this.catalog}></pt-puzzle-picker>
             <p class="waiting">waiting for the host to pick the next puzzle…</p>
         `;
     }

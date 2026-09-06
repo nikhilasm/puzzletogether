@@ -9,7 +9,8 @@
  * **Pointer only, by design.** A touch browser emulates hover on whatever was tapped last and holds
  * it (controls.js), so on a phone this would be a label stuck over the last button pressed. The
  * hover query is checked in JavaScript rather than in CSS because what it gates is a state, not a
- * rule. Focus shows it too, which costs nothing and gives a keyboard the same reading a mouse gets.
+ * rule. Keyboard focus shows it too, which gives a keyboard the same reading a mouse gets; a mouse
+ * click focuses the control as well, so the focus path is gated on focus-visible to leave that out.
  *
  * No shadow: there is exactly one in this app and it is under the congrats modal (brand.md §4). A
  * bubble on the page is a surface like any other, so it is an opaque ground inside a 1.5px rule.
@@ -81,6 +82,8 @@ export class PtTooltip extends LitElement {
 
     #onEnter = () => this.#show();
     #onLeave = () => this.#hide();
+    #onFocus = (event) => this.#showOnKeyboard(event);
+    #onClick = () => this.#hide();
 
     constructor() {
         super();
@@ -93,16 +96,18 @@ export class PtTooltip extends LitElement {
         super.connectedCallback();
         this.addEventListener('pointerenter', this.#onEnter);
         this.addEventListener('pointerleave', this.#onLeave);
-        this.addEventListener('focusin', this.#onEnter);
+        this.addEventListener('focusin', this.#onFocus);
         this.addEventListener('focusout', this.#onLeave);
+        this.addEventListener('click', this.#onClick);
     }
 
     /** Stops listening, so a detached wrapper cannot leave a bubble behind. */
     disconnectedCallback() {
         this.removeEventListener('pointerenter', this.#onEnter);
         this.removeEventListener('pointerleave', this.#onLeave);
-        this.removeEventListener('focusin', this.#onEnter);
+        this.removeEventListener('focusin', this.#onFocus);
         this.removeEventListener('focusout', this.#onLeave);
+        this.removeEventListener('click', this.#onClick);
         super.disconnectedCallback();
     }
 
@@ -111,6 +116,23 @@ export class PtTooltip extends LitElement {
         if (this.text === '') return;
         if (!window.matchMedia('(hover: hover)').matches) return;
         this.showing = true;
+    }
+
+    /**
+     * Shows the bubble for focus, but only when the focus is keyboard focus.
+     *
+     * A mouse click focuses the control it lands on, so showing on every focusin left the bubble
+     * stuck over a button the pointer had already left, and stuck again when focus returned to it
+     * after a modal it opened closed. focus-visible is exactly the line we want: it is set for the
+     * keyboard reading this path exists to give and clear for the pointer that the hover path
+     * already covers.
+     *
+     * @param {FocusEvent} event The focusin, whose target is the control that gained focus.
+     */
+    #showOnKeyboard(event) {
+        const control = /** @type {Element} */ (event.target);
+        if (!control.matches(':focus-visible')) return;
+        this.#show();
     }
 
     /** Hides the bubble. */

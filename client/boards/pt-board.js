@@ -10,6 +10,7 @@
 import { LitElement, css, html, nothing } from 'lit';
 import { repeat } from 'lit/directives/repeat.js';
 
+import { INPUT_MODE } from '../../shared/protocol.js';
 import { effectiveValue, isEditable, toCoords } from '../../shared/puzzle-doc.js';
 import { focusRing } from '../styles/controls.js';
 
@@ -34,6 +35,10 @@ export class PtBoard extends LitElement {
         selfId: { type: String },
         selection: { type: Number },
         interactive: { type: Boolean },
+        /** The store's input mode, so the N shortcut can flip it: solve or notes. */
+        inputMode: { type: String },
+        /** Whether this type has a Notes setting, which is what gates the N shortcut. */
+        hasNotes: { type: Boolean },
         checkResults: { type: Object },
         /** Whether the room has just solved this puzzle and the grid is saying so. */
         celebrating: { type: Boolean },
@@ -149,6 +154,8 @@ export class PtBoard extends LitElement {
         this.selfId = null;
         this.selection = null;
         this.interactive = true;
+        this.inputMode = INPUT_MODE.SOLVE;
+        this.hasNotes = false;
         this.checkResults = {};
         this.celebrating = false;
     }
@@ -415,6 +422,22 @@ export class PtBoard extends LitElement {
         if (event.key.toLowerCase() === 'z' && (event.ctrlKey || event.metaKey)) {
             event.preventDefault();
             this.dispatchEvent(new CustomEvent('pt-undo', { bubbles: true, composed: true }));
+            return;
+        }
+
+        // N flips Notes, the same store value the on-screen toggle owns. Gated to types that have
+        // the setting so a letter puzzle still types N, and needs no selection, since it is a mode
+        // rather than a move.
+        if (this.hasNotes && this.interactive && event.key.toLowerCase() === 'n') {
+            event.preventDefault();
+            const next = this.inputMode === INPUT_MODE.NOTES ? INPUT_MODE.SOLVE : INPUT_MODE.NOTES;
+            this.dispatchEvent(
+                new CustomEvent('pt-mode-change', {
+                    detail: { mode: next },
+                    bubbles: true,
+                    composed: true,
+                }),
+            );
             return;
         }
 

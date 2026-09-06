@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.3.0 - 2026-09-06
+
+- Added shortcut key (`N`) for toggling notes on keyboard
+- Added "available puzzles" view for room members while waiting for the room leader to start a puzzle
+- Minor UI and visual fixes
+
 ## 1.2.0 - 2026-09-03
 
 - Added more flavorful *"Solved!"* text and more exciting Solve Streak styling

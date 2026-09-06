@@ -23,7 +23,7 @@ function generate(difficulty, seed, n = 6) {
     });
 }
 
-/** Every orthogonal or diagonal neighbour of a flat index, clipped to the grid. */
+/** Every orthogonal or diagonal neighbor of a flat index, clipped to the grid. */
 function king(idx, n) {
     const row = Math.floor(idx / n);
     const col = idx % n;
@@ -110,9 +110,9 @@ describe('suguru generation', () => {
             const { solution } = generate('medium', 3000 + i, 6);
 
             for (let idx = 0; idx < solution.length; idx += 1) {
-                for (const neighbour of king(idx, 6)) {
-                    if (neighbour <= idx) continue;
-                    expect(solution[neighbour]).not.toBe(solution[idx]);
+                for (const neighbor of king(idx, 6)) {
+                    if (neighbor <= idx) continue;
+                    expect(solution[neighbor]).not.toBe(solution[idx]);
                 }
             }
         }

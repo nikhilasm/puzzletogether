@@ -31,7 +31,7 @@ function maskValues(mask) {
 }
 
 /**
- * Every cell's region size and its peers: its region-mates, plus its up-to-eight grid neighbours.
+ * Every cell's region size and its peers: its region-mates, plus its up-to-eight grid neighbors.
  *
  * Built once per partition and reused by generation, uniqueness checking, and rate.js, since all
  * three ask the same question of the same fixed regions.

@@ -527,6 +527,7 @@ export class PtGame extends LitElement {
                 @pt-cell-input=${this.#onCellInput}
                 @pt-cell-clear=${this.#onCellClear}
                 @pt-cells-paint=${this.#onPaint}
+                @pt-mode-change=${(event) => roomStore.setInputMode(event.detail.mode)}
                 @pt-undo=${() => roomStore.undo()}
                 @pt-entry-change=${(event) => {
                     this.entry = event.detail.entry;
@@ -563,6 +564,8 @@ export class PtGame extends LitElement {
                 .checkResults=${state.checkResults}
                 .interactive=${isPlaying}
                 .brush=${state.brush}
+                .inputMode=${state.inputMode}
+                .hasNotes=${board.input === 'digits'}
                 .celebrating=${this.celebrating}
             ></${board.tag}>
         `;

@@ -39,7 +39,7 @@ const REGION_SIZES = {
 /**
  * How many regions under 3 cells a puzzle may keep, as a fraction of its cells.
  *
- * A region growing to fill the last gap in a corner can strand its neighbour with nowhere left to
+ * A region growing to fill the last gap in a corner can strand its neighbor with nowhere left to
  * grow, producing a 1- or 2-cell region nobody asked for outright. Suguru wants the occasional one of
  * these anyway, so this is a ceiling on the accident rather than a suppression of it: a small handful
  * are let through and no more, the way kenken bounds its own single-cell cages.
@@ -49,8 +49,8 @@ const SMALL_REGION_ALLOWANCE = { easy: 0.02, medium: 0.04, hard: 0.06 };
 /** A region below this size was not drawn deliberately; see SMALL_REGION_ALLOWANCE. */
 const SMALL_REGION_CEILING = 2;
 
-/** The orthogonal neighbours of a cell, clipped to the grid. Region growth is orthogonal only. */
-function neighbours(idx, n) {
+/** The orthogonal neighbors of a cell, clipped to the grid. Region growth is orthogonal only. */
+function neighbors(idx, n) {
     const row = Math.floor(idx / n);
     const col = idx % n;
     const list = [];
@@ -85,8 +85,8 @@ function partition(n, difficulty, rng) {
         while (cells.length < wanted) {
             const options = [];
             for (const cell of cells) {
-                for (const neighbour of neighbours(cell, n)) {
-                    if (owner[neighbour] === -1) options.push(neighbour);
+                for (const neighbor of neighbors(cell, n)) {
+                    if (owner[neighbor] === -1) options.push(neighbor);
                 }
             }
             if (options.length === 0) break;
@@ -103,10 +103,10 @@ function partition(n, difficulty, rng) {
 }
 
 /**
- * Folds stranded small regions (below SMALL_REGION_CEILING) into a neighbour, down to the
+ * Folds stranded small regions (below SMALL_REGION_CEILING) into a neighbor, down to the
  * difficulty's allowance.
  *
- * Each one joins its *smallest* eligible neighbour, so absorbing a stray cell does not turn a
+ * Each one joins its *smallest* eligible neighbor, so absorbing a stray cell does not turn a
  * three-cell region into an unwieldy six-cell one. See kenken's `mergeSingletons` in cages.js: the
  * same fold, generalized from exactly one stray cell to a stray region of one or two.
  */
@@ -123,8 +123,8 @@ function mergeSmallRegions(groups, n, maxSize, allowed) {
     groups.forEach((cells, id) => {
         if (cells.length > SMALL_REGION_CEILING || dropped.has(id) || small <= allowed) return;
 
-        const hosts = [...new Set(cells.flatMap((cell) => neighbours(cell, n)))]
-            .map((neighbour) => owner[neighbour])
+        const hosts = [...new Set(cells.flatMap((cell) => neighbors(cell, n)))]
+            .map((neighbor) => owner[neighbor])
             .filter((host) => host !== id && !dropped.has(host) && merged[host].length < maxSize)
             .sort((a, b) => merged[a].length - merged[b].length);
 

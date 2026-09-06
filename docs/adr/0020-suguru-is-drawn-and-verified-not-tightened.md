@@ -31,7 +31,7 @@ records why a partition can be unfillable before a value is even tried).
 **The full grid is then dug like sudoku's, not shipped whole.** A completed grid with nothing dug
 out of it has no given for anybody to read the puzzle from, and a suguru with no givens is
 essentially never unique: nothing about the region and adjacency rules alone stops a whole region's
-digits from being relabelled by some other permutation that still respects its neighbours. Holes
+digits from being relabelled by some other permutation that still respects its neighbors. Holes
 are removed one cell at a time, in shuffled order, keeping a removal only when a counting solver
 still proves the grid uniquely solvable; this is sudoku's `digHoles` shape, not kenken's, since
 kenken's cages carry no such thing as a given. Difficulty is measured by the puzzle's own technique
@@ -63,7 +63,7 @@ absorbs Suguru the same way it absorbs sudoku, nonogram, and kakuro today; Sugur
 ## Alternatives rejected
 
 **Reuse kenken's tighten-by-splitting loop, and re-fill only the two new regions a split
-produces**, leaving the rest of the grid untouched. Rejected because a resplit region's neighbours
+produces**, leaving the rest of the grid untouched. Rejected because a resplit region's neighbors
 also constrain it under the adjacency rule, so a partial re-fill of just the split has to search
 under the same constraints a full fill would, with none of kenken's actual saving, which is that
 the rest of the grid provably never needs to be touched again.
