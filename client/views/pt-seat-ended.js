@@ -1,18 +1,7 @@
 /**
- * The dialog that says a seat has ended, and why.
- *
- * One dialog for every way a room can stop being yours without your having asked: the host removed
- * you, another tab took the seat, the room was collected, the server restarted, or you were away
- * long enough to lose it. They differ only in the sentence, so they differ only in the sentence
- * here (ADR-0025).
- *
- * Red-accented, and the only place in the app --danger paints something that is not a control: what
- * has happened is not a mistake and not an error, but it did take the room away, and the screen
- * behind it has already changed to the join form. A dialog in the page's ordinary colours would be
- * a notice about a change the player is looking straight at.
- *
- * Native <dialog> like <pt-confirm>, so focus trapping, Escape, and the inert backdrop come from
- * the platform. Told what to show and reports the press; the opener owns the reason and the route.
+ * The dialog that says a seat has ended, and why: one dialog for every way a room stops being yours
+ * unasked, differing only in the sentence (ADR-0025). Red-accented, the only place --danger paints
+ * something that is not a control, on the native dialog like pt-confirm.
  */
 
 import { LitElement, css, html } from 'lit';
@@ -41,11 +30,8 @@ export class PtSeatEnded extends LitElement {
     static styles = [
         controls,
         css`
-            /*
-             * The red is in the rule and the heading, never in a ground. Same treatment
-             * dangerButton gives Leave Room, and the same 50% resting border: a filled red panel
-             * would be the loudest thing this app has ever drawn, over news that is mild.
-             */
+            /* The red is in the rule and the heading, never a ground, the same treatment dangerButton
+               gives Leave Room since a filled red panel would be the loudest thing over mild news. */
             dialog {
                 max-width: 24rem;
                 padding: var(--space-6);

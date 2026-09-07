@@ -1,23 +1,8 @@
 /**
- * The player roster: one chip per player, two per row, host marked with a leading star.
- *
- * A player's colour is carried by their name and by nothing else on the chip: one channel of colour
- * against one of text, which is the rule (brand.md §3). Not a bar down the chip's leading edge; ten
- * of those stacked in a two-column grid read as a stack of tabs, and the roster is a list of people
- * rather than a legend for the grid.
- *
- * The room code and the seat count sit above this, in the panel <pt-app> draws around it.
- *
- * Your own chip is a button that opens the palette, and carries a quiet you so a room of similar
- * names is still readable. Colour is the one piece of identity a player can change, so it is edited
- * where it is shown rather than behind a settings screen; the colours other people hold are shown
- * struck through rather than hidden, since a room's colours must stay unique.
- *
- * The host additionally gets a remove control on everybody else's chip, behind a confirm dialog:
- * it is the one action here that takes something away from another person.
- *
- * The roster arrives as properties from <pt-app>, but colour claims and removals go straight to
- * the store: only the server can say whether a colour is free or a seat still exists.
+ * The player roster: one chip per player, two per row, host marked with a leading star, a player's
+ * colour carried by their name and nothing else (brand.md §3). Your own chip opens the palette to
+ * change colour, the host gets a remove control on everyone else's behind a confirm, and colour
+ * claims and removals go straight to the store since only the server knows what is free.
  */
 
 import { LitElement, css, html, nothing } from 'lit';
@@ -70,11 +55,8 @@ export class PtPlayerChips extends LitElement {
                 list-style: none;
             }
 
-            /*
-             * One rule for every chip, whatever it is made of. A button element and a span come
-             * with different defaults for font, line-height, and box sizing, which is what made
-             * one client's own chip a different size from that chip on somebody else's screen.
-             */
+            /* One rule for every chip, since a button and a span have different font and box defaults
+               that made one client's own chip a different size elsewhere. */
             .chip {
                 display: flex;
                 gap: var(--space-2);
@@ -104,8 +86,8 @@ export class PtPlayerChips extends LitElement {
                 }
             }
 
-            /* Room for the remove control, so a long name cannot run underneath it. The chip's
-               outer size is unchanged, which is what has to match across clients. */
+            /* Room for the remove control so a long name cannot run underneath it, with the chip's
+               outer size unchanged. */
             li[data-kickable] .chip {
                 padding-right: var(--space-8);
             }
@@ -158,11 +140,8 @@ export class PtPlayerChips extends LitElement {
                 position: relative;
             }
 
-            /*
-             * Anchored to the roster rather than to a chip. Centring a fixed-width panel on one
-             * chip in a two-column grid hangs it off the side of a narrow screen, whichever column
-             * you happen to be in; spanning the list cannot.
-             */
+            /* Anchored to the roster rather than a chip, since centring a fixed-width panel on one
+               chip in a two-column grid hangs it off a narrow screen. */
             .palette {
                 position: absolute;
                 z-index: 2;
@@ -201,11 +180,8 @@ export class PtPlayerChips extends LitElement {
                 border-width: 3px;
             }
 
-            /*
-             * Taken by somebody else: greyed and struck through rather than hidden, so you can see
-             * what the room already holds and why you cannot have it. Two channels, not just the
-             * dimming, which on a saturated swatch is easy to miss.
-             */
+            /* Taken by somebody else: greyed and struck through rather than hidden, two channels
+               since dimming alone is easy to miss on a saturated swatch. */
             .swatch:disabled {
                 cursor: default;
             }
@@ -285,11 +261,9 @@ export class PtPlayerChips extends LitElement {
     }
 
     /**
-     * Claims a colour, closing on success.
-     *
-     * Stays open on failure with the reason attached, because the only way to fail is somebody
-     * else claiming that colour a moment ago, and then you do want to pick again. The roster
-     * itself is not touched here: the server's broadcast is what repaints it.
+     * Claims a colour, closing on success. Stays open on failure with the reason, since the only
+     * way to fail is somebody else just claiming it; the roster repaints from the server's
+     * broadcast.
      */
     async #choose(colorIndex) {
         try {

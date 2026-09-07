@@ -81,11 +81,9 @@ test.describe('shape and focus', () => {
     });
 
     /**
-     * Panel controls are at least as tall as a thumb, whatever their label does.
-     *
-     * pt-keypad .action and not .actions button: the setting is slotted, so it is a light-DOM
-     * child of the panel rather than a descendant of the bar it is laid out in. The class is what
-     * every one of them shares whichever side of that line it falls on.
+     * Panel controls are at least as tall as a thumb, whatever their label does. pt-keypad .action and
+     * not .actions button, because the slotted setting is a light-DOM child of the panel while the
+     * others are descendants of the bar, and .action is the class they all share.
      */
     test('every panel control clears 44px', async ({ page }) => {
         const heights = await page
@@ -148,13 +146,9 @@ test.describe('shape and focus', () => {
     });
 
     /**
-     * Every control in the app carries its word: the panel's under its icon, the action row's
-     * beside it.
-     *
-     * ADR-0011 took the panel's labels off to buy vertical space and bought none: the panel's height
-     * is set by the rows of keys below the button bar, so a shorter bar just left a gap. The words
-     * are back, stacked under the icons, and the bar is one row because its buttons share it rather
-     * than each taking the width of its own label.
+     * Every control in the app carries its word: the panel's under its icon, the action row's beside
+     * it. ADR-0011 took the panel's labels off to buy space and bought none, so the words are back
+     * under the icons, and the bar is one row because its buttons share it rather than sizing to a word.
      */
     test('every control carries its word', async ({ page }) => {
         // Sorted, because the slotted setting and the rendered actions come from two different
@@ -183,14 +177,9 @@ test.describe('shape and focus', () => {
     });
 
     /**
-     * The three puzzle actions share a line; Leave room wraps below them.
-     *
-     * Four labelled buttons come to about 618px and the row is the board's 480px, so with a host's
-     * full set they cannot fit one line, and widening the row past the grid it sits under would be
-     * a worse answer than a second line. What the wrap must not do is make Leave room a different
-     * *control*: it stays inside the same rule, at the same height and the same type size as the
-     * three above it, which is the whole of what "same size as the other buttons" asked for. That is
-     * what the next test holds.
+     * The three puzzle actions share a line; Leave room wraps below them. A host's four labelled
+     * buttons cannot fit the board's width, and the wrap must not make Leave room a different control:
+     * it stays the same height and type size as the three above, which the next test holds.
      */
     test('the puzzle actions are one group, apart from the keys', async ({ page }) => {
         const tops = await page
@@ -343,15 +332,9 @@ test.describe('input mode', () => {
     });
 
     /**
-     * The pressed state moves four channels, not one.
-     *
-     * The switch this replaced showed its state by sliding a knob, which is a shape change and so
-     * survives being seen without colour. An aria-pressed button has no knob, so the border *and*
-     * the ground both have to move: one of them alone would be a hue difference and nothing else,
-     * which is what the grayscale check exists to catch (brand.md §3).
-     *
-     * The icon filling and the label thickening are the two that are shape rather than paint, and
-     * they are what a stuck hover border cannot counterfeit, which is the whole reason they exist.
+     * The pressed state moves four channels, not one. An aria-pressed button has no knob to slide, so
+     * the border and ground both move (or it would be a hue difference alone, brand.md §3), and the
+     * icon filling and label thickening are the shape changes a stuck hover border cannot counterfeit.
      */
     test('flips all four channels and writes a pencil mark', async ({ page }) => {
         await createRoom(page);
@@ -428,18 +411,10 @@ test.describe('input mode', () => {
 });
 
 /**
- * Hover is a *pointer* state, and a touch screen has no pointer.
- *
- * A touch browser emulates hover on whatever was tapped last and holds it there until something else
- * is tapped, so an ungated :hover becomes a state that outlives the tap. Here that was
- * border-color: var(--accent), an accent frame left sitting on an unfocused control, which brand
- * §4 says reads as a stuck focus ring, and which on a *setting* is a pressed button missing only its
- * wash. Every hover rule in the app is now behind @media (hover: hover).
- *
- * It was never the focus ring, and could not have been: :focus-visible does not match a touch
- * activation, and the panel's controls preventDefault() on pointerdown to keep the grid focused,
- * so they take no focus from a tap at all. That is asserted here too, because the fix would look
- * just as green if focus had quietly started landing on the keys instead.
+ * Hover is a pointer state, and a touch screen has no pointer. A touch browser holds an emulated hover
+ * on whatever was tapped last, so every hover rule is now behind @media (hover: hover); this also
+ * checks the panel takes no focus from a tap, since the fix would look green if focus landed there
+ * instead.
  */
 test.describe('on a touch screen', () => {
     test.use({ hasTouch: true });
@@ -479,11 +454,8 @@ test.describe('on a touch screen', () => {
 
 test.describe('the footer', () => {
     /**
-     * The theme control is an action, not a toggle.
-     *
-     * It was aria-pressed on "Dark theme" for one revision, which made it a state to be read. It
-     * does one thing, so it names that thing, and the name flips with the theme, which is also what
-     * settles which of the two icons to draw.
+     * The theme control is an action, not a toggle. It was aria-pressed for one revision, which made
+     * it a state to read; it does one thing, so it names that thing, and the name flips with the theme.
      */
     test('the theme button switches, names the switch, and remembers it', async ({ page }) => {
         await createRoom(page);
@@ -501,13 +473,9 @@ test.describe('the footer', () => {
     });
 
     /**
-     * Six controls dividing one panel equally, wordless, each big enough for a thumb.
-     *
-     * The panel is what makes the wordlessness affordable (ADR-0023): these are peripheral, they
-     * are named by a tooltip on hover and by an accessible name always, and drawn as divisions of
-     * one surface they do not read as six decisions of the puzzle's own weight. Equal widths are
-     * what "regularly spaced regardless of how many there are" comes to, so they are asserted
-     * rather than left to a gap value.
+     * Six controls dividing one panel equally, wordless, each big enough for a thumb. The panel makes
+     * the wordlessness affordable (ADR-0023), and equal widths are what "regularly spaced regardless of
+     * how many there are" comes to, so they are asserted rather than left to a gap value.
      */
     test('the footer is one panel of six evenly spaced icon controls', async ({ page }) => {
         await createRoom(page);
@@ -533,11 +501,9 @@ test.describe('the footer', () => {
     });
 
     /**
-     * Every control still carries its name; on this bar the name arrives on hover.
-     *
-     * The tooltip is not the accessible name and never the only copy of it: the button underneath
-     * carries an aria-label, and the bubble is aria-hidden so it is not read twice. What is checked
-     * here is that it appears at all, says the word, and leaves when the pointer does.
+     * Every control still carries its name; on this bar the name arrives on hover. The tooltip is never
+     * the only copy of it, since the button carries an aria-label and the bubble is aria-hidden, so
+     * what is checked is that it appears, says the word, and leaves when the pointer does.
      */
     test('a tooltip names the control the pointer is on', async ({ page }) => {
         await createRoom(page);
@@ -554,12 +520,9 @@ test.describe('the footer', () => {
     });
 
     /**
-     * The name arrives on hover and on keyboard focus, but not on the focus a mouse click leaves.
-     *
-     * A click focuses the control it lands on, and showing on every focus left the bubble stuck
-     * over a button the pointer had already left, worst of all when focus returned to the button
-     * after the modal it opened closed. The focus path is gated on focus-visible instead: the
-     * keyboard reading it exists to give, not the pointer the hover path already covers.
+     * The name arrives on hover and on keyboard focus, but not on the focus a mouse click leaves. A
+     * click's focus once left the bubble stuck over a button the pointer had left, so the focus path is
+     * gated on focus-visible: the keyboard reading it exists to give, not the pointer's.
      */
     test('a mouse click leaves no tooltip, but keyboard focus shows one', async ({ page }) => {
         await createRoom(page);
@@ -585,13 +548,9 @@ test.describe('the footer', () => {
     });
 
     /**
-     * The bubble is centred on the control it names, the first one included.
-     *
-     * The first and last were aligned to the panel's edge for one revision, to keep them off the
-     * side of a phone screen. That is a real constraint and the wrong fix: it moved two of the six
-     * where nothing was overflowing, so the theme control's label sat visibly left of the icon it
-     * belonged to on every desktop. The bubble measures itself instead, and the phone case is held
-     * by "a tooltip stays on screen at 320px" below.
+     * The bubble is centred on the control it names, the first one included. Aligning the end controls
+     * to the panel's edge for one revision left the theme control's label visibly left of its icon, so
+     * the bubble measures itself instead and the phone case is held by the 320px test below.
      */
     test('the tooltip is centred on its control', async ({ page }) => {
         await createRoom(page);
@@ -632,12 +591,9 @@ test.describe('the footer', () => {
 
 test.describe('how to play', () => {
     /**
-     * The rules of the puzzle, opened from the caption that names it.
-     *
-     * The entry point is on the header and not in the puzzle-action row, because that row is
-     * defined by scope: everything in it acts on the room's puzzle or on your seat in it, and help
-     * acts on nothing. Both halves of that are asserted here, since the row staying at four buttons
-     * is the part a later change would quietly undo.
+     * The rules of the puzzle, opened from the caption that names it. The entry point is on the header,
+     * not the puzzle-action row, because that row acts on the room's puzzle or your seat and help acts
+     * on nothing; both halves are asserted, since the row staying at four buttons is easy to undo.
      */
     test('opens from the header, states the rules, and closes', async ({ page }) => {
         await createRoom(page);
@@ -741,11 +697,9 @@ test.describe('on a phone', () => {
     });
 
     /**
-     * ...and a tooltip on the control nearest an edge does not push the page sideways.
-     *
-     * "Report issue" is wider than the 48px control it names at this width, so centred it hangs off
-     * the right of the screen. It shifts back by the overhang and no further, which is why the
-     * centring test above still holds everywhere there is room.
+     * ...and a tooltip on the control nearest an edge does not push the page sideways. "Report issue"
+     * is wider than its control at this width, so centred it would hang off the screen; it shifts back
+     * by the overhang and no further, which is why the centring test above still holds where there is room.
      */
     test('a tooltip stays on screen at 320px', async ({ page }) => {
         await createRoom(page);
@@ -768,11 +722,9 @@ test.describe('on a phone', () => {
     });
 
     /**
-     * The button bar is one row on the narrowest screen we support, labels and all.
-     *
-     * This is what the labels were removed for and what removing them turned out not to be needed
-     * for: the bar wrapped because each button took the width of its own word, not because the
-     * words were there. Sharing the row fixes it and keeps them.
+     * The button bar is one row on the narrowest screen we support, labels and all. The bar wrapped
+     * because each button took the width of its own word, not because the words were there, so sharing
+     * the row fixes it and keeps them.
      */
     test('the panel button bar is one row at 320px', async ({ page }) => {
         await createRoom(page);
@@ -822,10 +774,9 @@ test.describe('given squares', () => {
     });
 
     /**
-     * The tint survives the cursor's wash rather than being replaced by it.
-     *
-     * They are background-color and background-image precisely so a given square in the cursor's
-     * row shows both. As one shorthand, the tint blinked out every time anybody moved.
+     * The tint survives the cursor's wash rather than being replaced by it. The two are background-color
+     * and background-image precisely so a given square in the cursor's row shows both; as one shorthand
+     * the tint blinked out every time anybody moved.
      */
     test('keep their tint under the cursor wash', async ({ page }) => {
         await createRoom(page);
@@ -887,11 +838,9 @@ test.describe('the congrats modal', () => {
     });
 
     /**
-     * The way out is the corner close every other panel wears, not a labelled button in the row.
-     *
-     * Run as a non-host, which is the case with no button row at all: dismissing has to work
-     * without one. The corner is checked by geometry because the button hangs off .sheet rather
-     * than off the dialog, and nothing about a wrong containing block fails loudly.
+     * The way out is the corner close every other panel wears, not a labelled button in the row. Run as
+     * a non-host, the case with no button row, and checked by geometry because the button hangs off
+     * .sheet rather than the dialog, where a wrong containing block fails silently.
      */
     test('is dismissed by a close button in the corner', async ({ page }) => {
         await createRoom(page);
@@ -974,11 +923,9 @@ test.describe('the congrats modal', () => {
         expect(seen.lineSize).toBeLessThan(seen.timeSize);
 
         /*
-         * The crest of the wave is the accent, not a shade of the ink it passes over.
-         *
-         * Mixed in proportion to the streak it came out a few percent of accent against near-black
-         * ink, so the light theme ran the animation and nothing visibly moved. Measured as how far
-         * blue leads red, which tells the accent from the ink in either theme.
+         * The crest of the wave is the accent, not a shade of the ink it passes over. Measured as how
+         * far blue leads red, which tells the accent from the ink in either theme, since a low-streak
+         * mix once came out a few percent of accent against near-black ink and nothing visibly moved.
          */
         const stops = seen.gradient.match(/rgba?\([^)]*\)|color\([^)]*\)/g) ?? [];
         expect(stops, 'three stops resolved').toHaveLength(3);
@@ -1056,11 +1003,9 @@ test.describe('the congrats modal', () => {
 });
 
 /**
- * The wave of colour that crosses a finished grid before the modal opens (brand.md §5).
- *
- * Two of these need a genuinely solved puzzle, which is the one thing a client cannot arrange for
- * itself: the solution never leaves the server, and completion is decided there. So the test works
- * one out in Node from the givens the browser already has, and types it in.
+ * The wave of colour that crosses a finished grid before the modal opens (brand.md §5). Two of these
+ * need a genuinely solved puzzle, which a client cannot arrange since the solution never leaves the
+ * server, so the test solves one in Node from the givens the browser holds and types it in.
  */
 test.describe('the solve celebration', () => {
     /** A CSS duration in milliseconds, whichever unit the engine serialised it in. */
@@ -1071,12 +1016,9 @@ test.describe('the solve celebration', () => {
     }
 
     /**
-     * Whether the grid is waving and whether the modal is open, read at one instant.
-     *
-     * One evaluate rather than two locators, because what is being tested is that the two never
-     * overlap; sampling them a round trip apart would be sampling two different moments. It reaches
-     * through the shadow roots by hand for the same reason: Playwright's engine pierces them, but
-     * only one selector at a time.
+     * Whether the grid is waving and whether the modal is open, read at one instant. One evaluate
+     * rather than two locators, because the test is that the two never overlap and sampling a round trip
+     * apart would sample two moments; it reaches through the shadow roots by hand for the same reason.
      */
     function celebrationState(page) {
         return page.locator('pt-game').evaluate((game) => {
@@ -1214,13 +1156,9 @@ test.describe('the solve celebration', () => {
     });
 
     /**
-     * Under reduced motion the wave is skipped outright rather than run at 0ms.
-     *
-     * Collapsing the durations is what every other animation in the app does, and it is the wrong
-     * answer here: the modal is held back by a timer, so a 0ms wave would leave the pause with
-     * nothing happening in it. Sampled all the way to the modal opening, because "it was skipped"
-     * cannot be checked after the fact: a wave that had already finished looks identical to one
-     * that never ran.
+     * Under reduced motion the wave is skipped outright rather than run at 0ms, since the modal is held
+     * back by a timer and a 0ms wave would leave the pause empty. Sampled all the way to the modal
+     * opening, because a wave that had already finished looks identical to one that never ran.
      */
     test('is skipped under reduced motion', async ({ page }) => {
         await createRoom(page);

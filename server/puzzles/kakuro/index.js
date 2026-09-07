@@ -1,15 +1,8 @@
 /**
- * The kakuro puzzle module: the four methods every puzzle type implements (design-spec.md §7).
- *
- * Completion and checking are the shared value-grid implementations, since a kakuro square holds one
- * digit compared against one solution digit exactly as a sudoku square does. What is kakuro's own is
- * where the puzzle is *printed*: its structure lives on the blocked squares, as a pair of sums
- * either side of a diagonal, which is the one thing the document schema could not say before
- * (ADR-0014).
- *
- * **The alphabet is 1 to 9 whatever the grid's side**, unlike sudoku and kenken where the alphabet
- * *is* the side. A run of four squares still draws on all nine digits, so a 7×7 and a 13×13 take the
- * same keypad.
+ * The kakuro puzzle module: the four methods every puzzle type implements (design-spec.md §7);
+ * completion and checking are the shared value-grid implementations, and what is kakuro's own is its
+ * structure printed on the blocked squares as sums either side of a diagonal (ADR-0014). The
+ * alphabet is 1 to 9 whatever the grid's side, so a 7×7 and a 13×13 take the same keypad.
  */
 
 import { randomUUID } from 'node:crypto';
@@ -37,12 +30,9 @@ const MIN_SIDE = 7;
 const MAX_SIDE = 13;
 
 /**
- * The doc's cell list: open squares, printed squares, and the clue squares that carry the sums.
- *
- * A blocked square with no run leaving it carries no clue, which is the top-left corner and any
- * block the layout drew inside the grid. It is drawn as a plain black square, so its clue is null
- * rather than a pair of nulls: the difference is what the board reads to decide whether to draw a
- * diagonal at all.
+ * The doc's cell list: open squares, printed squares, and the clue squares that carry the sums. A
+ * blocked square with no run leaving it carries a null clue rather than a pair of nulls, which is how
+ * the board decides whether to draw a diagonal.
  */
 function toDocCells(n, { white, runs, solution, givens }) {
     const clues = new Array(n * n).fill(null);
@@ -111,12 +101,8 @@ export default {
 
     /**
      * Whether an op is legal against this document: the square exists, is open, and any value is one
-     * digit of the puzzle's alphabet.
-     *
-     * The length check is this module's own and it is load-bearing. Since ADR-0007 the schema admits
-     * values up to 8 characters, so nothing but this holds a kakuro square to a single digit. Written
-     * as a length test *and* a membership test for the reason sudoku records: includes on a string
-     * matches substrings, so '12' would otherwise pass.
+     * digit of the alphabet. The length check is load-bearing, since the schema admits up to 8
+     * characters (ADR-0007), so nothing but this holds a kakuro square to one digit.
      *
      * @param {import('../../../shared/protocol.js').PuzzleDoc} doc - The puzzle document.
      * @param {import('../../../shared/protocol.js').Op} op - A schema-validated op.

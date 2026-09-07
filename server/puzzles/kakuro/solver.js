@@ -1,22 +1,8 @@
 /**
  * What a kakuro's rules imply: which digits each square can still hold, which sums each clue could
- * still take, and how far short of one answer the grid is.
- *
- * **The propagator's strength is a design decision, not an implementation detail.** Generation drives
- * the grid until this file says it is settled, so anything this cannot deduce has to be paid for with
- * an extra constraint: a shorter run, or a printed digit. The first version narrowed a run to the
- * union of the decompositions that could still fit, which is cheap and weak, and the generator that
- * sat on top of it could only reach a single answer by cutting runs down to an average of two and a
- * half squares. Real kakuro runs average four or more.
- *
- * So a run is now analysed *exactly*. Reading its squares in order and tracking which digits have
- * been used gives a small graph whose paths are precisely the legal ways to fill the run; a forward
- * pass finds the states that are reachable, a backward pass finds the states that can still be
- * completed, and a digit survives in a square only if some full, legal filling puts it there. That is
- * as much as can be known from one run, and knowing it is what lets runs stay long.
- *
- * The same two passes answer generation's other question. When a clue has no value yet, the sums of
- * the states the forward pass ends on are exactly the values that clue could still take.
+ * still take, and how far short of one answer the grid is. A run is analysed exactly, a forward pass
+ * for reachable states and a backward pass for completable ones, so a digit survives in a square only
+ * if some legal filling puts it there, which is what lets runs stay long (ADR-0015).
  */
 
 import { indexRuns, MAX_RUN } from './runs.js';
@@ -52,11 +38,9 @@ const SET_SUM = (() => {
 })();
 
 /**
- * Scratch buffers for the run analysis, reused across calls.
- *
- * Allocated once because this runs on every run of every sweep of every trial the generator makes,
- * which is tens of millions of calls for one 13×13, and 512-entry arrays per call was the single
- * largest cost in the first profile. Nothing outside analyseRun may hold a reference to them.
+ * Scratch buffers for the run analysis, reused across calls. Allocated once because this runs tens of
+ * millions of times for one 13×13, and per-call allocation was the single largest cost in the first
+ * profile; nothing outside analyseRun may hold a reference to them.
  */
 const SCRATCH = {
     layers: Array.from({ length: MAX_RUN + 1 }, () => new Int32Array(512)),
@@ -167,16 +151,10 @@ export function feasibleSums(domains, run) {
 }
 
 /**
- * Narrows every square's candidates until nothing more follows.
- *
- * A worklist rather than repeated sweeps of the whole grid: a run is only worth looking at again
- * once one of its squares has lost a digit, so narrowing one run enqueues the runs crossing it and
- * nothing else. Generation weighs thousands of candidate clue values, each one a narrowing, and
- * sweeping every run for each of them was most of the cost of building a board.
- *
- * A run with no sum yet still constrains: its digits are distinct however they add up, so it is
- * analysed the same way and simply accepts every ending. That is what lets a half-clued board be
- * narrowed at all.
+ * Narrows every square's candidates until nothing more follows. A worklist rather than repeated
+ * sweeps, so narrowing one run enqueues only the runs crossing it; a run with no sum yet still
+ * constrains, since its digits are distinct however they add up, which is what narrows a half-clued
+ * board at all.
  *
  * @param {Int32Array} domains - Candidate mask per cell, narrowed in place. Zero at a block.
  * @param {object[]} runs - The puzzle's runs.
@@ -217,11 +195,8 @@ export function narrow(domains, runs, index, seed = runs) {
 }
 
 /**
- * How far the grid is from having one answer: the product of what every square could still hold.
- *
- * One means settled, and settled means unique. Narrowing is sound, so a square can never lose a digit
- * some answer puts there; if two answers existed they would disagree somewhere, and that square would
- * still hold both. Returned as a logarithm because the product of a hundred squares overflows long
+ * How far the grid is from having one answer: the product of what every square could still hold. One
+ * means settled and settled means unique; returned as a logarithm because the product overflows long
  * before it becomes interesting, and only its ordering is ever used.
  *
  * @param {Int32Array} domains - Candidate mask per cell.
@@ -305,11 +280,9 @@ function search(domains, runs, limit, solutions, state) {
 }
 
 /**
- * Solves a kakuro, stopping once limit answers have been found.
- *
- * **complete is not the same as answers.length.** A search that ran out of budget has found whatever
- * it found and proved nothing, so one answer with complete false means "could not tell", never
- * "unique". Every caller has to read both.
+ * Solves a kakuro, stopping once limit answers have been found. complete is not the same as
+ * answers.length: a search that ran out of budget proved nothing, so one answer with complete false
+ * means "could not tell" rather than "unique", and every caller has to read both.
  *
  * @param {object} puzzle - The puzzle to solve.
  * @param {object[]} puzzle.runs - Its runs, each carrying its sum.

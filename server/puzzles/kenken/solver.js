@@ -1,13 +1,8 @@
 /**
- * KenKen's two search problems: a random Latin square to build a puzzle from, and a counting solver
- * to prove the puzzle that came out of it has exactly one answer.
- *
- * Uniqueness verification is the expensive step in KenKen generation and the main cost risk at
- * larger sizes (design-spec.md §8). Two things keep it affordable. The search visits cells **cage by
- * cage** rather than row by row, so a cage's arithmetic constrains the very next choice instead of
- * sitting inert until its last cell happens to come up. And every cage prunes on its *partial*
- * state, so a sum that has already overshot its target is abandoned rather than completed and then
- * rejected.
+ * KenKen's two search problems: a random Latin square to build from, and a counting solver to prove
+ * the result has exactly one answer, the expensive step at larger sizes (design-spec.md §8). Two
+ * things keep it affordable: the search visits cells cage by cage so arithmetic constrains the next
+ * choice, and every cage prunes on its partial state.
  */
 
 /** Bitmask for a digit, used for the per-row and per-column occupancy sets. */

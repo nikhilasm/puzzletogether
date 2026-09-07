@@ -1,22 +1,15 @@
 /**
  * The suguru grid: region borders, a region-bounded keypad, and a cursor wash over the focused
- * region instead of a row and column.
- *
- * Everything else (cell DOM, selection, presence, op emission) comes from <pt-board>. The region
- * lookup follows kenken's #cageOf: built once per document, cached, and read by every hook that
- * needs to know which region a cell belongs to.
+ * region instead of a row and column. Everything else comes from pt-board, and the region lookup
+ * follows kenken's #cageOf: built once per document and cached.
  */
 
 import { PtBoard } from './pt-board.js';
 
 /**
- * How many cells of the grid could ever legally hold a given digit: one per region at least that
- * big, since a region smaller than the digit can never take it and a region that size or larger
- * takes it exactly once (ADR-0019). Not doc.size.rows, which is what every other digit type uses
- * and assumes a full latin square; suguru has no row/column rule for that count to describe.
- *
- * A plain function rather than a board method, since the keypad needs it before any board element
- * has necessarily mounted (registry.js wires it in as BOARDS.suguru.keyCapacity).
+ * How many cells could ever legally hold a given digit: one per region at least that big
+ * (ADR-0019), not doc.size.rows, since suguru has no row/column rule. A plain function rather than a
+ * board method, since the keypad needs it before any board has mounted.
  */
 export function suguruKeyCapacity(doc, key) {
     const digit = Number(key);
@@ -78,10 +71,10 @@ export class PtSuguruBoard extends PtBoard {
     }
 
     /**
-     * Accepts a digit only up to the *selected cell's own* region size, not the puzzle's full
+     * Accepts a digit only up to the selected cell's own region size, not the puzzle's full
      * alphabet: a 3-cell region never takes a 4, even on a grid whose largest region is a 6
-     * (ADR-0019). doc.meta.alphabet alone would let a key past that cell's own region through, since
-     * it is sized to the puzzle's largest region rather than this one.
+     * (ADR-0019). doc.meta.alphabet alone, sized to the largest region, would let a bigger key
+     * through.
      */
     valueForKey(key) {
         if (!this.doc.meta.alphabet.includes(key)) return null;

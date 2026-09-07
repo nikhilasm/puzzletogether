@@ -1,15 +1,7 @@
 /**
- * How the puzzle on screen is solved, over the grid it is about.
- *
- * A dialog rather than a panel, for the reason the clue list is one (design-spec.md §4): this is
- * read once and then not wanted again, and a permanent block of prose beside a grid would cost the
- * grid width on every solve to answer a question asked on the first.
- *
- * Built on the native <dialog>, like <pt-confirm>, <pt-about>, and <pt-clue-list>, so focus
- * trapping, Escape, and the inert backdrop come from the platform.
- *
- * It holds nothing and knows no puzzle types: it is given one and renders that type's entry from
- * help-text.js, which is what keeps adding a type out of this file.
+ * How the puzzle on screen is solved, over the grid it is about, as a dialog rather than a panel
+ * since it is read once (design-spec.md §4). Built on the native dialog like pt-confirm, and holds
+ * nothing: it renders the given type's entry from help-text.js.
  */
 
 import { LitElement, css, html, nothing } from 'lit';
@@ -31,12 +23,8 @@ export class PtHelp extends LitElement {
         controls,
         iconStyle,
         css`
-            /*
-             * No position here, for the reason pt-about records: a modal is centred by the UA's own
-             * dialog:modal rule, and setting position on it puts the panel in the document rather
-             * than the viewport, where on a scrolled phone it opens off screen. The close button
-             * takes its containing block from .sheet instead.
-             */
+            /* No position here (see pt-about): setting it would centre the modal in the document
+               rather than the viewport, so on a scrolled phone it opens off screen. */
             dialog {
                 max-width: 30rem;
                 max-height: 80vh;
@@ -65,11 +53,8 @@ export class PtHelp extends LitElement {
                 padding: var(--space-6);
             }
 
-            /*
-             * The heading names the type, because this is the one place in the app where the word
-             * Kakuro is the subject rather than a setting. Padded clear of the close control so a
-             * long name cannot run underneath it.
-             */
+            /* The heading names the type, padded clear of the close control so a long name cannot
+               run underneath it. */
             h2 {
                 margin: 0 0 var(--space-4);
                 padding-right: var(--space-8);
@@ -142,11 +127,8 @@ export class PtHelp extends LitElement {
                 line-height: 1.55;
             }
 
-            /*
-             * The close control, in the corner rather than on a row of its own, like pt-about's.
-             * This dialog asks nothing, so a pair of buttons at the foot would be one button
-             * pretending to be a choice.
-             */
+            /* The close control in the corner rather than on a row of its own (like pt-about's),
+               since this dialog asks nothing. */
             .close {
                 position: absolute;
                 top: var(--space-3);

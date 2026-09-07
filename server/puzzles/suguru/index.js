@@ -1,10 +1,8 @@
 /**
  * The suguru puzzle module: the four methods every puzzle type implements (design-spec.md §7).
- *
- * Completion and checking are the shared value-grid implementations, since a suguru cell holds one
- * digit compared against one solution digit exactly as a sudoku cell does. What is suguru's own is
- * the region partition, and the one rule no other type has: a value bounded by the size of the
- * region a cell sits in rather than by one puzzle-wide alphabet (ADR-0019).
+ * Completion and checking are the shared value-grid implementations; what is suguru's own is the
+ * region partition and its one unique rule, a value bounded by the size of the cell's region rather
+ * than by one puzzle-wide alphabet (ADR-0019).
  */
 
 import { randomUUID } from 'node:crypto';
@@ -19,22 +17,16 @@ import { generateSuguru } from './generate.js';
 const DOC_VERSION = 1;
 
 /**
- * Grid sides this module generates.
- *
- * The floor is where a hard region-size distribution, up to 6-cell regions, stops fitting the grid
- * comfortably; the ceiling is where the dig loop's per-removal uniqueness check, a full backtracking
- * search over the whole grid rather than one run or one cage, starts to cost real time. Measured the
- * same way kenken's and kakuro's ranges were, in suguru.test.js's timing case.
+ * Grid sides this module generates. The floor is where up to 6-cell regions stop fitting comfortably;
+ * the ceiling is where the dig loop's per-removal uniqueness check starts to cost real time.
  */
 const MIN_SIDE = 5;
 const MAX_SIDE = 9;
 
 /**
- * A region size to cell index lookup, cached per document.
- *
- * ADR-0019: a cell's legal digits are bounded by its own region's size, not by doc.meta.alphabet,
- * which stays the puzzle's full display range. Built once per document rather than searched per
- * op, the server-side twin of pt-suguru-board.js's own cache.
+ * A region size to cell index lookup, cached per document. A cell's legal digits are bounded by its
+ * own region's size, not by doc.meta.alphabet (ADR-0019), so this is built once per document rather
+ * than searched per op, the server-side twin of pt-suguru-board.js's cache.
  */
 const sizeCache = new WeakMap();
 
@@ -102,14 +94,10 @@ export default {
     },
 
     /**
-     * Whether an op is legal against this document: the cell exists, is editable, and any value is
-     * one digit no larger than the size of the cell's own region.
-     *
-     * `doc.meta.alphabet` is not enough on its own here, unlike every other digit type: it is the
-     * puzzle's full display range, sized to its largest region, and a smaller region's cells accept
-     * a strict subset of it (ADR-0019). The length check still carries its usual weight: since
-     * ADR-0007 the schema admits values up to 8 characters, so this is what holds a suguru cell to a
-     * single digit.
+     * Whether an op is legal against this document: the cell exists, is editable, and any value is one
+     * digit no larger than the size of the cell's own region. doc.meta.alphabet is the puzzle's full
+     * display range, so a smaller region's cells accept a strict subset of it (ADR-0019), and the
+     * length check holds a cell to one digit since the schema admits up to 8 characters (ADR-0007).
      *
      * @param {import('../../../shared/protocol.js').PuzzleDoc} doc - The puzzle document.
      * @param {import('../../../shared/protocol.js').Op} op - A schema-validated op.

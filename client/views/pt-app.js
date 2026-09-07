@@ -90,17 +90,9 @@ export class PtApp extends LitElement {
                 color: var(--accent);
             }
 
-            /*
-             * The room's own facts, boxed together: which room this is, how full it is, and who is
-             * in it. They were three things stacked down the middle of the page with nothing saying
-             * they belonged to each other, and the roster in particular read as a second screen
-             * above the real one.
-             *
-             * Subtle on purpose: a rule and nothing else. It takes the page's own background rather
-             * than the raised paper: a filled box reads as a card to be dealt with, and this is a
-             * caption on the room. The puzzle under it is what the page is about, and it sits close
-             * enough underneath to be read as the next thing rather than the next screen.
-             */
+            /* The room's own facts (code, seat count, roster) boxed together with a rule and the
+               page's own background, so it reads as a caption on the room rather than a second
+               screen. */
             .room-panel {
                 max-width: 420px;
                 margin: 0 auto var(--space-4);
@@ -109,13 +101,8 @@ export class PtApp extends LitElement {
                 border-radius: var(--radius-control);
             }
 
-            /*
-             * Code at one end, seats at the other, on the line above the roster.
-             *
-             * Centred rather than aligned on their baselines: the two are set several steps apart on
-             * the type scale, and a shared baseline hung the smaller of them off the bottom of the
-             * line. Nothing here is prose, so there is no baseline to keep.
-             */
+            /* Code at one end, seats at the other, centred rather than baseline-aligned since the
+               two are several steps apart on the type scale. */
             .room-head {
                 display: flex;
                 gap: var(--space-3);
@@ -136,13 +123,8 @@ export class PtApp extends LitElement {
                 color: var(--accent);
             }
 
-            /*
-             * The seat count, unlabelled.
-             *
-             * It sits at the top of the roster it counts, so a word saying so would be saying it
-             * twice, and "2/8" is not ambiguous in a box whose other half is a room code.
-             * Screen readers get the sentence the sighted reading gets from the layout.
-             */
+            /* The seat count, unlabelled since it sits atop the roster it counts and screen readers
+               get the sentence from the aria-label. */
             .count {
                 color: var(--graphite);
                 font-size: var(--text-sm);
@@ -153,16 +135,8 @@ export class PtApp extends LitElement {
                 margin-bottom: var(--space-12);
             }
 
-            /*
-             * The app's own controls, and the three ways out of it, on one bar.
-             *
-             * Everything above the footer belongs to a room or a puzzle. What is left down here is
-             * the handful of things that are true of the *app*: how it looks, what it is, what it
-             * has been, where it came from, where to say it is broken, and who made it.
-             *
-             * The version line that used to be here has moved into About, where it sits with the
-             * rest of the answer to the question it was half of.
-             */
+            /* The app's own controls and the ways out of it, the handful of things true of the app
+               rather than of a room or puzzle. */
             footer {
                 display: flex;
                 flex-direction: column;
@@ -173,23 +147,9 @@ export class PtApp extends LitElement {
                 font-size: var(--text-sm);
             }
 
-            /*
-             * One panel across the column, not a row of separate buttons (ADR-0023).
-             *
-             * The controls in it are peripheral and unrelated to each other; six outlined boxes
-             * side by side read as six decisions of the same weight as the puzzle's own actions.
-             * Drawn as divisions of one surface they read as what they are: the strip the app keeps
-             * its own switches on.
-             *
-             * Capped at 22rem, the width the footer's bar has always taken, rather than left to the
-             * column. Across the full 640px these are six small drawings adrift in a wide empty
-             * rule, which makes the quietest thing on the page the widest.
-             *
-             * No padding of its own: the controls run edge to edge and their own 2.75rem is the
-             * whole of the panel's height. A ring of padding around a strip of icons is 8px of
-             * nothing, and this bar is a footnote to the page rather than a surface holding
-             * anything.
-             */
+            /* One panel across the column rather than a row of separate buttons (ADR-0023), capped
+               at 22rem and with no padding of its own, so the peripheral controls read as divisions
+               of one surface rather than decisions of the puzzle's weight. */
             .toolbar {
                 display: flex;
                 width: 100%;
@@ -207,11 +167,8 @@ export class PtApp extends LitElement {
                 min-width: 0;
             }
 
-            /*
-             * A division of the panel rather than a button on it: no border, no ground, and no
-             * radius until it is pressed. The panel is the box; drawing a second one inside it is
-             * what made the old footer read as a row of separate controls.
-             */
+            /* A division of the panel rather than a button on it: no border, ground, or radius until
+               pressed, since the panel is the box. */
             .tool {
                 display: flex;
                 flex: 1 1 auto;
@@ -231,12 +188,9 @@ export class PtApp extends LitElement {
                 -webkit-tap-highlight-color: transparent;
             }
 
-            /*
-             * A fixed 1.25rem, for the reason .action's icons are a fixed 1rem: nothing in a strip
-             * of controls wants to scale with whatever type size it inherits. Larger than the
-             * panel's, because here the drawing is the whole of the control and there is no word
-             * under it to be read instead.
-             */
+            /* A fixed 1.25rem (see .action) since a strip of controls should not scale with
+               inherited type, larger than the panel's because the drawing is the whole control
+               here. */
             .tool .icon {
                 width: 1.25rem;
                 height: 1.25rem;
@@ -248,12 +202,8 @@ export class PtApp extends LitElement {
                 }
             }
 
-            /*
-             * What answers a tap, since a touch browser has no hover to give and the tooltip stands
-             * down there too. Mixed into --paper-raised, never into transparent: the page's texture
-             * is drawn behind everything, and a control is a surface laid on the page rather than a
-             * window onto it (brand.md §4).
-             */
+            /* What answers a tap where a touch browser has no hover, mixed into --paper-raised so the
+               page texture does not show through (brand.md §4). */
             .tool:active {
                 background: color-mix(in srgb, var(--ink) 10%, var(--paper-raised));
                 color: var(--ink);
@@ -265,18 +215,9 @@ export class PtApp extends LitElement {
                 font-style: italic;
             }
 
-            /*
-             * Room at the very foot of the page for the game screen's pinned input panel.
-             *
-             * It belongs here rather than inside the game screen because the panel is fixed to the
-             * viewport and covers *everything* the page ends with, and the page does not end with
-             * the game screen: it ends with the footer and the theme switch in it. A spacer inside
-             * the game screen reserved room above the footer and left the switch underneath the
-             * keys, unclickable at every scroll position.
-             *
-             * The height is the panel's own measurement, arriving as an event from two shadow roots
-             * down; 0 whenever no panel is on screen, which is every screen but the game.
-             */
+            /* Room at the foot of the page for the game screen's pinned panel, reserved here rather
+               than in the game screen since the fixed panel covers the footer the page actually ends
+               with. */
             .panel-space {
                 flex: none;
             }
@@ -346,13 +287,10 @@ export class PtApp extends LitElement {
     }
 
     /**
-     * Applies the current hash: entering a room URL without a live seat attempts a token restore,
-     * and falls back to the landing screen when there is no token to restore from.
-     *
-     * Navigating *away* from a room, most often with the browser's back button, gives up the seat. The
-     * alternative is a player sitting on the landing screen while the room still lists them as
-     * present, which is the ghost-player bug in a new costume. A reload is not this path: it never
-     * fires hashchange, so a refresh mid-solve still restores from the token.
+     * Applies the current hash: a room URL without a live seat attempts a token restore, falling
+     * back to the landing screen. Navigating away from a room gives up the seat, or the room would
+     * still list the player as present; a reload never fires hashchange, so it still restores from
+     * the token.
      */
     #applyRoute() {
         this.route = parseHash();
@@ -382,12 +320,9 @@ export class PtApp extends LitElement {
             <footer>
                 <div class="toolbar">
                     <!--
-                      An action, not a toggle. "Dark theme, pressed" was a state to be read; this is
-                      a button that does one thing, so it says which thing and wears the icon of the
-                      theme it would leave you in. That also settles which of the two icons to draw,
-                      which as a toggle was genuinely ambiguous: the sun could as easily have meant
-                      "you are in light" as "press for light", and it meant the first. The tooltip
-                      is the destination for the same reason the icon is.
+                      An action, not a toggle: the button wears the icon of the theme it would leave
+                      you in and says so, which also settles which of the two icons to draw. The
+                      tooltip is the destination for the same reason.
                     -->
                     <pt-tooltip .text=${this.#themeDestination}>
                         <button
@@ -490,11 +425,9 @@ export class PtApp extends LitElement {
     }
 
     /**
-     * Leaves the ended room's URL behind, once the player has read why they are out of it.
-     *
-     * The route is what would otherwise keep offering to rejoin: the hash still names a room whose
-     * seat is gone, and for a room that was collected there is nothing there to rejoin. This is
-     * where Leave Room lands too, which is the point: however a seat ends, it ends in one place.
+     * Leaves the ended room's URL behind, once the player has read why they are out of it, or the
+     * hash would keep offering to rejoin a room whose seat is gone. This is where Leave Room lands
+     * too: however a seat ends, it ends in one place.
      */
     #onSeatEndedClose() {
         window.location.hash = '#/';
@@ -512,12 +445,8 @@ export class PtApp extends LitElement {
     }
 
     /**
-     * Whether a panel is on screen at all, which is to say whether the game screen is.
-     *
-     * Asked rather than remembered, because a panel that leaves takes its last measurement with it:
-     * it is removed from the page before it could report a height of zero, and an element already
-     * detached cannot dispatch anything that would reach here. Without this, going back to Puzzle
-     * Select left a keypad's worth of empty page under the footer.
+     * Whether a panel is on screen at all, which is to say whether the game screen is. Asked rather
+     * than remembered, since a panel that leaves is removed before it can report a height of zero.
      */
     get #showsPanel() {
         const room = this.#room.state.room;
@@ -566,13 +495,10 @@ export class PtApp extends LitElement {
     }
 
     /**
-     * The room panel (code, seat count, roster), shown on every screen inside a room and on none
-     * outside one, so navigating away cannot leave a roster stranded above the landing form.
-     *
-     * The count is drawn here rather than by <pt-player-chips>, where it used to live as a
-     * heading. It is a fact about the *room* (how many seats are taken of how many there are), it
-     * belongs on the same line as the room code, and the roster below it is now free to be nothing
-     * but the roster.
+     * The room panel (code, seat count, roster), shown on every screen inside a room and none
+     * outside, so navigating away cannot strand a roster above the landing form. The count is drawn
+     * here rather than by pt-player-chips, since it is a fact about the room and belongs beside the
+     * code.
      */
     #renderRoom() {
         const { room, playerId } = this.#room.state;

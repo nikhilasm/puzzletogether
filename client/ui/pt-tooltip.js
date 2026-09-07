@@ -1,22 +1,8 @@
 /**
- * A one- or two-word name for the control it wraps, shown while a pointer rests on it.
- *
- * It exists for the footer's toolbar, whose controls are icon-only (ADR-0023). It is not the
- * accessible name and never the only place the name lives: the control inside it carries an
- * aria-label, so a screen reader gets the word whether or not anything is drawn, and the bubble is
- * aria-hidden so nobody hears it twice.
- *
- * **Pointer only, by design.** A touch browser emulates hover on whatever was tapped last and holds
- * it (controls.js), so on a phone this would be a label stuck over the last button pressed. The
- * hover query is checked in JavaScript rather than in CSS because what it gates is a state, not a
- * rule. Keyboard focus shows it too, which gives a keyboard the same reading a mouse gets; a mouse
- * click focuses the control as well, so the focus path is gated on focus-visible to leave that out.
- *
- * No shadow: there is exactly one in this app and it is under the congrats modal (brand.md §4). A
- * bubble on the page is a surface like any other, so it is an opaque ground inside a 1.5px rule.
- *
- * It is centred on its control and stays centred; the only thing that moves it is a viewport edge
- * it would otherwise hang off, and then by the overhang and nothing more.
+ * A one- or two-word name for the control it wraps, shown while a pointer rests on it, for the
+ * footer's icon-only toolbar (ADR-0023). Not the accessible name, which the control's own aria-label
+ * carries; pointer and keyboard-focus only, since a touch browser's stuck hover would leave it over
+ * the last button tapped.
  */
 
 import { LitElement, css, html, nothing } from 'lit';
@@ -38,12 +24,8 @@ export class PtTooltip extends LitElement {
      */
     static styles = [
         css`
-            /*
-             * The wrapper is the flex item its control used to be, so it takes the sizing rules the
-             * bar sets and passes the width down. Not display: contents, which is what a wrapper
-             * around a single control usually wants: the bubble is positioned against this box, and
-             * an element with no box has nothing to position against.
-             */
+            /* The wrapper is the flex item its control used to be, not display: contents, since the
+               bubble is positioned against this box. */
             :host {
                 position: relative;
                 display: flex;
@@ -54,11 +36,8 @@ export class PtTooltip extends LitElement {
                 flex: 1 1 auto;
             }
 
-            /*
-             * Centred over the control it names, always. --nudge is 0 except on the one bubble a
-             * narrow viewport would otherwise push off the side of the page, which measures itself
-             * and shifts by exactly the overhang; see clamp below.
-             */
+            /* Centred over the control it names, with --nudge shifting only a bubble a narrow
+               viewport would push off the page (see clamp). */
             .bubble {
                 position: absolute;
                 bottom: calc(100% + var(--space-2));
@@ -119,13 +98,9 @@ export class PtTooltip extends LitElement {
     }
 
     /**
-     * Shows the bubble for focus, but only when the focus is keyboard focus.
-     *
-     * A mouse click focuses the control it lands on, so showing on every focusin left the bubble
-     * stuck over a button the pointer had already left, and stuck again when focus returned to it
-     * after a modal it opened closed. focus-visible is exactly the line we want: it is set for the
-     * keyboard reading this path exists to give and clear for the pointer that the hover path
-     * already covers.
+     * Shows the bubble for focus, but only keyboard focus. A mouse click focuses its control too, so
+     * focus-visible is the line that gives a keyboard the reading while leaving the pointer to the
+     * hover path.
      *
      * @param {FocusEvent} event The focusin, whose target is the control that gained focus.
      */
@@ -147,16 +122,9 @@ export class PtTooltip extends LitElement {
     }
 
     /**
-     * Shifts the bubble back inside the viewport, by the overhang and no more.
-     *
-     * A bubble is centred on a control that may sit a few pixels from the edge of a phone screen,
-     * and "Report issue" is wider than the control it names, so centring alone would hang it off
-     * the side and give the page a horizontal scroll, which is the one thing the layout may not do
-     * (brand.md §7). Measured rather than declared per control: what overhangs depends on how many
-     * controls share the bar, how wide the word is, and how wide the screen is, and only the
-     * element itself knows all three at the moment it appears.
-     *
-     * clientWidth rather than window.innerWidth, which counts the scrollbar the page cannot use.
+     * Shifts the bubble back inside the viewport by the overhang and no more, since a centred bubble
+     * wider than its control would hang off a phone edge and give the page a horizontal scroll
+     * (brand.md §7). Measured rather than declared, using clientWidth so it excludes the scrollbar.
      */
     #clamp() {
         const bubble = this.renderRoot.querySelector('.bubble');

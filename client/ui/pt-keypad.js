@@ -1,29 +1,8 @@
 /**
- * The input panel: the keys this puzzle is typed with, the actions that act on a square, and, for a
- * crossword, the clue being worked. Pinned to the bottom of the screen for every puzzle type.
- *
- * **Fixed rather than laid out with the page**, which is the whole point of it (ADR-0010). A control
- * in the flow is a control that scrolls away, and a big grid on a small screen has to be scrolled: a
- * 15×15 crossword and a 20×20 nonogram are both taller than a phone. Pinning the keys means the grid
- * above them can be scrolled and read freely while the ability to type never goes anywhere.
- *
- * Everything that acts on a *square* is here: keys, Erase, Undo, and whatever setting changes what
- * a key means. Everything that acts on the *puzzle*, meaning Check, Reveal, and Puzzle Select,
- * stays down the page. That is the separation §4 draws, expressed as two kinds of place rather than
- * as a rule under a hairline.
- *
- * Two slots, both above the keys, because what goes in them differs per type and this element has no
- * business knowing which type it is serving: clue for the strip a crossword shows, and actions
- * for its one setting: Notes, a brush, Rebus. Erase, Backspace, and Undo are rendered here instead
- * of slotted because they mean the same thing in every puzzle that has keys at all.
- *
- * **Every control in the bar carries a one-word label under its icon**, and the bar is always one
- * row (ADR-0012). The panel's height is set by the rows of keys below the bar, so a shorter bar
- * only leaves a gap above them; what makes the bar wrap is laying it out to shrink-to-fit rather
- * than to share the row.
- *
- * It also reports its own height, since it is out of the flow and so cannot push the page down
- * itself; the game screen keeps a spacer that tall at the foot of the page.
+ * The input panel: the keys this puzzle is typed with, the actions that act on a square, and a
+ * crossword's current clue, pinned to the bottom for every type (ADR-0010). Everything acting on a
+ * square is here while Check, Reveal, and Puzzle Select stay down the page; it reports its own
+ * height since it is out of the flow (ADR-0012, design-spec.md §4).
  */
 
 import { LitElement, css, html, nothing } from 'lit';
@@ -33,12 +12,8 @@ import { actionButton, focusRing } from '../styles/controls.js';
 import { backspaceIcon, eraseIcon, iconStyle, undoIcon } from './icons.js';
 
 /**
- * The letter keys, in the order every phone puts them.
- *
- * QWERTY and not A–Z. Alphabetical rows are easier to *search*, which sounds like the right thing
- * until you notice nobody searches a keyboard they have used ten thousand times: the muscle memory
- * a solver already has is worth more than any arrangement we could reason our way to, and it is the
- * one thing an on-screen pad can borrow from the platform keyboard it replaces.
+ * The letter keys, in the order every phone puts them. QWERTY not A to Z, since a solver's muscle
+ * memory is worth more than the easier search of alphabetical rows.
  */
 const LETTER_ROWS = ['QWERTYUIOP', 'ASDFGHJKL', 'ZXCVBNM'];
 
@@ -60,13 +35,8 @@ export class PtKeypad extends LitElement {
         focusRing,
         iconStyle,
         css`
-            /*
-             * Pinned to the bottom of the viewport, over whatever the page has scrolled to.
-             *
-             * The safe-area padding is for the iPhone home indicator, which draws over the bottom
-             * few millimetres of the screen; without it the last row of keys is under the bar the
-             * player swipes to leave the app, and the two gestures fight.
-             */
+            /* Pinned to the bottom of the viewport, with safe-area padding so the last row of keys
+               clears the iPhone home indicator. */
             :host {
                 position: fixed;
                 right: 0;
@@ -93,17 +63,8 @@ export class PtKeypad extends LitElement {
                 display: contents;
             }
 
-            /*
-             * The button bar: this puzzle's setting, then the actions every keyed puzzle has.
-             *
-             * **One row, always, and no wrapping.** The controls share the row rather than each
-             * taking the width of its own word, so the bar's height does not depend on how long the
-             * longest label happens to be, which is what makes it wrap. Four of them is the most
-             * any type asks for, and four fit 320px with room over.
-             *
-             * align-items: stretch so a two-line label somewhere would not leave the others short;
-             * nothing here has one, and that is a property worth not relying on.
-             */
+            /* The button bar, always one row: the controls share the row rather than each taking its
+               label's width, so four fit 320px without wrapping. */
             .actions {
                 display: flex;
                 gap: var(--space-2);
@@ -117,17 +78,8 @@ export class PtKeypad extends LitElement {
                 gap: var(--space-2);
             }
 
-            /*
-             * The letter rows: every key the same width, every row centred under the one above.
-             *
-             * Flex rather than a column grid. Each key takes exactly the width it would have had in
-             * a ten-key row, which is what the arithmetic below solves for, and justify-content:
-             * center centres the shorter rows against it. The rows do not line up on a common
-             * column grid, which is what a real keyboard does too.
-             *
-             * A grid could not centre a short row within itself: with Backspace gone from the
-             * bottom row, its seven keys sat well left of centre.
-             */
+            /* The letter rows, flex rather than a column grid so each key takes a ten-key row's
+               width and the shorter rows centre under it, as a real keyboard does. */
             .letters {
                 display: flex;
                 flex-direction: column;
@@ -163,16 +115,16 @@ export class PtKeypad extends LitElement {
                 -webkit-tap-highlight-color: transparent;
             }
 
-            /* Behind the hover gate like every other hover rule in the app; see controls.js.
-               Ungated, a tapped key kept its accent border until the next tap landed. */
+            /* Behind the hover gate like every hover rule in the app, or a tapped key keeps its
+               accent border until the next tap (see controls.js). */
             @media (hover: hover) {
                 button:hover:not(:disabled) {
                     border-color: var(--accent);
                 }
             }
 
-            /* What a tap gets instead: a ground under the finger, gone on release. These keys are
-               the most-tapped thing in the app and were the loudest case of the stuck border. */
+            /* A ground under the finger instead, gone on release, on the most-tapped thing in the
+               app. */
             button:active:not(:disabled) {
                 background: color-mix(in srgb, var(--ink) 10%, var(--paper-raised));
             }
@@ -189,8 +141,8 @@ export class PtKeypad extends LitElement {
                 cursor: default;
             }
 
-            /* Below this the digits wrap to roughly half as many columns, to keep tap targets big.
-               The letter rows do not wrap: they are already sized to the narrowest screen. */
+            /* Below this the digits wrap to roughly half as many columns to keep tap targets big;
+               the letter rows are already sized to the narrowest screen. */
             @media (max-width: 30rem) {
                 .digits {
                     grid-template-columns: repeat(var(--keypad-cols-narrow, 5), minmax(0, 1fr));
@@ -216,13 +168,9 @@ export class PtKeypad extends LitElement {
     }
 
     /**
-     * Reports how much of the screen this panel is covering.
-     *
-     * It is position: fixed, so it takes no room in the flow and the last few rems of the page
-     * would sit underneath it; on the game screen that is Leave room. The owner puts a spacer this
-     * tall at the foot of the page instead. Measured rather than declared because the height is not
-     * knowable in advance: a crossword's panel is three rows of letters and a clue taller than a
-     * sudoku's, and the button bar wraps on a narrow screen.
+     * Reports how much of the screen this panel is covering, since it is position: fixed and takes
+     * no room in the flow, so the owner keeps a spacer this tall at the foot of the page. Measured
+     * rather than declared, since a crossword's panel is taller than a sudoku's.
      */
     firstUpdated() {
         if (typeof ResizeObserver === 'undefined') return;
@@ -245,10 +193,8 @@ export class PtKeypad extends LitElement {
     }
 
     /**
-     * Keeps the grid's keyboard focus where it is when a key is tapped.
-     *
-     * Without this the grid blurs, arrow keys stop working after any keypad press, and on touch the
-     * selection appears to jump. Click and keyboard activation are unaffected.
+     * Keeps the grid's keyboard focus where it is when a key is tapped. Without this the grid blurs
+     * and arrow keys stop working after any keypad press.
      */
     #onPointerDown(event) {
         event.preventDefault();
@@ -260,22 +206,10 @@ export class PtKeypad extends LitElement {
     }
 
     /**
-     * The clue strip, the button bar, and the keys, in that order, bottom-anchored.
-     *
-     * The keys go last so they sit closest to the thumb, which is the busiest thing here by an order
-     * of magnitude. Everything above them is read between keystrokes rather than during them.
-     *
-     * A puzzle with no keys at all still gets the button bar, because **Undo belongs to every type**.
-     * Erase does not: it clears the selected square, which is the counterpart to pressing a key into
-     * it, so a type with no keys has no use for it: nonogram erases by dragging with its erase
-     * brush, and a second Erase here would be a different gesture wearing the same word.
-     *
-     * **A crossword gets Backspace in the bar instead of Erase**, and it is in the bar rather than on
-     * the pad. It used to take the corner of the bottom letter row, which is where a phone keyboard
-     * puts it, but a phone keyboard's ⌫ is a key among keys and ours is not: it clears a square and
-     * steps back along the entry, which is the same kind of thing Erase and Undo are and a different
-     * kind of thing from pressing a letter. Moving it up puts every control that acts on a square in
-     * one place and leaves the pad as nothing but letters.
+     * The clue strip, the button bar, and the keys, in that order, bottom-anchored so the keys sit
+     * closest to the thumb. Every type gets Undo in the bar, a keyed type gets Erase, and a
+     * crossword gets Backspace there instead, since all three act on a square rather than being a
+     * letter.
      */
     render() {
         const letters = this.layout === 'letters';
@@ -295,12 +229,8 @@ export class PtKeypad extends LitElement {
     }
 
     /**
-     * Undo, which every type has and which is therefore the one fixed point in the bar.
-     *
-     * A digit puzzle ends the row with it; a crossword puts Backspace after it. Backspace is the
-     * one control here a solver reaches for *mid-word*, so it sits at the end of the row nearest
-     * the letters it corrects, and Undo, pressed occasionally and about the puzzle rather than
-     * about the square, moves inboard.
+     * Undo, which every type has and which is the one fixed point in the bar. A crossword puts
+     * Backspace after it, since that is reached for mid-word while Undo is pressed occasionally.
      */
     #renderUndo() {
         return html`
@@ -347,9 +277,7 @@ export class PtKeypad extends LitElement {
 
     /**
      * The three QWERTY rows: letters and nothing else, since Backspace lives in the button bar.
-     *
-     * Rows are filtered by the puzzle's alphabet rather than drawn as written, so a key the puzzle
-     * would refuse is never offered. For every crossword we serve that filter is the identity.
+     * Rows are filtered by the puzzle's alphabet, so a key the puzzle would refuse is never offered.
      */
     #renderLetters() {
         const allowed = this.alphabet === '' ? null : [...this.alphabet];

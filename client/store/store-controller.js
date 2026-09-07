@@ -1,9 +1,7 @@
 /**
  * The bridge between RoomStore and Lit: a ReactiveController that re-renders its host when the
- * slice of state that host cares about changes.
- *
- * The selector matters for more than tidiness. Focus updates arrive at ~10/s per player, and a
- * component subscribed to the whole store would re-render on every one (architecture.md §6).
+ * host's selected slice of state changes. The selector matters: focus updates arrive at ~10/s per
+ * player, and a whole-store subscription would re-render on every one (architecture.md §6).
  */
 
 /**

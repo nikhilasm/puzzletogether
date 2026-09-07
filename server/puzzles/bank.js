@@ -1,19 +1,8 @@
 /**
- * The file-backed puzzle provider: crossword's half of the supply split (ADR-0004).
- *
- * A generator is asked for a puzzle and makes one. A bank is asked and *finds* one, which makes it a
- * different shape of thing in three ways this module has to answer for:
- *
- * - **Its content is finite and knowable**, so it publishes a catalog and the picker offers what
- *   exists rather than what a constant hoped would exist.
- * - **Its content can be wrong.** A generator's output is correct by construction; a file can be
- *   hand-edited, half-merged, or written by an importer with a bug. Every file is validated on the
- *   way in, including re-deriving its numbering from its own grid.
- * - **Its content repeats.** Thirty puzzles run out, and a room that is handed the puzzle it just
- *   solved will read the button as broken, so take is told what a room has already seen.
- *
- * Loaded once at boot and held in memory. The bank is a few hundred KB at the sizes involved, and
- * re-reading it per puzzle would put file I/O in the path of a host pressing "start".
+ * The file-backed puzzle provider: crossword's half of the supply split (ADR-0004). Unlike a
+ * generator, a bank's content is finite and knowable (so it publishes a catalog), can be wrong (so
+ * every file is validated on load), and repeats (so take is told what a room has seen); loaded once
+ * at boot and held in memory.
  */
 
 import { existsSync, readFileSync } from 'node:fs';
@@ -35,11 +24,9 @@ const puzzles = new Map();
 let loaded = false;
 
 /**
- * Validates one bank file, returning the first thing wrong with it.
- *
- * Deliberately thorough about the grid and silent about the writing. Whether a clue is *good* is not
- * a judgement available here; whether the entry it belongs to covers the squares the grid implies
- * very much is, and that is the failure that produces an unsolvable puzzle rather than a dull one.
+ * Validates one bank file, returning the first thing wrong with it. Thorough about the grid and
+ * silent about the writing, since a clue's quality is not checkable here but an entry that does not
+ * cover its squares makes the puzzle unsolvable.
  *
  * @param {any} file - The parsed contents of a bank file.
  * @returns {string|null} The reason to refuse it, or null when it is sound.
@@ -139,9 +126,9 @@ function readDir(dir) {
             continue;
         }
 
-        // One bad file is refused; the rest of the bank still loads. A single malformed puzzle
-        // taking the whole app down is a worse failure than serving 29 of 30. Said out loud,
-        // because a bank quietly one puzzle short is how this rots.
+        // One bad file is refused while the rest of the bank still loads, since serving 29 of 30
+        // beats the whole app going down. Said out loud, because a bank quietly one puzzle short is
+        // how this rots.
         const problem = validatePuzzle(parsed);
         if (problem) {
             log.warn('bank.puzzle.refused', { id: entry.id, reason: 'unsound', problem });
@@ -187,16 +174,10 @@ export function loadBank(dirs) {
 }
 
 /**
- * What the bank can actually serve, as Puzzle Select needs to offer it.
- *
- * **puzzles is the part that matters, and it is what a generator can never supply.** A bank's
- * content is finite and knowable, so the host picks a *puzzle* by title, by whoever wrote it, or by
- * where it came from, rather than describing one and hoping (ADR-0009). Sizes and difficulties are
- * still published beside it: they are what the room's settings record, and what "start another"
- * falls back to when the named puzzle has since gone.
- *
- * The solution is emphatically not in here. This is a browsing list, sent to every player on join,
- * and it carries only what is printed above a crossword in a newspaper.
+ * What the bank can actually serve, as Puzzle Select needs to offer it: chiefly the puzzle list a
+ * generator can never supply, so the host picks a puzzle by title rather than describing one
+ * (ADR-0009). The solution is not in here; this is a browsing list carrying only what is printed
+ * above a crossword in a newspaper.
  *
  * @returns {{ sizes: { rows: number, cols: number }[], difficulties: string[],
  *   puzzles: { id: string, title: string|null, author: string|null, source: string|null,
@@ -241,18 +222,10 @@ export function bankCatalog() {
 }
 
 /**
- * Picks a puzzle matching a request, preferring one the room has not seen.
- *
- * **A named id wins outright**, because the host picked that puzzle off a list rather than
- * describing one; honouring the description instead would hand back a different crossword from the
- * one whose title they pressed. It falls back to the description when the id names nothing, which is
- * a client holding a catalog older than the bank rather than a mistake worth failing a start over.
- *
- * Without an id the match loosens rather than failing. Size is honoured exactly, because a host who
- * asked for a 15×15 and got a mini has been given the wrong puzzle; difficulty is a preference,
- * because a bank of a dozen files cannot promise every combination and the document's own label is
- * what the game screen displays either way. That is the same bargain sudoku already makes when its
- * generator misses the requested band.
+ * Picks a puzzle matching a request, preferring one the room has not seen; a named id wins outright
+ * since the host chose that puzzle off a list, falling back to the description when the id names
+ * nothing. Without an id, size is honoured exactly while difficulty is a preference, the same
+ * bargain sudoku makes when its generator misses the band.
  *
  * @param {object} spec - What was asked for.
  * @param {string} [spec.id] - A specific puzzle the host chose off the catalog.

@@ -1,11 +1,7 @@
 /**
- * A player's own edit history: which cell they changed, and what it held before.
- *
- * Undo is per-player and forward-only (design-spec.md §6). There is no global history to rewind:
- * undoing emits a *new* op restoring the earlier value, so it is an ordinary edit that everyone
- * sees. That is why this stores pre-images rather than inverse ops, and why an entry is discarded
- * when somebody else has written to the cell since: rewinding over their work would be a worse
- * surprise than doing nothing.
+ * A player's own edit history: which cell they changed, and what it held before. Undo is per-player
+ * and forward-only, emitting a new op that restores the earlier value, so it stores pre-images and
+ * discards an entry once somebody else has written to the cell (design-spec.md §6).
  */
 
 import { UNDO_DEPTH } from '../../shared/constants.js';
@@ -99,12 +95,8 @@ export class UndoStack {
 
     /**
      * Removes and returns everything the most recent action wrote: one entry for an ordinary edit,
-     * the whole run for a drag.
-     *
-     * The depth limit can cut a group in half, leaving a drag that undoes the last few cells it
-     * painted and not the first few. That is the honest outcome: the older entries are genuinely
-     * gone, and the alternative is either lying about what can be undone or letting one long drag
-     * evict the entire history.
+     * the whole run for a drag. The depth limit can cut a group in half, the honest outcome since
+     * the older entries are genuinely gone.
      *
      * @returns {UndoEntry[]} The entries, newest first; empty when there is nothing left to undo.
      */

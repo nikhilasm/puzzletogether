@@ -1,10 +1,7 @@
 /**
- * The parser, and the real CHANGELOG.md held to the format it parses.
- *
- * The second half is the point of the file. parseChangelog skips what it does not recognise, which
- * is the right behaviour in front of a player and the wrong one at authoring time: a mistyped
- * heading would drop a release silently and nothing else in the repo looks at that file. So the
- * shipped changelog is asserted here, where a typo fails the gate instead of the dialog.
+ * The parser, and the real CHANGELOG.md held to the format it parses. parseChangelog skips what it
+ * does not recognise, so a mistyped heading would drop a release silently; the shipped changelog is
+ * asserted here, where a typo fails the gate instead of the dialog.
  */
 
 import { readFileSync } from 'node:fs';

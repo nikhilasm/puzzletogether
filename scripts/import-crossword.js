@@ -1,14 +1,7 @@
 /**
- * Converts a .puz or .ipuz crossword into a bank file (design-spec.md §8).
- *
- * Run by hand, never at boot. The bank the server reads is a directory of finished documents; this
- * is what produces one, and keeping the two apart is what lets the loader be a validator rather than
- * a compiler: a puzzle is converted once, by a person, and is thereafter just a file.
- *
- * **It refuses more than it converts, and that is the design.** A crossword that imports slightly
- * wrong is worse than one that does not import: a puzzle whose numbering is off by one is not a
- * harder puzzle, it is an unsolvable one, and it will be discovered by a room mid-solve rather than
- * here. So every doubt is an error with a reason attached.
+ * Converts a .puz or .ipuz crossword into a bank file (design-spec.md §8). Run by hand, never at boot,
+ * and it refuses more than it converts: a crossword that imports slightly wrong is worse than one that
+ * does not, so every doubt is an error with a reason attached.
  *
  * Usage:
  *   node scripts/import-crossword.js <file...> --out <dir> --license <text> [--difficulty <level>]
@@ -68,11 +61,9 @@ function readStrings(buffer, start, count) {
 }
 
 /**
- * Reads the optional extension sections that follow the strings.
- *
- * Each is a 4-character title, a little-endian length, a checksum this does not verify, then the
- * data and a NUL. Unknown sections are skipped by length rather than guessed at, which is what keeps
- * a file carrying something we have never heard of from becoming unreadable.
+ * Reads the optional extension sections that follow the strings. Each is a 4-character title, a
+ * little-endian length, a checksum this does not verify, then the data and a NUL; unknown sections are
+ * skipped by length rather than guessed at, so an unfamiliar one does not make the file unreadable.
  *
  * @param {Buffer} buffer - The whole file.
  * @param {number} start - Offset just past the last string.
@@ -205,22 +196,17 @@ function readPuz(buffer) {
 // ---------------------------------------------------------------------------------------------
 
 /**
- * Whether an .ipuz grid cell is a black square.
- *
- * 0 is deliberately **not** one. In .ipuz a zero means an open square that carries no number,
- * which is most of a crossword: reading it as a block turns every unnumbered square black and
- * leaves a grid of disconnected single letters.
+ * Whether an .ipuz grid cell is a black square. 0 is deliberately not one: in .ipuz a zero means an
+ * open square that carries no number, and reading it as a block would turn every unnumbered square
+ * black.
  */
 function isIpuzBlock(cell) {
     return cell === '#' || cell === null || cell?.cell === '#';
 }
 
 /**
- * Parses the crossword subset of .ipuz.
- *
- * A deliberate subset: .ipuz is a general puzzle container that can describe acrostics, sudoku,
- * and much else, and pretending to read all of it would mean pretending to convert files we cannot.
- * Anything outside plain crossword is refused by name.
+ * Parses the crossword subset of .ipuz. A deliberate subset, since .ipuz can describe acrostics,
+ * sudoku, and much else, so anything outside a plain crossword is refused by name.
  *
  * @param {string} text - The file's contents.
  * @returns {object} The same neutral shape readPuz returns.
@@ -301,12 +287,9 @@ function readIpuz(text) {
 // ---------------------------------------------------------------------------------------------
 
 /**
- * Turns a parsed puzzle into the document and solution a bank file holds.
- *
- * The numbering is derived here rather than read from the source, and then the clue count is checked
- * against it. That check is the whole reason to derive: if the grid implies 78 entries and the file
- * carries 76 clues, the two disagree about where the black squares are, and pairing them anyway
- * would silently shift every clue after the disagreement onto the wrong entry.
+ * Turns a parsed puzzle into the document and solution a bank file holds. The numbering is derived
+ * here and the clue count checked against it, since a grid and clue list that disagree about the black
+ * squares would silently shift every clue after the disagreement onto the wrong entry.
  *
  * @param {object} parsed - Output of readPuz or readIpuz.
  * @param {object} options - Identity and provenance for the bank.
@@ -438,11 +421,9 @@ export function readPuzzleFile(path) {
 export { readPuz, readIpuz, toBankFile, ImportError };
 
 /**
- * The command line: convert each file, refuse loudly, and report what happened.
- *
- * --license is required and is never inferred from the file's own copyright string. That is
- * ADR-0004's build/ship split made mechanical: the pipeline works on anything, and nothing reaches a
- * bank directory without a person having answered what may be served from it.
+ * The command line: convert each file, refuse loudly, and report what happened. --license is required
+ * and never inferred from the file's own copyright, ADR-0004's build/ship split made mechanical, so
+ * nothing reaches a bank directory without a person having answered what may be served from it.
  *
  * @returns {void}
  */

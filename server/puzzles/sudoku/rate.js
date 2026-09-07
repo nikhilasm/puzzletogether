@@ -1,9 +1,7 @@
 /**
- * Difficulty rating by the techniques a logical solver needs (design-spec.md §8).
- *
- * Rating is a property of the puzzle, not of the clue count: a 30-clue grid needing an X-wing is
- * harder than a 24-clue grid that falls to singles. Only the techniques below are implemented;
- * anything a human would need beyond them rates hard.
+ * Difficulty rating by the techniques a logical solver needs (design-spec.md §8): rating is a
+ * property of the puzzle, not the clue count. Only the techniques below are implemented; anything
+ * beyond them rates hard.
  */
 
 import { createDims } from './solver.js';

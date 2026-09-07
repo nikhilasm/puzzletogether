@@ -1,9 +1,7 @@
 /**
  * The kenken puzzle module: the four methods every puzzle type implements (design-spec.md §7).
- *
- * The whole server-side cost of the type. Completion and checking are the shared value-grid
- * implementations, since a kenken cell holds one digit compared against one solution digit exactly
- * as a sudoku cell does, so the only thing written here is what makes kenken kenken: cages.
+ * Completion and checking are the shared value-grid implementations, so the only thing written here
+ * is what makes kenken kenken: cages.
  */
 
 import { randomUUID } from 'node:crypto';
@@ -23,11 +21,9 @@ const MIN_SIDE = 4;
 const MAX_SIDE = 7;
 
 /**
- * The doc's cell list: every cell editable, with the clue drawn on each cage's top-left cell.
- *
- * A kenken has **no givens**. Even a single-cell cage is a clue the player writes in rather than a
- * digit the puzzle has filled for them, which is why the target lives in meta and given stays
- * null across the whole grid.
+ * The doc's cell list: every cell editable, with the clue drawn on each cage's top-left cell. A
+ * kenken has no givens, since even a single-cell cage is a clue the player writes in, so given stays
+ * null across the grid.
  */
 function toDocCells(total, cages) {
     const labels = new Array(total).fill(null);
@@ -79,11 +75,8 @@ export default {
 
     /**
      * Whether an op is legal against this document: the cell exists, is editable, and any value is
-     * one character of the puzzle's alphabet.
-     *
-     * The length check carries real weight: since ADR-0007 the schema admits values up to 8
-     * characters, so this method is the only thing keeping a kenken cell to a single digit. See the
-     * same note in the sudoku module for why alphabet.includes(value) alone was not enough.
+     * one character of the alphabet. The length check carries real weight, since the schema admits
+     * up to 8 characters (ADR-0007), so this is the only thing keeping a kenken cell to one digit.
      *
      * @param {import('../../../shared/protocol.js').PuzzleDoc} doc - The puzzle document.
      * @param {import('../../../shared/protocol.js').Op} op - A schema-validated op.

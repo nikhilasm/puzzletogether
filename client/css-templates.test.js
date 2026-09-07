@@ -1,17 +1,7 @@
 /**
- * A backtick inside a CSS comment ends the css template literal.
- *
- * This has cost the build eight separate times, and once ([TODO.md](../docs/TODO.md), Phase 4b) it
- * did *not* cost the build: the remainder of the file happened to parse as valid JavaScript, npm
- * run build succeeded, and every browser test failed at once on an error that pointed nowhere near
- * the CSS. That is the case this exists for. A truncated stylesheet is not a syntax error often
- * enough to rely on being one.
- *
- * The scan is the trap stated literally: find each css template, walk forward to the backtick that
- * closes it, and fail if that backtick is inside a comment: then it is not closing the template,
- * it is ending it early and the rest of the stylesheet is being read as code.
- *
- * docs/code-style.md §9 has the rule; this is the enforcement it was waiting for.
+ * A backtick inside a CSS comment ends the css template literal. This has broken the build eight times
+ * and once did not (the remainder parsed as valid JavaScript, so the build passed and every browser
+ * test failed pointing nowhere near the CSS), which is the case this test exists for (code-style.md §9).
  */
 
 import { readdirSync, readFileSync } from 'node:fs';
@@ -23,11 +13,8 @@ import { describe, expect, it } from 'vitest';
 const ROOT = fileURLToPath(new URL('.', import.meta.url));
 
 /**
- * Every module under client/ that could hold a css template.
- *
- * Walked by hand rather than globbed, so this test adds no dependency of its own: the one thing a
- * guard against a build-breaking typo should not do is give the build something else to break on.
- * dist/ is the build's own output and the tests are not components.
+ * Every module under client/ that could hold a css template. Walked by hand rather than globbed, so a
+ * guard against a build-breaking typo adds no dependency of its own; dist/ and test files are skipped.
  */
 function sourceFiles(dir = ROOT) {
     const found = [];
@@ -41,12 +28,10 @@ function sourceFiles(dir = ROOT) {
 }
 
 /**
- * Walks one css template from just after its opening backtick and reports how it ends.
- *
- * Interpolations are skipped whole, since ${focusRing} is JavaScript and a backtick inside one
- * would be a nested template rather than a terminator. Everything else is scanned in one pass, tracking
- * the two comment forms CSS allows inside a template and the string quotes that can contain a
- * comment-opening sequence without starting one.
+ * Walks one css template from just after its opening backtick and reports how it ends. Interpolations
+ * are skipped whole, since a backtick inside one is a nested template rather than a terminator, and the
+ * two CSS comment forms and the string quotes are tracked so a comment-opening sequence in a string is
+ * not mistaken for one.
  *
  * @returns {{index: number, inComment: boolean}} Where the template ended, and whether that
  *   backtick was sitting inside a comment when it did.

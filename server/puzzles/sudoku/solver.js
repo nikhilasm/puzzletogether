@@ -1,8 +1,7 @@
 /**
- * Bitmask sudoku solver, used for both generation and the uniqueness proof.
- *
- * Grids are flat Uint8Arrays of length n * n holding 1..n, with 0 for empty. Everything here
- * is a hot path: plain loops, no allocation inside the recursion (code-style.md §7).
+ * Bitmask sudoku solver, used for both generation and the uniqueness proof; grids are flat
+ * Uint8Arrays of n * n holding 1..n, with 0 for empty. Everything here is a hot path: plain loops,
+ * no allocation inside the recursion (code-style.md §7).
  */
 
 /**
@@ -64,10 +63,9 @@ function buildMasks(cells, dims) {
 }
 
 /**
- * Recursive search over the grid. Picks the empty cell with the fewest candidates first, which is
- * what keeps both generation and uniqueness checking fast enough to run per dig.
- *
- * Returns the number of solutions found, stopping once limit is reached.
+ * Recursive search over the grid, picking the empty cell with the fewest candidates first to keep
+ * generation and uniqueness checking fast enough to run per dig. Returns the number of solutions
+ * found, stopping once limit is reached.
  */
 function search(cells, dims, masks, limit, order, found) {
     const { n, boxOf, full } = dims;

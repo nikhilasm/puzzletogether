@@ -75,11 +75,9 @@ function integerArray({ maxLength = MAX_CELLS, min = 0, max = MAX_CELLS, optiona
 }
 
 /**
- * Builds a validator for a cell value: 1–MAX_CELL_VALUE_LENGTH characters, or null to clear.
- *
- * This bounds the **wire**, not the puzzle. A crossword rebus square holds a whole word (ADR-0007),
- * so what may go in a given cell is a question for that type's validateOp: sudoku, kenken, and
- * nonogram each say "exactly one" for themselves. Nothing in this file will say it for them.
+ * Builds a validator for a cell value: 1 to MAX_CELL_VALUE_LENGTH characters, or null to clear.
+ * This bounds the wire, not the puzzle; a type's own validateOp decides what may go in a cell
+ * (ADR-0007).
  */
 function cellValue({ optional = false } = {}) {
     return (value, key) => {

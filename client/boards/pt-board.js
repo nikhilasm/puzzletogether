@@ -1,10 +1,7 @@
 /**
- * Base element for every puzzle grid: geometry, cell DOM, selection, the presence layer, and
- * input.
- *
- * Subclasses supply only cell decoration and input filtering (design-spec.md §7). A fifth puzzle
- * type should be one server module plus one subclass of this; if it ever needs a change *here*,
- * the abstraction is wrong.
+ * Base element for every puzzle grid: geometry, cell DOM, selection, the presence layer, and input.
+ * Subclasses supply only cell decoration and input filtering; a new type should be one server
+ * module plus one subclass of this (design-spec.md §7).
  */
 
 import { LitElement, css, html, nothing } from 'lit';
@@ -52,37 +49,23 @@ export class PtBoard extends LitElement {
                 width: 100%;
             }
 
-            /*
-             * The grid, with room above and to its left for anything a puzzle draws alongside it.
-             *
-             * Both gutter tracks are min-content, so a type that draws nothing in them, which is
-             * every type but nonogram, collapses them to nothing. That is what lets one layout
-             * serve both cases without a flag.
-             */
+            /* Both gutter tracks are min-content, so a type that draws nothing in them (every type
+               but nonogram) collapses them to nothing. */
             .layout {
                 display: grid;
                 grid-template-columns: min-content 1fr;
                 grid-template-rows: min-content 1fr;
             }
 
-            /*
-             * Gutter contents have to line up with the grid's tracks, and the grid is not flush with
-             * the frame: it sits inside the heavy border, and it hangs 1px past the right and bottom
-             * edges because cells drop their trailing hairline. Both gutters reproduce that offset
-             * exactly rather than approximating it: a clue column half a cell off its grid column
-             * is not a cosmetic problem in a nonogram, it is an unreadable puzzle.
-             */
+            /* Both gutters reproduce the grid's inset exactly, since a clue column half a cell off
+               its grid column makes a nonogram unreadable. */
             .gutter-top,
             .gutter-side {
                 display: grid;
             }
 
-            /*
-             * minmax(0, 1fr) rather than 1fr, whose implied auto minimum lets the contents set
-             * the track size. A gutter has to fit the grid it labels, never the other way round: the
-             * grid's geometry comes from its cells being square, and a clue that will not fit has to
-             * shrink or clip rather than push a column wider than the squares beneath it.
-             */
+            /* minmax(0, 1fr) rather than 1fr, so a clue too wide shrinks or clips instead of
+               pushing its column wider than the square beneath it. */
             .gutter-top {
                 grid-template-columns: repeat(var(--gutter-tracks, 1), minmax(0, 1fr));
                 width: calc(100% - 2 * var(--grid-frame-width) + 1px);
@@ -95,14 +78,9 @@ export class PtBoard extends LitElement {
                 margin-top: var(--grid-frame-width);
             }
 
-            /*
-             * The grid is opaque. The page's graph-paper texture is meant to be the surface the
-             * puzzle sits *on*, and letting it show through the cells put a second, unaligned grid
-             * inside the real one, faint but exactly the kind of ruling the eye tries to read.
-             *
-             * On the frame rather than on each cell, so the selection and stroke washes still
-             * composite over one flat backdrop instead of over a colour of their own.
-             */
+            /* Opaque so the page's graph-paper texture cannot show through as a second unaligned
+               grid; on the frame rather than each cell so the washes composite over one flat
+               backdrop. */
             .frame {
                 position: relative;
                 background: var(--paper);
@@ -110,24 +88,14 @@ export class PtBoard extends LitElement {
                 border-radius: var(--radius-grid);
             }
 
-            /*
-             * The columns are declared inline, per puzzle, as minmax(0, 1fr), never a bare 1fr.
-             *
-             * A bare 1fr is minmax(auto, 1fr), and that auto minimum is the track's *min-content*
-             * size: whatever the widest unbreakable thing in the column happens to be. One
-             * character per cell hides that. A crossword rebus square holding eight characters is
-             * the first content wide enough to move it, and it moved everything: the column grew to
-             * fit the word, the grid grew with it, and every row stepped out of alignment.
-             *
-             * The clue gutters have always used minmax(0, 1fr) for the same reason.
-             */
+            /* Columns are declared inline as minmax(0, 1fr), never a bare 1fr, whose min-content
+               minimum lets a wide rebus square grow its column and throw every row out of
+               alignment. */
             .grid {
                 display: grid;
                 touch-action: manipulation;
-                /*
-                 * The grid's own hairlines and the frame's heavy border would double up on the last
-                 * row and column, so cells drop their trailing edge.
-                 */
+                /* The grid's hairlines and the frame's heavy border would double up on the last row
+                   and column, so cells drop their trailing edge. */
                 margin: 0 -1px -1px 0;
             }
 
@@ -193,11 +161,8 @@ export class PtBoard extends LitElement {
 
     /**
      * Tracks the grid's rendered width so everything in the board can size itself from it.
-     *
-     * Measured on the grid but **published on the host**, because the gutters are not inside the
-     * grid and they need it too. Set on the grid, a nonogram's clues never saw it and fell back to
-     * the declared default, which at 20×20 on a phone sized twenty clue rows for a 40px cell and
-     * stretched the frame half again as tall as the squares inside it.
+     * Published on the host rather than the grid, because the gutters are not inside the grid and
+     * need it too.
      */
     firstUpdated() {
         const grid = this.renderRoot.querySelector('.grid');
@@ -211,15 +176,9 @@ export class PtBoard extends LitElement {
     }
 
     /**
-     * Publishes the local player's colour as --focus-color, which is what draws this player's
-     * cursor in their own colour rather than in the app's accent.
-     *
-     * Written to the host rather than into render(), because the cells that read it are a shadow
-     * root down and inherit it, and because the wash is a *style*, not a property any cell should
-     * have to be told about one at a time.
-     *
-     * Guarded on the two things it depends on. The roster arrives whenever anybody joins, leaves, or
-     * is renamed, and none of that moves this player's colour.
+     * Publishes the local player's colour as --focus-color, which draws this player's cursor in
+     * their own colour rather than the app's accent. Written to the host so the cells a shadow root
+     * down inherit it, and guarded since the roster changes without moving this player's colour.
      */
     willUpdate(changed) {
         if (!changed.has('players') && !changed.has('selfId')) return;
@@ -277,15 +236,9 @@ export class PtBoard extends LitElement {
     }
 
     /**
-     * How a cell's label should be *said*, when that differs from how it is drawn.
-     *
-     * A label is written to be read in a corner a few pixels across, which is not the same job as
-     * being read aloud: a kenken clue leans on operator symbols a screen reader may drop or name
-     * oddly, and a crossword's bare number needs saying what it numbers. The base returns the label
-     * untouched, so a type whose label already reads as a sentence supplies nothing.
-     *
-     * Only the subclass knows what the label *means*, so it composes the whole phrase; this element
-     * has no business knowing that kenken's labels describe cages.
+     * How a cell's label should be said, when that differs from how it is drawn: a corner label is
+     * not written to be read aloud. The base returns it untouched, and only the subclass, which
+     * knows what the label means, composes the spoken phrase.
      *
      * @param {string} label - The label as drawn in the cell.
      * @param {number} _idx - The cell the label is drawn in, for types whose label describes the
@@ -299,9 +252,8 @@ export class PtBoard extends LitElement {
 
     /**
      * Whether the square is annotated rather than special: a ring drawn on it, carrying no rule.
-     *
-     * Crossword's circled squares are the case: a themed puzzle usually hides a bonus answer in
-     * them, so they must be visible, but they behave exactly like every other square.
+     * Crossword's circled squares are the case, usually hiding a bonus answer, but they behave like
+     * every other square.
      *
      * @param {number} _idx - Cell index.
      * @returns {boolean} True to draw the ring.
@@ -311,13 +263,9 @@ export class PtBoard extends LitElement {
     }
 
     /**
-     * Where an arrow key lands, given where it started and which way it pointed.
-     *
-     * The default is the adjacent square, stopping at the edges, which is all every type but
-     * crossword needs. A crossword disagrees twice over: it has squares an arrow must skip, and
-     * pressing across the direction you are working means "turn", not "move one".
-     *
-     * A subclass may change its own state here, which is how the direction flip happens.
+     * Where an arrow key lands, given where it started and which way it pointed; the default is the
+     * adjacent square, stopping at the edges. A subclass may skip squares, turn, or change its own
+     * state here, which is how crossword's direction flip happens.
      *
      * @param {number} from - Cell the selection is leaving.
      * @param {number} deltaRow - -1, 0, or 1.
@@ -333,11 +281,9 @@ export class PtBoard extends LitElement {
     }
 
     /**
-     * Where the cursor goes once a value has been written into a square, or nowhere.
-     *
-     * Nowhere is the right answer for every type that fills a grid in no particular order: a sudoku
-     * player picks the square they have worked out, and moving them off it afterwards would be the
-     * board second-guessing them. A crossword is read along an entry, so it advances.
+     * Where the cursor goes once a value has been written into a square, or nowhere. Nowhere suits a
+     * grid filled in no particular order like sudoku; a crossword is read along an entry, so it
+     * advances.
      *
      * @param {number} _idx - The cell just written to.
      * @returns {number|null} The next cell, or null to leave the selection alone.
@@ -347,11 +293,9 @@ export class PtBoard extends LitElement {
     }
 
     /**
-     * Whether a square takes part in the wave of colour that runs across a finished grid.
-     *
-     * Blocked squares do not. A crossword's black squares are not squares anybody solved, and a wave
-     * that steps around them traces the shape of the puzzle rather than drawing a rectangle over the
-     * top of it. No other type has them, so this costs the rest nothing.
+     * Whether a square takes part in the wave of colour that runs across a finished grid. Blocked
+     * squares do not, so the wave traces the puzzle's shape rather than a rectangle; only crossword
+     * has them.
      *
      * @param {number} idx - Cell index.
      * @returns {boolean} True to pulse this square.
@@ -361,16 +305,9 @@ export class PtBoard extends LitElement {
     }
 
     /**
-     * Whether a cell is part of what the player is currently reaching for, as opposed to what they
-     * have already written.
-     *
-     * Distinct from selection, which is one cell. This is the *extent* around it: the entry a
-     * crossword is working, the run a nonogram drag has covered so far, and by default the row and
-     * column the cursor sits in, which for the two Latin-square types is precisely the set of
-     * squares a solver scans before writing anything.
-     *
-     * A type whose highlight means something else says so by overriding, and a type that wants no
-     * highlight at all overrides to false.
+     * Whether a cell is part of what the player is reaching for, the extent around the single
+     * selected cell: by default the cursor's row and column, which is what a Latin-square solver
+     * scans. A type overrides for a different meaning, or to false for none.
      *
      * @param {number} idx - Cell index.
      * @returns {boolean} True to wash the cell as context for the cursor.
@@ -481,20 +418,16 @@ export class PtBoard extends LitElement {
     }
 
     /**
-     * Selects the clicked cell and keeps keyboard focus on the grid.
-     *
-     * preventScroll, because the player has just pointed at the square: they can already see it,
-     * and scrolling it to where the browser would rather have it moves the whole grid out from under
-     * the finger that is still on it. On a nonogram that was visible as a drag painting one row below
-     * the one it started on.
+     * Selects the clicked cell and keeps keyboard focus on the grid. preventScroll, because
+     * scrolling the just-pointed-at square into view moves the grid out from under a finger
+     * mid-drag.
      */
     #onPointerDown(event) {
         const cell = event.target.closest('pt-cell');
         if (!cell) return;
-        // A blocked square is never selected. It holds no value, takes no marks, and cannot be
-        // checked, so landing the cursor there could only ever be a dead end, and in a crossword,
-        // where a third of the grid is black, an easy one to hit. No other type has block cells, so
-        // this costs them nothing.
+        // A blocked square is never selected: it holds no value, takes no marks, and cannot be
+        // checked, so the cursor there is a dead end. Only crossword has block cells, so this costs
+        // the rest nothing.
         if (this.doc.cells[cell.index]?.block) return;
 
         this.renderRoot.querySelector('.grid')?.focus({ preventScroll: true });
@@ -544,14 +477,10 @@ export class PtBoard extends LitElement {
     }
 
     /**
-     * The wave of colour across a finished grid, drawn once and then taken away.
-     *
-     * **Which** squares take part is decided here rather than in the layer, because that is a fact
-     * about the puzzle: the layer knows where a square is, not what it means. Rendered only while
-     * celebrating, so the element's arrival is what starts the animation.
-     *
-     * Hidden from a screen reader outright. It carries nothing that is not already in the congrats
-     * modal a moment later, and it would otherwise announce several hundred empty spans.
+     * The wave of colour across a finished grid; which squares take part is decided here rather
+     * than in the layer, since that is a fact about the puzzle. Hidden from a screen reader, which
+     * the congrats modal already covers, and rendered only while celebrating so its arrival starts
+     * the animation.
      */
     #renderCelebration(rows, cols) {
         const cells = [];
@@ -585,19 +514,10 @@ export class PtBoard extends LitElement {
     }
 
     /**
-     * One cell, keyed by index so it is created once and updated by property thereafter.
-     *
-     * **The cursor's washes stand down while the wave runs**, and come back when it is over. They
-     * answer "where am I working", which is a question about a puzzle in progress; for a second and
-     * a half after the last square lands, the grid belongs to the room rather than to whoever's
-     * cursor happens to be parked on it, and a 62% wash of one player's colour under a wave of
-     * everybody's simply reads as a square the wave missed.
-     *
-     * Withheld here, on the two attributes every type's wash rules key off, rather than overridden
-     * in CSS: crossword and nonogram paint their washes as a background *colour* and the base paints
-     * one as a background *image*, so a rule that covered all three would have to reach into a
-     * shadow root twice over and would take the givens' tint with it. aria-selected is untouched:
-     * the selection has not moved, only its wash.
+     * One cell, keyed by index so it is created once and updated by property thereafter. The
+     * cursor's washes stand down while the wave runs, withheld here on the selected and highlighted
+     * attributes rather than in CSS since the board types paint the wash differently; aria-selected
+     * is untouched.
      */
     #renderCell(idx) {
         const docCell = this.doc.cells[idx];
@@ -634,23 +554,10 @@ export class PtBoard extends LitElement {
     }
 
     /**
-     * The cell's spoken description. Everything a sighted player reads off the square is named here
-     * rather than left to colour, position, or shape, since none of the three survives a screen
-     * reader (design-spec.md §11).
-     *
-     * A value drawn as a mark is spoken as what the mark means: # is a character nobody wants read
-     * out, and a screen reader user is owed the same information the shape carries.
-     *
-     * **The label is part of that.** A kenken cage clue drawn but never said leaves a whole
-     * puzzle's constraints missing for anyone not looking at it, and a crossword's label is its
-     * entry number, the only thing tying a square to the clue that solves it. It comes first
-     * because it describes the square rather than what is written in it.
-     *
-     * A blocked square stops after being named. It has no value, can hold no marks, and cannot be
-     * checked, so "empty" would invite an edit that is not possible. **Unless it is carrying the
-     * puzzle**: a kakuro prints its sums on blocked squares, and a square that said only "blocked"
-     * would withhold the clue rather than the absence of one. Read straight off the two fields the
-     * document schema names, since naming them is all this has to do.
+     * The cell's spoken description; everything a sighted player reads off the square is named here,
+     * since colour, position, and shape do not survive a screen reader (design-spec.md §11). A value
+     * drawn as a mark is spoken as what it means, the label comes first, and a blocked square stops
+     * after being named unless it carries a kakuro clue.
      */
     #cellLabel(idx, docCell, row, col, value, marks, check) {
         const spoken = { block: 'filled', cross: 'crossed out' };

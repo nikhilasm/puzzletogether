@@ -2,20 +2,9 @@ import js from '@eslint/js';
 import globals from 'globals';
 
 /*
- * Scoped deliberately to shared/: the socket contract.
- *
- * shared/protocol.js, shared/schema.js, and shared/board-reducer.js are the code both sides
- * of the wire depend on, and the only place a silent mismatch causes a desync rather than a visible
- * bug. Application code in client/ and server/ is not linted; formatting there is Prettier's
- * job and correctness is the tests'.
- *
- * tests/ is the exception to that reasoning rather than a widening of it: it is the only code in
- * the repo nothing else checks. Everything else has a test; the tests have lint.
- *
- * scripts/ joined in Phase 4 for a third reason again: it is the only code that *writes content
- * into the repo*. import-crossword.js produces the bank files the server then serves, run by hand
- * and rarely, which is exactly the situation where a typo waits months to be discovered. It is pure
- * Node, with no browser globals, which is the one way its config differs from the others.
+ * Lint is scoped to shared/ (the socket contract, where a silent mismatch desyncs rather than shows a
+ * bug), plus tests/ (the only code nothing else checks) and scripts/ (the only code that writes bank
+ * files into the repo). Application code in client/ and server/ is left to Prettier and the tests.
  */
 export default [
     {

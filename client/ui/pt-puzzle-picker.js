@@ -1,22 +1,8 @@
 /**
- * The puzzle pickers, shared by Puzzle Select and the congrats modal.
- *
- * One component in both places so "start another" offers exactly the choices Puzzle Select does,
- * defaulted to the puzzle just finished (design-spec.md §4).
- *
- * **It has two shapes, and which one it takes follows the provider rather than the puzzle type**
- * (ADR-0009). A generated type is described: pick a size, pick a difficulty, and the generator
- * makes something to match. A banked type is *browsed*: its content is a finite list of particular
- * crosswords with titles and authors, and describing one would be asking the host to guess at a list
- * they could simply be shown.
- *
- * A browsed list can also be **filtered**, by the same two facts a generated type is described by.
- * That is not the question coming back: nothing here asks the host to specify a puzzle that might
- * not exist, it only narrows the list of ones that do. Each filter row appears once there is more
- * than one value behind it, so a bank of four minis still shows a list and nothing else.
- *
- * Holds the working selection as its own state and reports it on every change; the screen around it
- * decides when to turn that into a game:start.
+ * The puzzle pickers, shared by Puzzle Select and the congrats modal so start another offers
+ * exactly the choices Puzzle Select does (design-spec.md §4). It takes two shapes following the
+ * provider (ADR-0009): a generated type is described by size and difficulty, a banked type is
+ * browsed as a filterable list; it holds the working selection and reports it on every change.
  */
 
 import { LitElement, css, html, nothing } from 'lit';
@@ -59,18 +45,15 @@ export class PtPuzzlePicker extends LitElement {
          */
         readonly: { type: Boolean },
         /**
-         * What the server can actually serve, per type, from the join ack.
-         *
-         * A generator can make any size it offers, which a constant could state; a bank offers
-         * whatever files it was given, which none can. So availability comes from the server and
-         * SIZES_BY_TYPE is only the fallback for a client that somehow has no catalog yet.
+         * What the server can actually serve, per type, from the join ack. A bank offers whatever
+         * files it was given, which no constant can state, so availability comes from the server and
+         * SIZES_BY_TYPE is only the fallback.
          */
         catalog: { type: Object },
         /**
-         * Which slice of a banked type's list is on show, or null for all of it.
-         *
-         * State rather than part of the spec: a filter is a way of looking at the bank, not a
-         * request travelling to the server. Nothing outside this component needs to know one is on.
+         * Which slice of a banked type's list is on show, or null for all of it. State rather than
+         * part of the spec, since a filter is a way of looking at the bank, not a request to the
+         * server.
          */
         sizeFilter: { state: true },
         difficultyFilter: { state: true },
@@ -98,34 +81,18 @@ export class PtPuzzlePicker extends LitElement {
                 height: 1em;
             }
 
-            /*
-             * The puzzle types are a grid of tiles rather than a row of words (ADR-0022).
-             *
-             * Three columns and two rows, fixed rather than auto-fit: six types wrapping to
-             * whatever the width allows put four on one line and two on the next, which read as two
-             * groups of puzzles rather than one set of six. Three and three is the same shape at
-             * every width the fieldset takes, and the breakpoint below turns it into two and three
-             * where three columns stop holding a mark and its word.
-             *
-             * A type that is not on offer is left out entirely, so the last row can be short. That
-             * is the row-major gap a missing crossword bank leaves, and it is the honest one: the
-             * grid is a set of what exists, not a board with a hole in it.
-             */
+            /* The puzzle types are a grid of tiles rather than a row of words (ADR-0022), fixed at
+               three columns so six do not wrap into two uneven groups; a type not on offer is left
+               out, so the last row can be short. */
             .types {
                 display: grid;
                 grid-template-columns: repeat(3, 1fr);
                 gap: var(--space-2);
             }
 
-            /*
-             * The mark over its word, like every other control in the app that had room for both
-             * (ADR-0012). Beside it, the tile would be as wide as its longest label and the six
-             * would stop being one size.
-             *
-             * box-sizing because the reset does not cross the shadow boundary: the min-height is
-             * what keeps the six tiles one height whatever the marks measure, and a content box
-             * would add the padding and the border to it.
-             */
+            /* The mark over its word (ADR-0012) so the six tiles stay one width, with box-sizing
+               since the reset does not cross the shadow boundary and the min-height must include
+               padding and border. */
             .type {
                 display: flex;
                 box-sizing: border-box;
@@ -148,15 +115,8 @@ export class PtPuzzlePicker extends LitElement {
                 height: 2.25rem;
             }
 
-            /*
-             * The chosen type's mark goes accent, the way a pressed setting's glyph does in the
-             * input panel (brand.md §4). One property does all of it: every part of a type mark is
-             * painted from currentColor, its blocks and its digits included, so the whole drawing
-             * moves rather than the outlines alone.
-             *
-             * --accent-text and not --accent, because these are small marks with 7px digits in them
-             * and plain --accent is only cleared for large text and borders (brand.md §2).
-             */
+            /* The chosen type's mark goes --accent-text via currentColor so the whole drawing moves
+               (brand.md §2, §4). */
             .type[aria-pressed='true'] .icon {
                 color: var(--accent-text);
             }
@@ -168,19 +128,9 @@ export class PtPuzzlePicker extends LitElement {
                 }
             }
 
-            /*
-             * The caution reads as a note, not an error: --graphite like the difficulty note beside
-             * it, never --wrong. Nothing has gone wrong: the option works, it just costs something
-             * on a small screen, and colouring it as a failure would say the host had made a mistake.
-             *
-             * The triangle flows with the words rather than sitting in a flex track beside them. As a
-             * flex item it was pushed to the far left the moment the sentence wrapped, which read as
-             * a stray mark on the page instead of the first thing in a line of prose.
-             *
-             * Written as .note.caution so it outranks .note's own margin whatever order they end up
-             * in; the shorthand there zeroes the inline margins, which is what stops the block
-             * centring.
-             */
+            /* The caution reads as a note in --graphite, never --wrong, with the triangle flowing
+               inline rather than in a flex track; written .note.caution so it outranks .note's own
+               margin. */
             .note.caution {
                 max-width: 26rem;
                 margin: var(--space-2) auto 0;
@@ -194,13 +144,8 @@ export class PtPuzzlePicker extends LitElement {
                 vertical-align: -0.15em;
             }
 
-            /*
-             * A row of options is comfortable at a reading measure and centres in whatever width it
-             * is given, so the picker can be handed the whole column without the short rows
-             * sprawling across it. 28rem rather than 26 for one reason: it is what the puzzle-type
-             * grid wants. Three tiles across 28rem come to about 9rem each, which holds the mark
-             * with the longest type name under it and no wrapping.
-             */
+            /* A row of options centred at a reading measure of 28rem, the width three type tiles
+               need to hold the longest name without wrapping. */
             fieldset {
                 max-width: 28rem;
                 margin: 0 auto var(--space-4);
@@ -208,12 +153,8 @@ export class PtPuzzlePicker extends LitElement {
                 border: none;
             }
 
-            /*
-             * The list is the exception, and it is why the picker is given the column in the first
-             * place. Everything else here is glanced at; this is read: a title, whoever set it, and
-             * where it came from, on one line each. At 26rem the second line wrapped under any real
-             * newspaper credit and the cards stopped scanning as a column of titles.
-             */
+            /* The list is the exception that gets the full column width, since a card is read rather
+               than glanced at and a real credit wrapped at 26rem. */
             fieldset.list {
                 max-width: none;
             }
@@ -234,15 +175,9 @@ export class PtPuzzlePicker extends LitElement {
                 font-style: italic;
             }
 
-            /*
-             * What the chosen type asks of a solver, in the one sentence help-text.js already states
-             * it in. Under the row rather than on every button, for the same reason the size caution
-             * is: four descriptions turn a row of choices back into a wall of prose.
-             *
-             * Not a .note. A caveat is italic here because it qualifies the choice above it; this
-             * answers the question the row is asking, so it is set as ordinary prose at a reading
-             * measure.
-             */
+            /* What the chosen type asks of a solver, under the row rather than on every button so
+               four descriptions do not become a wall of prose; not italic like .note, since this
+               answers the row rather than qualifying it. */
             .goal {
                 max-width: 26rem;
                 margin: var(--space-2) auto 0;
@@ -252,14 +187,9 @@ export class PtPuzzlePicker extends LitElement {
                 text-align: center;
             }
 
-            /*
-             * The browsable list a banked type gets instead of size and difficulty rows.
-             *
-             * It scrolls rather than growing, because a bank is meant to hold hundreds and a screen
-             * that grows with it stops being a screen. The height is in rem so it shows the same
-             * number of cards whatever the viewport: about four and a half, so the cut card says
-             * plainly that there is more below without needing a scrollbar to be visible.
-             */
+            /* The browsable list a banked type gets, scrolling rather than growing since a bank may
+               hold hundreds, its rem height showing about four and a half cards so the cut one
+               signals more below. */
             .cards {
                 display: flex;
                 flex-direction: column;
@@ -307,11 +237,8 @@ export class PtPuzzlePicker extends LitElement {
                 font-weight: 700;
             }
 
-            /*
-             * Author and source on one quiet line. They are how a solver tells two 15×15s apart, so
-             * they have to be there, but the title is what is being chosen, so they are --graphite
-             * and a step down rather than competing with it.
-             */
+            /* Author and source on one quiet --graphite line, a step down since the title is what is
+               being chosen. */
             .card .meta {
                 display: block;
                 margin-top: var(--space-1);
@@ -374,11 +301,9 @@ export class PtPuzzlePicker extends LitElement {
     }
 
     /**
-     * The types on offer: those the server has something behind.
-     *
-     * **A type with nothing behind it is left out entirely.** For crossword that is the ordinary
-     * state of a build with no licensed bank rather than an error, and offering a button that fails
-     * when pressed would be worse than offering three (design-spec.md §7).
+     * The types on offer: those the server has something behind. A type with nothing behind it is
+     * left out, which for crossword is the ordinary state of a build with no bank rather than an
+     * error (design-spec.md §7).
      */
     get #types() {
         return PUZZLE_TYPES.filter((type) => this.#sizesFor(type).length > 0);
@@ -390,10 +315,9 @@ export class PtPuzzlePicker extends LitElement {
     }
 
     /**
-     * The particular puzzles a type offers, when it has any.
-     *
-     * Only a banked type does. Its presence is the whole branch this component makes: a list means
-     * "choose one of these", its absence means "describe what you want" (ADR-0009).
+     * The particular puzzles a type offers, when it has any, which only a banked type does. Its
+     * presence is the whole branch: a list means choose one of these, its absence means describe
+     * what you want (ADR-0009).
      */
     #puzzlesFor(type) {
         return this.catalog?.[type]?.puzzles ?? null;
@@ -422,10 +346,9 @@ export class PtPuzzlePicker extends LitElement {
     get #current() {
         const type = this.spec?.type ?? this.#types[0] ?? PUZZLE_TYPES[0];
         const banked = this.#puzzlesFor(type);
-        // A banked type's whole selection comes off one card, so the fallback is the first card
-        // rather than three independent defaults that might not name any puzzle that exists, and
-        // the first *visible* card, so filtering the chosen one away moves the selection with it
-        // rather than leaving Start pointed at a puzzle that is no longer on screen.
+        // A banked type's whole selection comes off one card, so the fallback is the first visible
+        // card, so filtering the chosen one away moves the selection rather than leaving Start
+        // pointed off screen.
         if (banked)
             return this.#specFor(type, this.#chosenPuzzle(type) ?? this.#visible(banked)[0]);
 
@@ -473,10 +396,8 @@ export class PtPuzzlePicker extends LitElement {
     }
 
     /**
-     * A type's default grid: its largest *uncautioned* size.
-     *
-     * Largest, because that is the one people mean by "a sudoku", but a size the picker turns round
-     * and warns about is not one to land the host on by default. Choosing it should be a decision.
+     * A type's default grid: its largest uncautioned size. Largest is what people mean by a sudoku,
+     * but a size the picker warns about should be a decision, not a default.
      */
     #defaultSize(type) {
         const caution = SIZE_CAUTION[type] ?? null;
@@ -488,15 +409,10 @@ export class PtPuzzlePicker extends LitElement {
     }
 
     /**
-     * Publishes the resolved selection whenever it differs from the one handed in.
-     *
-     * The screens around this hold the spec and hand it back, and their opening value is the room's
-     * last settings, which for a banked type name a size and a difficulty but no *puzzle*. Left
-     * alone, the list would show a card as chosen while the Start button still carried "any 5×5",
-     * and pressing it could begin a different crossword than the one highlighted. So the default the
-     * list resolves to is announced rather than kept privately.
-     *
-     * It converges after one pass: what it emits is what #current reads back.
+     * Publishes the resolved selection whenever it differs from the one handed in, since the room's
+     * last settings name no puzzle for a banked type and the list would otherwise show one card
+     * chosen while Start carried another. It converges after one pass, since what it emits is what
+     * #current reads back.
      */
     updated() {
         // A readonly picker announces nothing: it holds no working selection to converge on.
@@ -519,14 +435,9 @@ export class PtPuzzlePicker extends LitElement {
     }
 
     /**
-     * A spec whose difficulty is back at the first band wherever difficulty means nothing.
-     *
-     * Below a type's floor the buttons are already disabled and the panel already says the grids are
-     * always easy, but the spec kept whatever was chosen higher up: pick hard at 9×9, drop to 4×4,
-     * and the picker showed nothing selected while still submitting hard, with the buttons disabled
-     * so it could not be taken back. The server would then spend its whole redraw budget on a band
-     * no 4×4 sudoku can have and warn on every generation. Same rule as the banked list, where a
-     * selection filtered off the screen has to move rather than be quietly submitted.
+     * A spec whose difficulty is back at the first band wherever difficulty means nothing. Below a
+     * type's floor the spec would otherwise keep a difficulty the disabled buttons cannot take back,
+     * and the server would burn its redraw budget on a band no small grid can have.
      */
     #rated(spec) {
         const floor = DIFFICULTY_MIN_SIDE[spec.type] ?? 0;
@@ -627,12 +538,9 @@ export class PtPuzzlePicker extends LitElement {
     }
 
     /**
-     * A banked type's puzzles, as a scrolling list of cards.
-     *
-     * Each card carries what tells one crossword from another before you have solved it: its title,
-     * who set it, where it came from, and how big it is. Nothing here is a *description* of a
-     * puzzle: the host is choosing a particular one, and the whole spec comes off the card they
-     * press.
+     * A banked type's puzzles, as a scrolling list of cards. Each carries what tells one crossword
+     * from another before solving it: title, author, source, and size, with the whole spec coming
+     * off the card pressed.
      */
     #renderCards(puzzles, current) {
         if (puzzles.length === 0) {
@@ -659,18 +567,9 @@ export class PtPuzzlePicker extends LitElement {
     }
 
     /**
-     * The size and difficulty filters over a banked type's list.
-     *
-     * **A row appears only when it has more than one thing to choose between**, which is the same
-     * rule the puzzle-type row follows. It is also the answer to the objection that had these
-     * deferred in ADR-0009: a filter over a bank of four minis, all 5×5 and all easy, is pure
-     * clutter, so on that bank neither row is drawn, and the list is still the only thing on screen.
-     *
-     * **An option that would empty the list is disabled rather than hidden**, shown greyed the way a
-     * colour another player holds is. That is not only manners: it is what guarantees the list is
-     * never empty. A pressable option is one with something behind it *given the other filter's
-     * current value*, so every reachable pair matches at least one puzzle, and the card list can
-     * never come up blank with Start still pointed at whatever was last selected.
+     * The size and difficulty filters over a banked type's list, each row drawn only when it has
+     * more than one value (ADR-0009). An option that would empty the list is disabled rather than
+     * hidden, given the other filter's current value, so the card list can never come up blank.
      */
     #renderFilters(puzzles) {
         // Both axes come off the list being filtered rather than off the catalog's own size and
@@ -789,11 +688,9 @@ export class PtPuzzlePicker extends LitElement {
     }
 
     /**
-     * The puzzles this room can play, for a member watching the host choose.
-     *
-     * The same type grid the host gets, but a member is not picking: there is no size or difficulty
-     * to set, no selection to mark, and the tiles are greyed and unpressable. It shows even for a
-     * single type, since saying what the one puzzle is beats an empty screen (design-spec.md §4).
+     * The puzzles this room can play, for a member watching the host choose: the same type grid,
+     * greyed and unpressable. It shows even for a single type, since saying what the puzzle is beats
+     * an empty screen (design-spec.md §4).
      */
     #renderAvailable() {
         return html`
@@ -817,13 +714,9 @@ export class PtPuzzlePicker extends LitElement {
     }
 
     /**
-     * The puzzle-type grid, which only earns its space once there is more than one type.
-     *
-     * Every other row here chooses between values of one kind, so a word is the whole of what an
-     * option needs. This one chooses between *games*, and a host who has not played one cannot read
-     * its name and know what they are asking for, so each type wears a mark of its own board
-     * (ADR-0022). The chosen type's goal sentence still sits under the grid, because the mark says
-     * what the puzzle looks like and only the sentence says what it asks.
+     * The puzzle-type grid, which only earns its space once there is more than one type. Each type
+     * wears a mark of its own board since a name alone does not say what the game is (ADR-0022),
+     * with the goal sentence under the grid saying what it asks.
      */
     #renderTypes(current) {
         const goal = helpFor(current.type)?.goal ?? null;
@@ -840,16 +733,9 @@ export class PtPuzzlePicker extends LitElement {
     }
 
     /**
-     * One puzzle type: its mark over its name.
-     *
-     * Still an .option, so the accent wash marking the chosen one is the same paint every other
-     * choice on this screen carries, and the mark is aria-hidden with the name under it in the
-     * button, so nothing here is conveyed by the drawing alone (brand.md §4).
-     *
-     * The name is in a span of its own rather than a bare text node, because a mark that prints
-     * digits puts them in the button's textContent: unwrapped, the Sudoku tile reads as "1234
-     * Sudoku" to anything matching on text. The accessible name was never affected, the svg being
-     * aria-hidden, but a test or a selector matching on text is, and so is anything that copies it.
+     * One puzzle type: its mark over its name, still an .option so the accent wash is the same
+     * paint, the mark aria-hidden with the name in the button (brand.md §4). The name is in its own
+     * span, since a mark that prints digits would otherwise put them in the button's textContent.
      */
     #renderType(type, current) {
         return html`
@@ -859,13 +745,9 @@ export class PtPuzzlePicker extends LitElement {
                 aria-pressed=${current.type === type}
                 ?disabled=${this.disabled}
                 @click=${() => {
-                    // Switching type starts that type's selection over rather than carrying anything
-                    // across, because almost nothing survives the trip: a 9×9 nonogram is not on
-                    // offer, a bank has only the difficulties its files happen to carry, and a
-                    // puzzle id from one type names nothing in another. #current supplies the new
-                    // type's own default either way. The filters go with it, for the same reason:
-                    // they narrow one type's list, and holding them across would hide most of the
-                    // next one.
+                    // Switching type starts that type's selection over, since almost nothing survives
+                    // the trip: a 9×9 nonogram is not on offer, and a puzzle id from one type names
+                    // nothing in another. The filters reset too, since they narrow one type's list.
                     this.sizeFilter = null;
                     this.difficultyFilter = null;
                     this.#chooseWhole(this.#defaultSpec(type));

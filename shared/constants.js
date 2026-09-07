@@ -14,10 +14,8 @@ export const GITHUB_URL = 'https://github.com/nikhilasm/puzzletogether';
 export const HOMEPAGE_URL = 'https://nikmurthy.dev';
 
 /**
- * Where "Report an issue" goes.
- *
- * Derived from GITHUB_URL rather than written out, so moving the repository moves both links.
- * /issues/new rather than /issues: somebody who has clicked this has already decided.
+ * Where "Report an issue" goes, as /issues/new since a clicker has already decided.
+ * Derived from GITHUB_URL so moving the repository moves both links.
  */
 export const ISSUES_URL = `${GITHUB_URL}/issues/new`;
 
@@ -48,10 +46,8 @@ export const ROOM_CODE_LENGTH = 4;
 export const ROOM_CODE_ALPHABET = 'abcdefghijkmnpqrstuvwxyz';
 
 /**
- * Beyond this the player chips stop fitting the 640px column.
- *
- * Not the palette's size: ten colours against eight seats means a room always has spare colours to
- * change *to*. Raising this is a layout question, not a palette one.
+ * Beyond this the player chips stop fitting the 640px column. Not the palette's size: ten colours
+ * against eight seats always leaves spare colours to change to, so raising this is a layout question.
  */
 export const MAX_PLAYERS_PER_ROOM = 8;
 
@@ -86,13 +82,9 @@ export const FOCUS_RATE_LIMIT = { capacity: 20, refillPerSecond: 15 };
 export const ASSIST_RATE_LIMIT = { capacity: 3, refillPerSecond: 0.5 };
 
 /**
- * Longest value a single cell may hold on the wire.
- *
- * This bounds the payload, not what a puzzle means: a crossword rebus square holds a whole word, and
- * 8 characters covers every rebus in ordinary use (ADR-0007). Sudoku, kenken, and nonogram still
- * hold themselves to one character, each in its own validateOp.
- *
- * **A puzzle type must bound its own values.** Nothing here will do it for you.
+ * Longest value a single cell may hold on the wire; bounds the payload, not meaning (a crossword
+ * rebus holds a word, ADR-0007). Each puzzle type must still bound its own values in validateOp;
+ * nothing here does it for them.
  */
 export const MAX_CELL_VALUE_LENGTH = 8;
 
@@ -100,10 +92,8 @@ export const MAX_CELL_VALUE_LENGTH = 8;
 export const PUZZLE_TYPES = ['sudoku', 'kenken', 'nonogram', 'kakuro', 'crossword', 'suguru'];
 
 /**
- * How each type is written when shown to a player.
- *
- * A map rather than capitalising the wire value, because "KenKen" has a capital in the middle and
- * no rule derives it. The wire value stays lowercase everywhere else.
+ * How each type is written when shown to a player. A map rather than capitalising the wire value,
+ * since "KenKen" has a mid-word capital no rule derives.
  */
 export const PUZZLE_TYPE_NAMES = {
     sudoku: 'Sudoku',
@@ -118,19 +108,9 @@ export const PUZZLE_TYPE_NAMES = {
 export const DIFFICULTIES = ['easy', 'medium', 'hard'];
 
 /**
- * Grid sides each **generated** type offers in Puzzle Select, smallest first.
- *
- * KenKen stops at 7 because uniqueness verification is its expensive step and climbs sharply with
- * size: ~170ms median for a 7×7 hard against ~1ms for a 5×5 (docs/TODO.md).
- *
- * **Kakuro's sides count the clue border**, since the border is part of the document: a 9 is a 9×9
- * grid whose first row and column are clue squares, leaving an 8×8 of squares to fill. Stating it in
- * solvable cells would make the picker's numbers disagree with the grid a host is looking at.
- *
- * **Crossword is absent on purpose.** A generator can produce any size it offers, so a constant can
- * state them; a bank offers whatever files it was given. Crossword's sizes reach Puzzle Select
- * through the provider's catalog, as { rows, cols } pairs rather than sides, since a real crossword
- * is 15×15 or 5×5 and also 20×21 (design-spec.md §7).
+ * Grid sides each generated type offers in Puzzle Select, smallest first. KenKen stops at 7 because
+ * uniqueness verification gets expensive, kakuro's sides count the clue border, and crossword is
+ * absent because its sizes come from the provider's bank catalog rather than a constant.
  */
 export const SIZES_BY_TYPE = {
     sudoku: [4, 6, 9],
@@ -141,21 +121,16 @@ export const SIZES_BY_TYPE = {
 };
 
 /**
- * Sizes that are offered but come with a caveat, per type.
- *
- * A 20×20 nonogram fits a 320px screen only by shrinking its squares to about ten pixels, with the
- * clue gutters taking a third of the width. Fine on a laptop, poor on a phone, and a host on the
- * laptop cannot see the difference. So it is offered with the trade-off stated rather than withheld
- * or left to be discovered after everyone has started.
+ * Sizes that are offered but come with a caveat, per type. A large nonogram or kakuro is poor on a
+ * phone but fine on a laptop, so the trade-off is stated rather than the size withheld.
  */
 export const SIZE_CAUTION = {
     nonogram: {
         above: 15,
         message: 'the squares get very small on a phone; best played on a larger screen',
     },
-    // Kakuro's caution is a different one at a smaller size: a nonogram square that shrinks is still
-    // an empty square, while a kakuro clue square has two numbers and a diagonal printed inside it,
-    // so it stops being readable before it stops being clickable.
+    // Kakuro's caution triggers at a smaller size: a clue square has two numbers and a diagonal
+    // printed inside, so it stops being readable before an empty nonogram square would.
     kakuro: {
         above: 11,
         message: 'the printed sums get hard to read on a phone; best played on a larger screen',
@@ -163,31 +138,22 @@ export const SIZE_CAUTION = {
 };
 
 /**
- * Smallest grid side, per type, on which a difficulty request means anything.
- *
- * A 4×4 or 6×6 sudoku falls to naked and hidden singles however hard you dig it, since there is no
- * room for a technique beyond them, so every small grid measures easy. Rather than accept a request
- * it cannot honour, Puzzle Select disables the difficulty picker below this side.
- *
- * KenKen and nonogram have no such floor: their difficulty is carried by cage shapes and clue
- * density, which mean something at every size they offer. The entry is still listed for each type so
- * that adding a type forces an answer rather than defaulting to one.
+ * Smallest grid side, per type, on which a difficulty request means anything; below it Puzzle
+ * Select disables the difficulty picker. A small sudoku falls to singles whatever the setting, while
+ * kenken and nonogram carry difficulty at every size, so every type is listed to force an answer.
  */
 export const DIFFICULTY_MIN_SIDE = {
     sudoku: 9,
     kenken: 4,
     nonogram: 5,
-    // No floor: kakuro's difficulty is carried by how long the rules take to settle the grid, and
-    // that separates at every size offered, a 7×7 included. It was 9 while the generator derived its
-    // sums from a filled grid, which made a small kakuro measure easy however it was drawn; choosing
-    // the clues instead reaches all three levels at 7×7 (ADR-0015).
+    // No floor: kakuro's difficulty separates at every size offered since ADR-0015 chooses the clues
+    // rather than deriving sums from a filled grid.
     kakuro: 0,
     // Crossword difficulty is declared in the bank manifest, not measured: it is how obscure the
-    // clues are, which is a property of the writing. Size has nothing to do with it.
+    // clues are, independent of size.
     crossword: 0,
-    // No floor: suguru's difficulty is carried by its region-size distribution and how far the two
-    // rules the solver knows get before a cell is forced, which separates at every size offered,
-    // a 5×5 included.
+    // No floor: suguru's difficulty is carried by region-size distribution and solver depth, which
+    // separates at every size offered.
     suguru: 0,
 };
 

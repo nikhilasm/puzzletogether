@@ -1,9 +1,8 @@
 /**
- * Every socket event handler, and the only place room state is mutated in response to a client.
- *
- * The order is always the same and never varies by event: schema-validate the payload, resolve the
- * seat, authorize, then act (code-style.md §8). Handlers reply with a structured ack and never
- * throw: a throw inside a Socket.IO handler kills the connection.
+ * Every socket event handler, and the only place room state is mutated in response to a client,
+ * always in the same order: validate the payload, resolve the seat, authorize, then act
+ * (code-style.md §8). Handlers reply with a structured ack and never throw, since a throw kills the
+ * connection.
  */
 
 import { applyOp } from '../../shared/board-reducer.js';
@@ -69,11 +68,9 @@ function takeSeat(socket, room, player) {
 }
 
 /**
- * Ends a seat for good, re-electing a host if it was theirs.
- *
- * Every deliberate ending comes through here: leaving, being removed, and the grace period running
- * out. That last one is the fix for the prototype's empty disconnect stub, which leaked players
- * into rooms permanently (design-spec.md §2), and reason is what tells the three apart afterwards.
+ * Ends a seat for good, re-electing a host if it was theirs. Every deliberate ending comes through
+ * here (leaving, being removed, grace expiry), and reason is what tells the three apart afterwards
+ * (design-spec.md §2).
  *
  * @param {object} ending - The seat and why it is ending.
  * @param {import('socket.io').Server} ending.io - The Socket.IO server, for the roster broadcast.
@@ -559,14 +556,9 @@ function finishPuzzle(io, room) {
 }
 
 /**
- * Tells everyone still in a room that it has ended, then cuts their sockets loose.
- *
- * The garbage collector calls this before deleting a room, because a room deleted under a player is
- * otherwise silent: their client goes on drawing a grid whose every op the server now has nowhere to
- * put, which is a screen that looks alive and is not (ADR-0025).
- *
- * The only room that ends under anybody is one that aged out. The other sweep collects rooms with
- * nobody connected, so it has no one to tell, which is why the message names the age limit.
+ * Tells everyone still in a room that it has ended, then cuts their sockets loose. The garbage
+ * collector calls this before deleting a room, since a room deleted under a player leaves their
+ * client drawing a grid nothing receives (ADR-0025).
  *
  * @param {import('socket.io').Server} io - The Socket.IO server.
  * @param {import('../rooms/store.js').Room} room - The room about to be deleted.

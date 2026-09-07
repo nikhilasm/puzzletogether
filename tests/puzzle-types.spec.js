@@ -1,11 +1,7 @@
 /**
  * The two types Phase 3 added, in a real browser: kenken's cages and nonogram's gutters, marks, and
- * drag-painting.
- *
- * The point of this file is the claim in design-spec.md §7: that a puzzle type costs one server
- * module and one board subclass. Most of what is checked here is therefore *shared* machinery being
- * driven by a new type rather than new machinery: the same heavy-rule hook drawing cages, the same
- * cell element drawing a block instead of a digit, the same undo walking back a batched op.
+ * drag-painting. The point is the claim in design-spec.md §7 that a type costs one server module and
+ * one board subclass, so most of what is checked is shared machinery driven by a new type.
  */
 
 import { expect, test } from '@playwright/test';
@@ -184,11 +180,9 @@ test.describe('kakuro', () => {
     });
 
     /**
-     * The type that most needs explaining gets the same help control every other type gets.
-     *
-     * Kakuro is the one type whose structure is printed on squares nobody writes in, so a solver
-     * who has never met one has nothing on screen telling them which sum belongs to which run. The
-     * dialog is where that is said, and it is reached the same way everywhere.
+     * The type that most needs explaining gets the same help control every other type gets. Kakuro's
+     * structure is printed on squares nobody writes in, so the dialog is where a first-time solver is
+     * told which sum belongs to which run, reached the same way everywhere.
      */
     test('explains its clue squares from the header', async ({ page }) => {
         await page.locator('pt-game .header .help').click();
@@ -469,12 +463,8 @@ test.describe('nonogram', () => {
     });
 
     /**
-     * The reason a drag is one fill op rather than five set ops: it is also one thing to undo.
-     * Five presses of Undo to walk back one gesture would make the control useless on a 20×20.
-     */
-    /**
-     * A drag commits on release, so without a preview the grid says nothing until the gesture is
-     * over, and laying a run of a particular length against a clue is the whole reason to drag.
+     * A drag commits on release, so without a preview the grid says nothing until the gesture is over,
+     * and laying a run of a particular length against a clue is the whole reason to drag.
      */
     test('washes the squares a drag has covered, before it commits', async ({ page }) => {
         const start = await page.locator('pt-cell >> nth=5').boundingBox();

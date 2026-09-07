@@ -1,17 +1,8 @@
 /**
- * Bitmask suguru solver, used for filling a region partition and for the uniqueness proof.
- *
- * Grids are flat Uint8Arrays of length n * n holding 1..(a cell's own region size), with 0 for
- * empty. Unlike sudoku's row/column/box units, a suguru cell's constraints come from two different
- * shapes at once: every other cell in its own region, and every cell touching it on the grid,
- * orthogonally or diagonally (ADR-0019). Both are folded into one *peer* list per cell, which is
- * what lets the search below read exactly like sudoku's: assign a value, strike it from every
- * peer's candidates, recurse on whichever open cell has the fewest left.
- *
- * A region's own domain, 1..its size, is what makes region membership enough on its own: since a
- * region of size k can only ever hold the k values its cells' shared domain admits, striking a
- * placed value from every region-mate's candidates is exactly the constraint "a permutation of
- * 1..k", with no separate rule needed to say so.
+ * Bitmask suguru solver, used for filling a region partition and for the uniqueness proof. A cell's
+ * constraints come from two shapes at once, its region and its up-to-eight grid neighbors, folded into
+ * one peer list per cell so the search reads exactly like sudoku's; a region's domain of 1..its size
+ * makes striking a value from every region-mate exactly the "permutation of 1..k" rule (ADR-0019).
  */
 
 /** Counts the set bits in a candidate mask. */
@@ -91,25 +82,17 @@ function initialCandidates(cells, peers, sizeOf) {
 }
 
 /**
- * How many search nodes a single call may visit before it gives up on the question.
- *
- * Proving *no* solution exists, or that a partial grid has only one, means exhausting a branch
- * rather than stopping at the first success, and an under-constrained or badly-shaped partition can
- * make that branch enormous: an early measurement without this cap saw a single call run for over
- * three minutes. Bounded the way kakuro's own counting search is bounded (solver.js NODE_BUDGET),
- * for the same reason: the generator's outer retry loop is what is supposed to govern wall time, and
- * it cannot if one inner call refuses to return.
+ * How many search nodes a single call may visit before it gives up. Proving no solution, or a unique
+ * one, means exhausting a branch that a badly-shaped partition can make enormous; bounded like
+ * kakuro's counting search so the generator's outer retry loop governs wall time.
  */
 const NODE_BUDGET = 100_000;
 
 /**
- * Recursive search over the grid. Picks the empty cell with the fewest candidates first, the same
- * ordering sudoku's solver uses and for the same reason: it fails fast and finds a first solution
- * fast.
- *
- * Returns the number of solutions found, stopping once limit is reached or the node budget runs out;
- * found.cut is set in the latter case, since a cut search has proved nothing about the cells left
- * unexplored.
+ * Recursive search over the grid, picking the empty cell with the fewest candidates first, the same
+ * fail-fast ordering sudoku's solver uses. Returns the number of solutions found, stopping once limit
+ * is reached or the node budget runs out, with found.cut set in the latter case since a cut search has
+ * proved nothing about the cells left unexplored.
  */
 function search(cells, peers, candidates, limit, order, found) {
     found.nodes += 1;
@@ -166,13 +149,10 @@ function search(cells, peers, candidates, limit, order, found) {
 }
 
 /**
- * Counts how many ways a partially or fully filled grid can be completed, stopping early once
- * limit is hit.
- *
- * **complete is not the same as count === 1.** A cut search has found whatever it found and proved
- * nothing about the rest of the tree, so one solution with complete false means "could not tell
- * within budget", never "unique". The generator's dig loop reads both: a dig is kept only when the
- * search both completed and found exactly one.
+ * Counts how many ways a partially or fully filled grid can be completed, stopping early once limit is
+ * hit. complete is not the same as count === 1: a cut search proved nothing about the rest of the
+ * tree, so one solution with complete false means "could not tell within budget", and the dig loop
+ * reads both.
  *
  * @param {Uint8Array} cells - Grid with 0 for empty cells; not mutated.
  * @param {{ id: number, cells: number[] }[]} regions - The puzzle's regions.

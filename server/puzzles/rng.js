@@ -1,9 +1,7 @@
 /**
- * Seeded pseudo-random number generation for puzzle creation.
- *
- * Generators never call Math.random(); every one takes an injected rng, which is what makes a
- * puzzle reproducible from its seed and generator tests deterministic (code-style.md §7). The
- * shuffle is carried over from the prototype's js/server/utils.js, seeded rather than global.
+ * Seeded pseudo-random number generation for puzzle creation; generators never call Math.random()
+ * but take an injected rng, which makes a puzzle reproducible and generator tests deterministic
+ * (code-style.md §7). The shuffle is carried over from the prototype, seeded rather than global.
  */
 
 import { randomInt } from 'node:crypto';

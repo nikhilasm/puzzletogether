@@ -1,14 +1,8 @@
 /**
- * Pre-warmed puzzle pools, generated in a worker thread.
- *
- * Keeps a small stock of ready puzzles per (type, difficulty, size) so getPuzzle is a pop rather
- * than a computation, which is what makes the host pressing "new puzzle" feel instant
- * (design-spec.md §8). Falls back to in-process generation when the pool is dry or the worker is
- * unavailable, so a worker failure degrades latency rather than breaking the game.
- *
- * It is also where a puzzle is held to the difficulty that was asked for. Three of the four
- * generators *measure* the difficulty of what they made rather than dialling it in, so a draw can
- * come back rated at a band nobody requested. The pool redraws (ADR-0017).
+ * Pre-warmed puzzle pools generated in a worker thread, so getPuzzle is a pop rather than a
+ * computation (design-spec.md §8), falling back to in-process generation when the pool is dry or the
+ * worker is down. It is also where a puzzle is held to the difficulty asked for, redrawing since the
+ * generators measure difficulty rather than dialling it in (ADR-0017).
  */
 
 import { Worker } from 'node:worker_threads';
@@ -27,13 +21,9 @@ import suguru from './suguru/index.js';
 const MODULES = { sudoku, kenken, nonogram, kakuro, suguru };
 
 /**
- * Independent draws to spend looking for the difficulty that was asked for.
- *
- * Bounded, because a difficulty can be unreachable at a size rather than merely rare, and no number
- * of draws would ever find it: a 4×4 sudoku falls to naked and hidden singles however it is dug, so
- * hard there is impossible, not unlucky. Ten is enough that every reachable band comes back on the
- * band asked for, and cheap where it is spent in full, since the unreachable cases are all small
- * sudoku at a few milliseconds a draw.
+ * Independent draws to spend looking for the difficulty asked for, bounded since a difficulty can be
+ * unreachable at a size rather than merely rare. Ten is enough that every reachable band comes back
+ * on target, and cheap where spent in full since the unreachable cases are all small sudoku.
  */
 const DIFFICULTY_ATTEMPTS = 10;
 
@@ -141,15 +131,10 @@ export class GeneratorPool {
     }
 
     /**
-     * Draws until the puzzle measures at the difficulty asked for, then settles for the nearest.
-     *
-     * Each generator already searches internally and hands back the closest band it managed, so
-     * this is the outer loop, and its whole contribution is a fresh seed: the same specification
-     * drawn again is an independent puzzle, which is what actually explores. Kakuro at 7×7 hard
-     * came back hard 7 draws in 12 before this and comes back hard every time now.
-     *
-     * Settling rather than failing keeps generation total. An unsatisfiable request then costs a
-     * room a puzzle rated one band away, which is what it already got, instead of no puzzle at all.
+     * Draws until the puzzle measures at the difficulty asked for, then settles for the nearest, its
+     * whole contribution over each generator's own search being a fresh seed. Settling rather than
+     * failing keeps generation total, costing an unsatisfiable request a puzzle one band away rather
+     * than none at all.
      */
     async #generate(spec) {
         let best = null;

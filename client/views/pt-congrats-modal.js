@@ -1,9 +1,7 @@
 /**
- * The completion modal: solve time, streak, and, for the host, what to play next.
- *
- * Every player sees it and every player can dismiss it; dismissing leaves the finished grid on
- * screen. Only the host gets the start controls, and non-hosts are told plainly that they are
- * waiting rather than being shown buttons that would be rejected (design-spec.md §4).
+ * The completion modal: solve time, streak, and, for the host, what to play next. Every player sees
+ * and can dismiss it; only the host gets the start controls, non-hosts told plainly they are waiting
+ * (design-spec.md §4).
  */
 
 import { LitElement, css, html, nothing } from 'lit';
@@ -57,16 +55,9 @@ export class PtCongratsModal extends LitElement {
         accentButton,
         iconStyle,
         css`
-            /*
-             * As wide as Puzzle Select's column, because it holds the same picker and "start
-             * another" should offer the same list at the same size rather than a cramped copy of it.
-             * Everything above the picker is centred short text, which does not mind the room.
-             *
-             * No position here, deliberately, for the reason pt-about records: a modal dialog is
-             * centred by the UA's own dialog:modal rule, and position: relative to hang the close
-             * button off overrides it and drops the panel into the document. The padding moved to
-             * .sheet so the close button has a containing block that owns it.
-             */
+            /* As wide as Puzzle Select's column since it holds the same picker, with no position here
+               (see pt-about) so the UA's dialog:modal centring is not overridden into the
+               document. */
             dialog {
                 width: min(40rem, calc(100vw - 2 * var(--space-4)));
                 padding: 0;
@@ -78,19 +69,9 @@ export class PtCongratsModal extends LitElement {
                 box-shadow: var(--shadow-modal);
             }
 
-            /*
-             * The one modal in the app allowed to be seen arriving.
-             *
-             * Everything else opens as quietly as it can, because a confirm dialog is an
-             * interruption. This one is the room finishing something together, and it was sharing
-             * the confirm dialog's 160ms of a 4px drift, restrained to the point that people
-             * reported it as appearing with no animation at all.
-             *
-             * It now rises further, scales up from just under full size, and takes --motion-celebrate
-             * to do it. The easing overshoots slightly at the end, which is the whole of the
-             * celebration: a panel that settles rather than stops reads as arriving rather than as
-             * being switched on. Both tokens collapse to 0ms under prefers-reduced-motion.
-             */
+            /* The one modal allowed to be seen arriving: it rises and scales up over
+               --motion-celebrate with an easing that overshoots slightly so it reads as arriving,
+               collapsing to 0ms under prefers-reduced-motion. */
             dialog[open] {
                 animation: celebrate var(--motion-celebrate) cubic-bezier(0.2, 0.9, 0.3, 1.25);
             }
@@ -106,15 +87,8 @@ export class PtCongratsModal extends LitElement {
                 padding: var(--space-6);
             }
 
-            /*
-             * The close control, in the corner rather than as a button in the row below, matching
-             * pt-about and pt-help.
-             *
-             * It used to be a labelled "See the grid" sharing the row with the host's two start
-             * controls, which put a way out of the dialog next to two ways on to the next puzzle
-             * and made the row read as three answers to one question. Dismissing is not one of the
-             * answers, so it moved to the corner every other panel keeps it in.
-             */
+            /* The close control in the corner rather than the row below (matching pt-about and
+               pt-help), since dismissing is not one of the start controls' answers. */
             .close {
                 position: absolute;
                 top: var(--space-3);
@@ -150,23 +124,9 @@ export class PtCongratsModal extends LitElement {
                 font-variant-numeric: tabular-nums;
             }
 
-            /*
-             * The streak, lit to carry the emphasis the old one-line detail text couldn't. Both
-             * effects are set inline per render, and a broken streak sets both to 0, which is what
-             * leaves it plain ink rather than faintly lit.
-             *
-             * Between the time above it and the assists below: emphasis here is colour and motion,
-             * so the type does not also have to be the largest thing in the dialog.
-             *
-             * The wave is a gradient clipped to the text rather than an animated colour, since a
-             * flat colour tween cannot put a moving band of accent across a fixed word; both
-             * clip properties are set because Firefox and Chromium disagree on which one they
-             * accept unprefixed.
-             *
-             * --accent-text and not --accent, because at the wave's peak the accent *is* the text
-             * colour, and this line is body-sized (brand.md §2). On dark the two tokens are the
-             * same value, so only the light theme sees a difference.
-             */
+            /* The streak, lit by a gradient clipped to the text (both clip properties for
+               cross-engine support) and a glow, both set inline per render and 0 for a broken
+               streak, in --accent-text since this line is body-sized (brand.md §2). */
             .streak-line {
                 margin: 0 0 var(--space-2);
                 font-size: var(--text-base);
@@ -214,14 +174,8 @@ export class PtCongratsModal extends LitElement {
                 border-top: var(--border);
             }
 
-            /*
-             * The host's two ways on from here, in one row under the picker. Start another is last
-             * and accent-bordered: it is the action most rooms take, and last is where reading the
-             * row left to right lands you.
-             *
-             * It wraps rather than shrinking, because the modal is as narrow as 320px on a phone and
-             * two labelled buttons do not always fit that.
-             */
+            /* The host's two ways on, in one row with Start another last and accent-bordered as the
+               action most rooms take; it wraps since two labelled buttons do not always fit 320px. */
             .buttons {
                 display: flex;
                 flex-wrap: wrap;
@@ -344,14 +298,9 @@ export class PtCongratsModal extends LitElement {
     }
 
     /**
-     * The two numbers the streak line is painted from, as an inline style.
-     *
-     * They climb together to a streak of 20 and are both 0 for a broken one, but they do not climb
-     * the same way. The glow is a shadow *behind* ink, so scaling it straight off the streak reads
-     * correctly the whole way up. The wave is the ink, and mixing accent into it in proportion to a
-     * low streak is a few percent of accent against near-black: invisible in the light theme, which
-     * is the bug this split fixes. So the wave has a small floor that keeps it visible from a streak
-     * of 1 while starting subtle, and the streak decides how much further toward pure accent it goes.
+     * The two numbers the streak line is painted from, as an inline style, both 0 for a broken
+     * streak. The glow scales straight off the streak, while the wave has a small floor so a low
+     * streak's accent stays visible in the light theme.
      */
     #streakPaint(solved) {
         const climb = Math.min(solved.streak, 20) / 20;
@@ -386,12 +335,9 @@ export class PtCongratsModal extends LitElement {
     }
 
     /**
-     * The host's two choices, and the whole of the button row. A non-host gets no row at all: the
-     * corner close is their only control, and an empty flex box would still reserve its margin.
-     *
-     * The icons are the ones these actions already wear on the game screen: Puzzle Select is the
-     * same four squares in both places, because it is the same action. Start another carries the
-     * accent border and icon (accentButton in controls.js): it is the one this row is built around.
+     * The host's two choices, and the whole of the button row; a non-host gets no row, since an
+     * empty flex box would still reserve its margin. The icons match the game screen's, and Start
+     * another carries the accent border as the action this row is built around.
      */
     #renderHostButtons() {
         return html`

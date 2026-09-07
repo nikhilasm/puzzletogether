@@ -1,13 +1,8 @@
 /**
- * The parts of the puzzle-module interface that are identical for every "one value per cell,
- * compared against a solution" type: sudoku, kenken, and crossword.
- *
- * isComplete and checkCells say nothing type-specific: they compare effectiveValue to
- * solution[idx], which is the same sentence whether the value is a sudoku digit, a kenken digit,
- * or a crossword letter. A second copy would only be a second place for Check to drift.
- *
- * Nonogram does **not** use these: a nonogram is complete when its *filled* cells match, and the
- * player's x marks are notes rather than answers, so it implements both itself.
+ * The parts of the puzzle-module interface identical for every one-value-per-cell type (sudoku,
+ * kenken, crossword): isComplete and checkCells compare effectiveValue to solution[idx] with nothing
+ * type-specific. Nonogram does not use these, since it is complete when its filled cells match and
+ * its x marks are notes, so it implements both itself.
  */
 
 import { effectiveValue } from '../../shared/puzzle-doc.js';

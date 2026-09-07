@@ -1,13 +1,7 @@
 /**
- * The puzzle picker's browsed shape: the card list a banked type gets, and the filters over it.
- *
- * Two kinds of test here, and the split is deliberate. The **list** is checked against the app a host
- * actually sees, driven by the tracked bank. The **filters** cannot be: they only appear once a bank
- * carries more than one size or more than one difficulty, and data/crosswords/ is four minis that
- * are all 5×5 and all easy, which is exactly the case the filters are meant to stay out of the way
- * of. So they are driven against a picker mounted on its own behind a catalog standing in for a
- * fuller bank. It is still a real element in a real engine; only its input is invented, and inventing
- * it is the point.
+ * The puzzle picker's browsed shape: the card list a banked type gets, and the filters over it. The
+ * list is checked against the tracked bank; the filters only appear with more than one size or
+ * difficulty, so they are driven against a picker mounted on a stand-in catalog in a real engine.
  */
 
 import { expect, test } from '@playwright/test';
@@ -16,10 +10,8 @@ import { createRoom } from './helpers.js';
 
 /**
  * A bank with something to filter: two sizes sharing a difficulty, three difficulties, and one size
- * that exists only at hard, which is what makes an unreachable pair possible to test for.
- *
- * Listed out of order on both axes on purpose. A catalog arrives in whatever order the bank's files
- * loaded in, and both filter rows are supposed to impose their own.
+ * that exists only at hard, which makes an unreachable pair testable. Listed out of order on both axes
+ * on purpose, since both filter rows are supposed to impose their own.
  */
 const BANK = [
     {
@@ -316,12 +308,9 @@ test.describe('describing a generated puzzle', () => {
         page.locator('pt-puzzle-picker fieldset').filter({ hasText: legend });
 
     /**
-     * The same rule the card list obeys: what the picker submits is what it is showing.
-     *
-     * A grid below its type's floor cannot be rated, so the buttons grey out and the panel says the
-     * grids are always easy. The spec has to follow. Otherwise picking hard at 9×9 and dropping to
-     * 4×4 leaves hard in the submitted spec with no enabled button to take it back, and the server
-     * spends its whole redraw budget on a band no 4×4 sudoku can have.
+     * The same rule the card list obeys: what the picker submits is what it is showing. A grid below
+     * its type's floor cannot be rated, so the difficulty has to drop to easy, or hard would stay in
+     * the submitted spec with no button to take it back and the server would waste its redraw budget.
      */
     test('drops the difficulty to easy on a grid too small to rate', async ({ page }) => {
         const level = (label) => group(page, 'Difficulty').locator('.option', { hasText: label });

@@ -1,24 +1,15 @@
 /**
- * Partitioning a solved Latin square into cages, and giving each cage its arithmetic clue.
- *
- * **Difficulty here is a generation parameter, not a measurement.** Cage sizes and the mix of
- * operations are drawn from a distribution per difficulty, and doc.difficulty is the difficulty
- * that was asked for. This is a deliberate split from sudoku, which rates what it actually dug and
- * labels the puzzle with the measured result; rating a KenKen honestly would mean a
- * technique-ranked cage solver, and that is the same expensive search that already dominates
- * generation. Recorded in docs/TODO.md so the difference is a decision rather than an oversight.
- *
- * What is *not* a heuristic is uniqueness: generate.js refuses to emit a partition until the
- * solver has proved it admits exactly one answer.
+ * Partitioning a solved Latin square into cages and giving each its arithmetic clue; difficulty
+ * here is a generation parameter, not a measurement, unlike sudoku (docs/TODO.md). What is not a
+ * heuristic is uniqueness: generate.js refuses a partition until the solver has proved it admits
+ * exactly one answer.
  */
 
 /**
- * Cage sizes to draw from, per difficulty. Sampling uniformly from a list with repeats is the
- * weighting: an easy puzzle is mostly pairs, a hard one mostly triples and up.
- *
- * No list offers 1. A single-cell cage is a free digit, and how many of those a puzzle gets is
- * decided by SINGLE_CELL_ALLOWANCE rather than here, because asking for them is not what produces
- * them; see mergeSingletons.
+ * Cage sizes to draw from, per difficulty, sampled uniformly from a list with repeats as the
+ * weighting: an easy puzzle is mostly pairs, a hard one mostly triples and up. No list offers 1,
+ * since single-cell cages come from SINGLE_CELL_ALLOWANCE rather than being asked for (see
+ * mergeSingletons).
  */
 const CAGE_SIZES = {
     easy: [2, 2, 2, 3, 3],
@@ -27,12 +18,9 @@ const CAGE_SIZES = {
 };
 
 /**
- * How many single-cell cages a puzzle may keep, as a fraction of its cells.
- *
- * Growth strands singletons whatever the size distribution says: a cage that fills the last gap in
- * its corner leaves the cell beside it with no unclaimed neighbor to join. Left alone that produced
- * nine free digits in a 7×7 easy and seven in a medium, an opening handful that solves itself. The
- * allowance is a ceiling on that accident, and zero at hard makes it a rule.
+ * How many single-cell cages a puzzle may keep, as a fraction of its cells, since cage growth
+ * strands singletons whatever the size distribution says. The allowance is a ceiling on that
+ * accident, and zero at hard makes it a rule.
  */
 const SINGLE_CELL_ALLOWANCE = { easy: 0.08, medium: 0.02, hard: 0 };
 
@@ -127,12 +115,9 @@ function clueFor(cells, solution, difficulty, rng) {
 }
 
 /**
- * Grows cages outward from random seeds until every cell belongs to one.
- *
- * A cage grows by picking from the list of unclaimed cells adjacent to *any* of its members, and
- * that list holds a cell once per member it touches. The repetition is the point: it biases growth
- * toward cells the cage already surrounds, which produces the compact blobs the mock shows rather
- * than the long snaking tendrils an unweighted pick gives.
+ * Grows cages outward from random seeds until every cell belongs to one, picking from unclaimed
+ * cells adjacent to any member. That list holds a cell once per member it touches, biasing growth
+ * into compact blobs rather than long tendrils.
  */
 function partition(n, difficulty, rng) {
     const total = n * n;
@@ -236,15 +221,10 @@ export function buildCages(solution, n, difficulty, rng) {
 }
 
 /**
- * Splits the largest cage in two, which strictly tightens the puzzle.
- *
- * This is how generation always terminates. Peeling a cell off a cage replaces one loose constraint
- * with two tighter ones, and repeating it far enough leaves every cell in a cage of its own, where
- * each clue simply names its digit, a partition that is trivially unique. So the refinement loop in
- * generate.js cannot fail to find an answer; at worst it finds an easy one.
- *
- * The cell peeled off is chosen from those whose removal leaves the rest of the cage connected. A
- * connected region of two or more cells always has at least two such cells, so the choice exists.
+ * Splits the largest cage in two, which strictly tightens the puzzle and is how generation always
+ * terminates, since repeating it leaves every cell in a trivially unique cage of its own. The cell
+ * peeled off is chosen from those whose removal leaves the rest connected, which a region of two or
+ * more cells always has.
  *
  * @param {{ id: number, cells: number[], op: string, target: number }[]} cages - Current cages.
  * @param {Uint8Array} solution - The solved grid, for re-cluing the two new cages.
@@ -279,10 +259,8 @@ export function splitLargestCage(cages, solution, difficulty, n, rng) {
 }
 
 /**
- * The clue as it is drawn in the corner of the cage's top-left cell.
- *
- * A single-cell cage shows its digit alone: 3, not 3=. The equals sign would be the only
- * operator in the puzzle with nothing on the other side of it.
+ * The clue as it is drawn in the corner of the cage's top-left cell. A single-cell cage shows its
+ * digit alone, since the equals sign would be the only operator with nothing on the other side.
  *
  * @param {{ op: string, target: number }} cage - The cage to label.
  * @returns {string} The label, e.g. '12+' or '3÷'.

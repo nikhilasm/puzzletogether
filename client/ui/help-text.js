@@ -1,15 +1,8 @@
 /**
- * What each puzzle type is, and how it is solved, in the one shape every type states it in.
- *
- * Three fields, the same three for every type. goal is the single sentence that says what finishing
- * looks like; rules are the constraints the grid does not print on itself; input names the one
- * setting this type puts beside the keys, which is the only part of the screen that differs between
- * types (design-spec.md §4). Fixed shape is what lets one dialog render any type without a branch,
- * and lets the picker show goal on its own without cutting a sentence in half.
- *
- * A second per-type entry rather than a field on the board registry: registry.js declares how a type
- * is drawn and typed into, and prose about kakuro runs is not that. Adding a type therefore means
- * two entries, which design-spec.md §7 records.
+ * What each puzzle type is and how it is solved, in the one fixed shape every type states it in:
+ * goal, rules, and the one setting this type puts beside the keys (design-spec.md §4). A second
+ * per-type entry rather than a field on the board registry, since prose about kakuro runs is not how
+ * a type is drawn.
  */
 
 /** The three types typed the same way say the same thing about it. */
@@ -75,10 +68,8 @@ export const HELP = {
 };
 
 /**
- * The help entry for a puzzle type, or null for a type that has none.
- *
- * Null rather than a throw, unlike boardFor: a build missing a board cannot draw the puzzle at all,
- * while a build missing this can still be played. The screens react by leaving the way in undrawn.
+ * The help entry for a puzzle type, or null for a type that has none. Null rather than a throw,
+ * unlike boardFor, since a build missing this can still be played.
  *
  * @param {string} type - The doc.type of the puzzle being explained.
  * @returns {{ goal: string, rules: string[], input: string } | null} Its help, if it has any.

@@ -1,11 +1,7 @@
 /**
- * The provider seam: the only entry point the rest of the server uses to obtain a puzzle.
- *
- * Whether a puzzle was generated in a worker or read off disk is invisible past this line
- * (ADR-0004): bank.js is one entry in the map below, and nothing that asks for a puzzle knows.
- *
- * What the banked kind adds is catalog(). A generator can make any size it offers, so a constant
- * could state them; a bank offers whatever files it was given, which no constant can know.
+ * The provider seam: the only entry point the rest of the server uses to obtain a puzzle, hiding
+ * whether it was generated or read off disk (ADR-0004). What the banked kind adds is catalog(),
+ * since a bank offers whatever files it was given, which no constant can state.
  */
 
 import { SIZES_BY_TYPE, DIFFICULTIES, PUZZLE_TYPES } from '../../shared/constants.js';
@@ -68,14 +64,10 @@ export async function getPuzzle({ type, difficulty, size, puzzleId, exclude }) {
 }
 
 /**
- * What this build can actually serve, per type, for Puzzle Select to offer.
- *
- * **A type with nothing behind it is left out entirely.** For crossword that is the ordinary state
- * of a build with no licensed bank rather than an error state (ADR-0004), and a picker that offers a
- * type which fails when chosen would be worse than one that offers three.
- *
- * A banked type also lists its puzzles by name, which is the whole difference between describing a
- * puzzle and choosing one (ADR-0009). A generated type has no such list and carries none.
+ * What this build can actually serve, per type, for Puzzle Select to offer; a type with nothing
+ * behind it is left out, which for crossword is the ordinary no-bank state rather than an error
+ * (ADR-0004). A banked type also lists its puzzles by name, the difference between describing a
+ * puzzle and choosing one (ADR-0009).
  *
  * @returns {Object<string, { sizes: { rows: number, cols: number }[], difficulties: string[],
  *   puzzles?: object[] }>} What is available, keyed by puzzle type.

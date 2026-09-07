@@ -1,8 +1,7 @@
 /**
  * Process entry point: one Express app, one Socket.IO server, one room store (architecture.md §1).
- *
- * In development Vite serves the client on 5173 and proxies /socket.io here; in production this
- * process also serves client/dist. There is no gameplay REST API; all of it is Socket.IO.
+ * Vite serves the client and proxies /socket.io here in development; in production this process
+ * serves client/dist, and there is no gameplay REST API.
  */
 
 import { existsSync } from 'node:fs';

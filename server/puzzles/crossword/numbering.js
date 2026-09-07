@@ -1,13 +1,8 @@
 /**
- * Entry numbering: which squares carry a number, and which squares each entry runs through.
- *
- * A crossword's numbering is not authored, it is *implied* by where the black squares are, which
- * means it can be derived and therefore checked. This module is written once and
- * used in both directions (design-spec.md §8): scripts/import-crossword.js calls it to build a
- * bank file, and the bank loader calls it again at boot to confirm the file still agrees with its
- * own grid. A stored entry list that nothing verifies would only be a second place to be wrong.
- *
- * Pure and file-free, so both callers and the tests can use it without touching a disk.
+ * Entry numbering: which squares carry a number, and which squares each entry runs through, implied
+ * by where the black squares are and therefore derivable and checkable. Written once and used in
+ * both directions (design-spec.md §8): the importer builds a bank file with it, and the bank loader
+ * re-checks the file at boot; pure and file-free.
  */
 
 /**
@@ -16,12 +11,9 @@
  */
 
 /**
- * Whether a square begins a word in a direction: the rule every crossword is numbered by.
- *
- * A square starts an entry when nothing precedes it in that direction (the grid edge or a black
- * square) and something follows it. Both halves matter: without the first, every square in a word
- * would be numbered; without the second, a lone square wedged between two blocks would be numbered
- * as an entry of length one, which is not a word and has no clue.
+ * Whether a square begins a word in a direction: the rule every crossword is numbered by. A square
+ * starts an entry when nothing precedes it in that direction and something follows, so a lone square
+ * between two blocks is not numbered.
  *
  * @param {boolean[]} blocks - One entry per cell, true where the square is black.
  * @param {GridSize} size - Grid dimensions.
@@ -63,11 +55,9 @@ function runFrom(blocks, size, row, col, dir) {
 }
 
 /**
- * Numbers a grid and lists its entries.
- *
- * Entries come back ordered by number, Across before Down at the same number. That is not a
- * cosmetic choice: it is exactly the order .puz stores its clue list in, so the importer can pair
- * clues to entries by walking the two lists together rather than by looking anything up.
+ * Numbers a grid and lists its entries, ordered by number with Across before Down at the same
+ * number. That is the order .puz stores its clue list in, so the importer can pair clues to entries
+ * by walking both lists together.
  *
  * @param {boolean[]} blocks - One entry per cell, row-major, true where the square is black.
  * @param {GridSize} size - Grid dimensions.
@@ -109,15 +99,10 @@ export function numberGrid(blocks, size) {
 }
 
 /**
- * Re-derives a document's numbering and reports the first way it disagrees with what is stored.
- *
- * This is the boot-time half of writing the numbering once. The importer computed these entries; a
- * hand-edited file, a hand-authored mini, or a bad merge can leave them describing a grid that is no
- * longer there, and an entry pointing at the wrong squares is not a crash but a puzzle that
- * highlights the wrong row and cannot be solved. Cheaper to refuse the file at boot.
- *
- * Clue text is deliberately not checked. Whether a clue is *good* is not a question a computer gets
- * to have an opinion on; whether one is *present* is, and that is the count check.
+ * Re-derives a document's numbering and reports the first way it disagrees with what is stored, the
+ * boot-time half of writing the numbering once, since an entry pointing at the wrong squares makes
+ * an unsolvable puzzle rather than a crash. Clue text is not checked beyond presence, since whether
+ * a clue is good is not a question a computer answers.
  *
  * @param {import('../../../shared/protocol.js').PuzzleDoc} doc - A loaded crossword document.
  * @returns {string|null} The disagreement, or null when the document numbers itself correctly.

@@ -1,9 +1,7 @@
 /**
- * Light and dark, chosen once and remembered.
- *
- * The whole theme is a token swap: data-theme on <html> selects a block in tokens.css and
- * nothing else in the app knows a theme exists (code-style.md §9). This module owns the attribute,
- * the stored preference, and nothing more.
+ * Light and dark, chosen once and remembered; the whole theme is a token swap on data-theme, and
+ * nothing else in the app knows a theme exists (code-style.md §9). This module owns the attribute
+ * and the stored preference, nothing more.
  */
 
 /** Where the chosen theme lives between visits. */

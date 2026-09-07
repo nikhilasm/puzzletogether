@@ -1,33 +1,7 @@
 /**
- * Kakuro generation: draw a layout, then *choose* its clues, each one for how much it settles the
- * grid (design-spec.md §8).
- *
- * **The clues are the puzzle, so the clues are what gets chosen.** The first version of this file
- * filled the grid with digits and read the sums off the filling. That produces middling sums, and a
- * middling sum says almost nothing: 20 across four squares is fourteen different sets. The grids
- * came out ambiguous, and the only way to rescue them was to keep cutting runs shorter until the
- * clues had nothing left to be vague about, which is why runs averaged two and a half squares
- * against the four or more a real kakuro has (ADR-0015).
- *
- * Choosing clue values instead inverts it. Nothing is filled in; a solver narrows what each square
- * could hold, and each clue is picked for how much it narrows the whole board:
- *
- * 1. **Lay out the blocks** as a symmetric clustered pattern at the difficulty's density, which is
- *    layout.js and is where run length is asked for rather than left over (ADR-0016).
- * 2. **Seed the crossings.** For a square whose two clues are both unchosen, pick the pair that
- *    pins it hardest: 26 in three squares is {6,8,9}, 21 in six is {1..6}, and a square in both is a
- *    6 before anything else is known.
- * 3. **Choose the rest, loosest clue first.** The clue with the most values still open carries the
- *    most uncertainty, so it is the one worth deciding. Which of its values to take is the
- *    difficulty knob: the most constraining one makes an easy puzzle, a looser one leaves more of
- *    the work for the solver.
- * 4. **Repair what is left ambiguous**, by re-choosing the pair of clues crossing an unsettled
- *    square, and failing that by blocking the square out of the grid.
- *
- * Two global facts keep the search honest. The across clues and the down clues both add up to the
- * same total, so a value that makes those two totals unreachable is refused before it is tried. And
- * a settled board is a unique board: narrowing is sound, so two answers would leave a square holding
- * two digits.
+ * Kakuro generation: draw a layout, then choose its clues, each one for how much it settles the grid
+ * (design-spec.md §8). The clues are the puzzle, so nothing is filled in; a solver narrows what each
+ * square could hold, and each clue is picked for how much it narrows the whole board (ADR-0015).
  */
 
 import {
@@ -43,54 +17,37 @@ import { rateKakuro, DIFFICULTY_ORDER } from './rate.js';
 import { deriveRuns, hasNoShortRun, indexRuns, MAX_RUN, MIN_RUN } from './runs.js';
 
 /**
- * How many boards to build before settling for the nearest one to the difficulty asked for.
- *
- * Generous for sudoku's reason: every attempt produces a fair puzzle, so this is a budget for
- * hitting the *rating*, and one board lands on the exact band asked for well under half the time.
- * The wall clock below is what actually stops it at the larger sizes.
+ * How many boards to build before settling for the nearest one to the difficulty asked for. Every
+ * attempt produces a fair puzzle, so this budgets for hitting the rating; the wall clock below is
+ * what actually stops it at the larger sizes.
  */
 const MAX_RESTARTS = 40;
 
 /**
- * Wall-clock ceiling on the search for a puzzle at the difficulty asked for.
- *
- * Generation runs in a worker thread against a pre-warmed pool, so this is not a latency a player
- * waits on; it bounds how much CPU one puzzle may cost while a 13×13 is being looked for.
+ * Wall-clock ceiling on the search for a puzzle at the difficulty asked for. Generation runs in a
+ * worker thread against a pre-warmed pool, so this bounds CPU per puzzle rather than a latency a
+ * player waits on.
  */
 const TIME_BUDGET_MS = 4000;
 
 /**
- * Longest run any layout may contain.
- *
- * One number for every difficulty, where this was `{ easy: 7, medium: 8, hard: 8 }`. That was very
- * nearly a dead knob: the grid's own width caps it, so after `limitFor` clamped it the three levels
- * evaluated to the same run length at every offered size except 13×13. Density carries the layout
- * half of difficulty instead, and separates at all four.
- *
- * Not raised past 8. At 9 the repair has to block so many squares to settle the grid that a 13×13
- * came back with 20 open squares out of 144, which is a smaller puzzle drawn on a larger board.
+ * Longest run any layout may contain. One number for every difficulty, since the grid's own width
+ * caps it and density carries the layout half of difficulty instead; not raised past 8 because at 9
+ * the repair blocks so many squares that a large grid shrinks to a small puzzle.
  */
 const RUN_LIMIT = 8;
 
 /**
- * Share of the interior each difficulty blocks out.
- *
- * The layout knob, in the units the eye reads. Every block shortens two runs, so this and run length
- * are one dial seen from two sides, and stating it as density is what lets it separate the levels at
- * a size whose width has already capped run length.
- *
- * Calibrated by measurement against the bands in rate.js, within the 20 to 30 per cent a printed
- * kakuro carries. The cost is stated rather than hidden: an easy grid at 30 per cent has runs of
- * about three squares, which is what an easy kakuro looks like, and hard stays near four.
+ * Share of the interior each difficulty blocks out. Every block shortens two runs, so this and run
+ * length are one dial seen from two sides; calibrated against rate.js within the 20 to 30 per cent a
+ * printed kakuro carries.
  */
 const BLOCK_DENSITY = { easy: 0.3, medium: 0.24, hard: 0.2 };
 
 /**
- * How much denser each rung of the fallback ladder draws, and where the ladder stops.
- *
- * The ceiling is not a legality: layout.js will keep placing pairs as long as they leave legal runs.
- * It is the point past which the grid stops being a puzzle and starts being a frame, so a request
- * that cannot be met inside it is better met by printing a digit.
+ * How much denser each rung of the fallback ladder draws, and where the ladder stops. The ceiling is
+ * the point past which the grid stops being a puzzle and starts being a frame, so a request that
+ * cannot be met inside it is better met by printing a digit.
  */
 const DENSITY_STEP = 0.04;
 const MAX_DENSITY = 0.44;
@@ -105,11 +62,9 @@ const SEEDS_TRIED = 12;
 
 /**
  * How far down the ranking of candidate clue values each difficulty reaches, from 0 for the most
- * constraining to 1 for the least.
- *
- * The second difficulty knob, and the one that works where run length cannot: a 9×9's interior is
- * eight squares wide, so every difficulty ends up with the same run ceiling there, and without this
- * the three levels were the same puzzle drawn three times.
+ * constraining to 1 for the least. The second difficulty knob, working where run length cannot: a
+ * narrow interior gives every difficulty the same run ceiling, so without this the three levels were
+ * the same puzzle drawn three times.
  */
 const CLUE_REACH = { easy: 0, medium: 0.5, hard: 1 };
 
@@ -138,15 +93,8 @@ const DIGIT_UNION = (() => {
 
 /**
  * Clue pairs for a crossing, grouped by how few digits the two clues leave it, tightest first.
- *
- * Grouped rather than reduced to the single best, because seeding is a *preference*, not a
- * requirement. A board where every crossing takes the hardest possible pair usually contradicts
- * itself within a few squares, and the first version of this step failed outright at every size
- * above 7×7 for exactly that reason. Falling back a group at a time keeps the pressure while letting
- * the board stay consistent.
- *
- * Capped at three digits of overlap and at PAIRS_PER_GROUP options, since a looser pair than that is
- * not seeding anything and step 3 chooses better than a table can.
+ * Grouped rather than reduced to the single best because seeding is a preference: a board where every
+ * crossing takes the hardest pair usually contradicts itself, so it falls back a group at a time.
  */
 const CROSSING_PAIRS = (() => {
     const table = Array.from({ length: MAX_RUN + 1 }, () => new Array(MAX_RUN + 1).fill(null));
@@ -178,11 +126,9 @@ const CROSSING_PAIRS = (() => {
 })();
 
 /**
- * The longest run this grid may hold, which is the smaller of the limit and what the grid can cut.
- *
- * A run of nine on a 9×9 spans the whole interior, so nothing is ever split and the layout comes out
- * as one open block that no amount of clue-choosing can settle: every draw at that size failed until
- * the limit was held below the interior's width.
+ * The longest run this grid may hold, the smaller of the limit and what the grid can cut. A run
+ * spanning the whole interior is never split, leaving one open block no clue-choosing can settle, so
+ * the limit is held below the interior's width.
  */
 function limitFor(n) {
     return Math.min(RUN_LIMIT, n - 3);
@@ -204,11 +150,9 @@ function reduce(board) {
 }
 
 /**
- * Whether the across clues and the down clues can still add up to the same total.
- *
- * Both totals count every digit in the grid once, so they are equal in any finished puzzle. Holding
- * a clue to that as it is chosen is the cheapest global constraint there is: it is one interval
- * against another, and it refuses values that would otherwise be found out only at the very end.
+ * Whether the across clues and the down clues can still add up to the same total. Both totals count
+ * every digit once, so holding a clue to that as it is chosen is the cheapest global constraint
+ * there is, refusing values that would otherwise be found out only at the very end.
  */
 function totalsCanMeet(runs, open) {
     const span = { A: [0, 0], D: [0, 0] };
@@ -248,8 +192,8 @@ function weigh(board, run, value) {
     const previous = run.sum;
     run.sum = value;
 
-    // Seeded from the one clue that changed: choosing a value only ever narrows, and the rest of
-    // the board is already consistent with itself, so there is nothing for a full pass to find.
+    // Seeded from the one clue that changed: choosing a value only ever narrows, and the rest of the
+    // board is already consistent, so a full pass would find nothing.
     const domains = Int32Array.from(board.domains);
     const ok = narrow(domains, board.runs, board.index, [run]);
     run.sum = previous;
@@ -259,15 +203,8 @@ function weigh(board, run, value) {
 
 /**
  * Seeds the crossings: where neither clue through a square is chosen, take a pair that pins that
- * square hard.
- *
- * This is the one step that does not measure the whole board, and it does not have to. A crossing
- * with both clues open is unconstrained by construction, so the local question and the global one
- * have the same answer, and answering it locally is far cheaper than weighing the grid.
- *
- * **A crossing that will not take any pair is left alone rather than failing the board.** Step 3
- * chooses for it, more slowly and with the whole grid in view. Seeding is an optimisation, so it is
- * allowed to decline.
+ * square hard. A crossing that will not take any pair is left alone rather than failing the board,
+ * since step 3 chooses for it; seeding is an optimisation and may decline.
  */
 function seedCrossings(board, rng) {
     for (let idx = 0; idx < board.white.length; idx += 1) {
@@ -301,12 +238,9 @@ function seedCrossings(board, rng) {
 }
 
 /**
- * Chooses every remaining clue, loosest first, each for how much it settles the board.
- *
- * The clue with the most values still open is the one carrying the most uncertainty, so deciding it
- * is worth more than deciding a clue that was nearly pinned already. Values are weighed by what the
- * board looks like afterwards, which is the whole point: a clue is good when the squares far away
- * from it have fewer digits left.
+ * Chooses every remaining clue, loosest first, each for how much it settles the board. The clue with
+ * the most values still open carries the most uncertainty, so deciding it is worth more than one that
+ * was nearly pinned already.
  */
 function chooseClues(board, rng, reach = 0) {
     for (;;) {
@@ -315,9 +249,8 @@ function chooseClues(board, rng, reach = 0) {
         if (open.size === 0) return true;
         if (!totalsCanMeet(board.runs, open)) return false;
 
-        // Loosest first, but a clue that cannot be decided is not a dead end for the board: another
-        // clue may still be decidable, and deciding it narrows the one that was stuck. Failing on the
-        // first refusal threw away half of all attempts at the larger sizes.
+        // Loosest first, but a clue that cannot be decided is not a dead end: another clue may still
+        // be decidable, and deciding it narrows the one that was stuck.
         const order = [...open.keys()].sort(
             (first, second) => open.get(second).length - open.get(first).length,
         );
@@ -337,16 +270,9 @@ function chooseClues(board, rng, reach = 0) {
 }
 
 /**
- * The value to give one clue, chosen for how much of the board it settles.
- *
- * **Which end of that ranking to take is the difficulty knob.** Taking the most constraining value
- * every time makes the tightest puzzle the layout can carry, which is an easy one: everything falls
- * out in a few sweeps. Taking a looser value leaves more for the solver to do later, and leaves it
- * spread further across the grid. Run length alone could not separate the three levels, because the
- * grid's own width caps it and medium and hard end up sharing a ceiling at every size offered.
- *
- * Loose is not the same as unsettled. Every value here has been weighed and kept only if the board
- * still holds together; the repair afterwards is what guarantees one answer.
+ * The value to give one clue, chosen for how much of the board it settles. Which end of that ranking
+ * to take is the difficulty knob: the most constraining value makes an easy puzzle, a looser one
+ * leaves more for the solver, spread further across the grid.
  */
 function bestValue(board, run, open, rng, reach) {
     const candidates = rng.shuffle([...open.get(run)]).slice(0, VALUES_TRIED);
@@ -381,10 +307,8 @@ function unsettled(board) {
 
 /**
  * Re-chooses the two clues crossing an unsettled square, keeping the pair that settles the board
- * most.
- *
- * Preferred over blocking the square, because it costs the puzzle nothing: the grid keeps its shape
- * and its runs keep their length. Only when no pair of values helps is a square taken out.
+ * most. Preferred over blocking the square because it costs the puzzle nothing; only when no pair of
+ * values helps is a square taken out.
  */
 function rechooseCrossing(board, rng, current) {
     for (const idx of rng.shuffle(unsettled(board))) {
@@ -438,16 +362,9 @@ function rechooseCrossing(board, rng, current) {
 }
 
 /**
- * Blocks an unsettled square out of the grid, and re-chooses the clues that lost their runs.
- *
- * The move of last resort, and the one that costs the puzzle something: two runs get shorter, and
- * the grid gains a clue square where a player had a square to fill. It is still better than printing
- * a digit, which is what the previous generator did here.
- *
- * **The symmetric pair is offered first**, so the pattern layout.js drew survives the repair
- * (ADR-0016). A pair costs four runs rather than two, which is the cheaper of the two prices: a
- * single block leaves one square unmirrored in an otherwise deliberate grid, and that is the thing
- * the eye finds.
+ * Blocks an unsettled square out of the grid, and re-chooses the clues that lost their runs. The move
+ * of last resort, still better than printing a digit; the symmetric pair is offered first so the
+ * pattern layout.js drew survives the repair (ADR-0016).
  */
 function blockSquare(board, rng, current) {
     for (const idx of rng.shuffle(unsettled(board))) {
@@ -465,10 +382,8 @@ function blockSquare(board, rng, current) {
 
 /**
  * Blocks a set of squares, re-chooses the clues whose runs changed, and keeps the result only if the
- * board came out less ambiguous than it went in.
- *
- * The clues on runs the blocking left untouched are carried over by their square list, so the work
- * already done is not thrown away. Everything else is chosen again from what the new shape implies.
+ * board came out less ambiguous than it went in. Clues on untouched runs are carried over by their
+ * square list, so work already done is not thrown away.
  */
 function tryBlocking(board, rng, current, squares) {
     const kept = new Map();
@@ -539,11 +454,8 @@ function finish(board, givens = []) {
 }
 
 /**
- * Prints digits into a board that would not settle, which is what keeps generation total.
- *
- * Never reached in measurement, and kept because "usually" is not a guarantee: a run of unlucky
- * layouts must still end in a puzzle rather than an exception. The digits printed are an answer's
- * own, so the board stays consistent.
+ * Prints digits into a board that would not settle, which is what keeps generation total. Never
+ * reached in measurement; the digits printed are an answer's own, so the board stays consistent.
  */
 function printDigits(board) {
     const answer = solveKakuro(board, 1).answers[0];
@@ -603,8 +515,8 @@ export function generateKakuro({ difficulty, n, rng }) {
     if (best) return best;
 
     // Nothing settled at the density this difficulty asked for, so draw a blockier grid. Shorter runs
-    // are a smaller thing to reason about and a far easier thing to settle, which is the trade
-    // generation makes rather than failing: at worst an easier puzzle than was ordered.
+    // are easier to settle, the trade generation makes rather than failing: at worst an easier puzzle
+    // than was ordered.
     for (let density = wanted + DENSITY_STEP; density <= MAX_DENSITY; density += DENSITY_STEP) {
         for (let attempt = 0; attempt < RELAXED_ATTEMPTS; attempt += 1) {
             const board = buildBoard(n, { density, limit }, rng);

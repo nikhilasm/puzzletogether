@@ -82,18 +82,10 @@ describe('kakuro generation', () => {
     });
 
     /**
-     * The property the fill-first generator could not hold, and the reason this one exists
-     * (ADR-0015). Deriving sums from a random filling forced runs down to an average of two and a
-     * half squares to reach a single answer, which is not what a kakuro looks like: a run of two is
-     * a pair of digits, and a puzzle made of them has nothing to reason about.
-     *
-     * **The floor is well under what is measured, and was lowered once.** It was 3.4 against a
-     * measured 4.0 to 4.2, before ADR-0016 gave the layout a block density and the two aesthetics
-     * turned out to be one dial: every block shortens two runs, so a grid patterned enough to look
-     * like a kakuro has runs of about 3.5 rather than 4.1. Pooled over thirty seeds a medium 13×13
-     * now averages 3.4 with individual grids from 2.6 to 3.9, so a floor at 3.4 would have been
-     * measuring which seeds the test happened to name. This one has room for that spread and still
-     * fails loudly at the 2.5 the fill-first generator produced, which is what it is for.
+     * The property the fill-first generator could not hold, and the reason this one exists (ADR-0015):
+     * deriving sums from a random filling forced runs down to an average of two and a half squares. The
+     * floor is well under the measured 3.4 to 4.1 so it tracks a real regression rather than which
+     * seeds the test happened to name, and still fails loudly at the 2.5 the old generator produced.
      */
     it('gives its runs a real length rather than filling the grid with pairs', () => {
         for (const side of [11, 13]) {
@@ -110,19 +102,10 @@ describe('kakuro generation', () => {
     });
 
     /**
-     * The pattern, which is what ADR-0016 exists for. The complaint it answers was never density:
-     * the layouts before it blocked 17 to 30 per cent of the interior, which is what a printed
-     * kakuro carries. It was that the blocks were placed at random, so an interior square agreed
-     * with its 180° partner 71 per cent of the time against the 69 per cent two coin flips agree by
-     * chance, and the grid read as noise rather than as design.
-     *
-     * **Symmetry is of the interior, not of the grid.** A kakuro's clue border is the top row and
-     * left column only, so turning the whole grid would map that border onto squares a player fills.
-     *
-     * Not exact, because repair may block one square without its partner when nothing else settles
-     * the grid, and a lone odd block is a better puzzle than an unfair one. Across 240 puzzles at
-     * every size and difficulty, 203 came out exactly symmetric and the worst carried six unmirrored
-     * squares, so a rule that stopped working would pass this by nothing like the margin it has.
+     * The pattern, which is what ADR-0016 exists for: the complaint it answers was never density but
+     * that random blocks read as noise rather than design. Symmetry is of the interior, not the grid,
+     * and it is not exact, since repair may block one square without its partner when nothing else
+     * settles the grid, so the test allows a small number of unmirrored squares.
      */
     it('draws the interior as a rotationally symmetric pattern', () => {
         for (const side of [7, 9, 13]) {
@@ -144,12 +127,9 @@ describe('kakuro generation', () => {
     });
 
     /**
-     * A walled-off region is a second puzzle sharing the page: separately clued, separately
-     * ambiguous, and visibly wrong. Nothing else catches it, since two disconnected halves are
-     * perfectly consistent with each other, so the solver calls such a grid settled and fair.
-     *
-     * New with symmetric placement and needed because of it: a single block rarely walls a grid off,
-     * while a mirrored pair at a quarter density does it readily.
+     * A walled-off region is a second puzzle sharing the page, and nothing else catches it since two
+     * disconnected halves are consistent with each other. New with symmetric placement and needed
+     * because of it: a single block rarely walls a grid off, while a mirrored pair readily does.
      */
     it('leaves every open square reachable from every other', () => {
         for (const side of [9, 13]) {

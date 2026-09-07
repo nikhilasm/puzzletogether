@@ -1,9 +1,7 @@
 /**
- * The live solve timer, counting up in mm:ss.
- *
- * Ticks are local. The server sends startedAt and its own clock once, the client computes an
- * offset, and no timer traffic ever crosses the wire (design-spec.md §6). The number in the
- * completion modal is the server's, not this one.
+ * The live solve timer, counting up in mm:ss. Ticks are local, computed from a one-time startedAt
+ * and clock offset so no timer traffic crosses the wire; the completion modal's number is the
+ * server's, not this one (design-spec.md §6).
  */
 
 import { LitElement, css, html } from 'lit';

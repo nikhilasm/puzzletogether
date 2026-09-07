@@ -30,19 +30,10 @@ function intFromEnv(name, fallback) {
 const isDev = process.argv.includes('--dev') || process.env.NODE_ENV === 'development';
 
 /**
- * Where banked puzzles are read from, in order.
- *
- * Two directories rather than one, and the split is a licensing control rather than a technical
- * convenience (ADR-0004). data/crosswords/ is **tracked**, and nothing reaches it without somebody
- * having answered what may legally be served. data/crosswords-local/ is **gitignored wholesale**,
- * and holds the freely-distributed .puz files the importer is developed against: a 15×15 is
- * playable while building, and no copyrighted grid can enter git history by accident.
- *
- * **Overridable by PT_BANK_DIRS**, a delimited list resolved against the working directory; the
- * browser suite sets it to the tracked directory alone. The local overlay is a scratch space that
- * differs from machine to machine, so a test asserting anything about what the bank *holds* would
- * pass or fail on which developer ran it. Same reasoning as the lifecycle timings above: the
- * environment names what the run is about, and the default stays the one a deployment wants.
+ * Where banked puzzles are read from, in order: the tracked data/crosswords/ (nothing reaches it
+ * without a licensing answer) and the gitignored data/crosswords-local/ scratch space (ADR-0004).
+ * Overridable by PT_BANK_DIRS, which the browser suite sets to the tracked directory alone so a
+ * test does not depend on which developer's local overlay is present.
  */
 const bankDirs = process.env.PT_BANK_DIRS
     ? process.env.PT_BANK_DIRS.split(delimiter)
@@ -55,9 +46,8 @@ const bankDirs = process.env.PT_BANK_DIRS
 export const config = {
     isDev,
     /**
-     * Log threshold: debug, info, warn, or error. Development says everything; production says info
-     * and above, and turning that down to debug is an environment variable rather than a deploy of
-     * different code (ADR-0026). An unrecognised value falls back to info in log.js.
+     * Log threshold: debug, info, warn, or error, set by environment variable rather than a deploy
+     * of different code (ADR-0026). An unrecognised value falls back to info in log.js.
      */
     logLevel: process.env.PT_LOG_LEVEL ?? (isDev ? 'debug' : 'info'),
     port: intFromEnv('PORT', 3001),

@@ -1,19 +1,8 @@
 /**
- * The icon set: inline SVG, drawn here rather than pulled from a pack.
- *
- * There are twenty-nine of them, they are all simple geometry, and a dependency would cost more
- * than it saves. Emoji are banned as UI icons (brand.md §1) because they render as somebody else's
- * artwork at somebody else's weight; these inherit currentColor and the app's line weight, so an
- * icon inside a disabled control greys out with it and the dark theme needs no second asset.
- *
- * Every icon is aria-hidden, and the control around it carries the accessible name. A one-word
- * label sits under the icon wherever these are drawn as a bar of controls in the app's own working
- * surface, which since ADR-0012 means the input panel. The footer's toolbar is the exception and
- * ADR-0023 is why: peripheral controls, pressed once a session or never, named by a tooltip on
- * hover and by their accessible name always.
- *
- * Geometry lives here; size and weight live in iconStyle, which each consuming component composes
- * into its own styles: shadow roots inherit properties, not rules.
+ * The icon set: inline SVG, drawn here rather than pulled from a pack, since a dependency would cost
+ * more than twenty-nine pieces of simple geometry and these inherit currentColor and the app's line
+ * weight (brand.md §1). Every icon is aria-hidden with the control carrying the name, and geometry
+ * lives here while size and weight live in iconStyle, which each consuming component composes.
  */
 
 import { css, html } from 'lit';
@@ -87,10 +76,8 @@ export const closeIcon = html`
 `;
 
 /**
- * Checking your work: a tick, the same idea --correct carries inside the grid.
- *
- * Deliberately not a magnifier. Check does not search the puzzle, it marks it, and the answer it
- * gives back is drawn on the cells as ticks and crosses, so the button wears the result it produces.
+ * Checking your work: a tick, the same idea --correct carries inside the grid. Deliberately not a
+ * magnifier, since Check marks the puzzle rather than searching it.
  */
 export const checkIcon = html`
     <svg viewBox="0 0 24 24" class="icon" aria-hidden="true">
@@ -122,10 +109,8 @@ export const puzzlesIcon = html`
 `;
 
 /**
- * Filling a nonogram square: the mark itself, at the size the grid draws it.
- *
- * The only solid icon in the set. Everything else here is a stroked outline, and the exception is the
- * point: this button paints a block, so it wears one.
+ * Filling a nonogram square: the mark itself, at the size the grid draws it. The only solid icon in
+ * the set, since this button paints a block.
  */
 export const fillIcon = html`
     <svg viewBox="0 0 24 24" class="icon" aria-hidden="true">
@@ -134,11 +119,9 @@ export const fillIcon = html`
 `;
 
 /**
- * A caveat on a choice that is still available: the standard triangle, drawn at the app's own weight.
- *
- * Deliberately not red and not a stop sign. It marks an option that works but has a cost, so it has
- * to read as "know this" rather than "you cannot", and it never appears without words nearby, since
- * a bare triangle says only that *something* is wrong.
+ * A caveat on a choice that is still available: the standard triangle at the app's own weight. Not
+ * red and not a stop sign, since it marks an option that works but has a cost, and it never appears
+ * without words nearby.
  */
 export const warningIcon = html`
     <svg viewBox="0 0 24 24" class="icon" aria-hidden="true">
@@ -156,12 +139,9 @@ export const moonIcon = html`
 `;
 
 /**
- * On to the next clue: a chevron, at the end of the clue it is moving off.
- *
- * Deliberately not the pair of swapped axes that used to sit here. That icon said "turn the cursor
- * around", and the bar it sat on no longer does that: pressing the clue walks down the column of
- * clues, so the icon has to say "forward" and nothing more. Turning around is what re-tapping the
- * square you are on does, which is the convention every crossword app already teaches.
+ * On to the next clue: a chevron, at the end of the clue it is moving off. Not the swapped axes that
+ * used to sit here, since the bar now walks down the column of clues rather than turning the cursor
+ * around.
  */
 export const nextIcon = html`
     <svg viewBox="0 0 24 24" class="icon" aria-hidden="true">
@@ -170,12 +150,9 @@ export const nextIcon = html`
 `;
 
 /**
- * Rebus: more than one letter in a single square.
- *
- * The square is the cell, and the strokes inside it are the several characters that would not
- * ordinarily fit, which is the whole of what the toggle changes. Drawn rather than lettered because
- * a letterform in an icon is a word in disguise, and this button sits beside three others that are
- * all pure geometry.
+ * Rebus: more than one letter in a single square, the strokes inside the cell being the characters
+ * that would not ordinarily fit. Drawn rather than lettered, since a letterform in an icon is a word
+ * in disguise.
  */
 export const rebusIcon = html`
     <svg viewBox="0 0 24 24" class="icon" aria-hidden="true">
@@ -187,11 +164,8 @@ export const rebusIcon = html`
 `;
 
 /**
- * Backspace, drawn the way every keyboard in the world draws it.
- *
- * This is the one icon in the set that is not free to be original. It sits in the bottom-right corner
- * of a pad of letters, which is exactly where a phone keyboard puts the same key, so a solver reads
- * it before they have consciously looked at it, and any cleverer shape would cost them that.
+ * Backspace, drawn the way every keyboard draws it. The one icon not free to be original, since a
+ * solver reads it from its shape before looking at it.
  */
 export const backspaceIcon = html`
     <svg viewBox="0 0 24 24" class="icon" aria-hidden="true">
@@ -202,11 +176,9 @@ export const backspaceIcon = html`
 `;
 
 /**
- * About: the standard information mark, which is the one icon here that is a letterform.
- *
- * The rule against lettering in an icon (see rebus) is a rule about inventing one. This glyph is
- * not read as an "i": it has been the sign for "here is what this thing is" on every interface for
- * thirty years, and drawing something cleverer would only make it slower to find.
+ * About: the standard information mark, the one icon here that is a letterform. The rule against
+ * lettering (see rebus) is about inventing one, and this glyph has meant about on every interface
+ * for thirty years.
  */
 export const infoIcon = html`
     <svg viewBox="0 0 24 24" class="icon" aria-hidden="true">
@@ -217,12 +189,8 @@ export const infoIcon = html`
 `;
 
 /**
- * Starting another puzzle: a play triangle, which is the one shape that means "begin" outright.
- *
- * Deliberately not a circular arrow. "Again" would be the more literal reading of *start another*,
- * but a looping arrow is what undo already is at this line weight, and the two sit a modal apart
- * in the same session, and brand.md §4's rule that two icons meaning different things must look
- * different applies across the app, not only within one row.
+ * Starting another puzzle: a play triangle, the one shape that means begin outright. Not a circular
+ * arrow, which undo already is at this weight (brand.md §4).
  */
 export const startIcon = html`
     <svg viewBox="0 0 24 24" class="icon" aria-hidden="true">
@@ -243,16 +211,9 @@ export const listIcon = html`
 `;
 
 /**
- * How to play: a question mark, which is the shape of the question being asked.
- *
- * It sits where the info mark used to, and the swap is the difference between "here is what this
- * thing is" and "how does this work". The caption beside it already answers the first: it names the
- * type, the difficulty, and the size. What a solver still wants from it is the rules, and a question
- * mark is the one glyph that offers to answer a question rather than to describe something.
- *
- * The same letterform argument the info mark carries applies here and no more weakly: this is not
- * read as a punctuation character, it has been the sign for help on every interface for as long as
- * ⓘ has been the sign for about, and the two are drawn in the same ring so they stay a pair.
+ * How to play: a question mark, the shape of the question being asked, where the info mark used to
+ * sit. The same letterform argument as the info mark applies: it has meant help for as long as the
+ * info mark has meant about, and the two share a ring to stay a pair.
  */
 export const helpIcon = html`
     <svg viewBox="0 0 24 24" class="icon" aria-hidden="true">
@@ -263,15 +224,9 @@ export const helpIcon = html`
 `;
 
 /**
- * GitHub, drawn as GitHub draws it.
- *
- * The one borrowed mark in the set, and the one solid icon that is not solid because it paints
- * something solid (see fill). A logo is not a description, so there is nothing to redraw at this
- * app's line weight: an outlined approximation of the octocat is a worse octocat, and the whole
- * value of a brand mark is that it is recognised before it is read.
- *
- * Filled on the path rather than the svg, like fill's rect, because iconStyle's fill: none is a
- * rule and would beat an attribute on the element it matches.
+ * GitHub, drawn as GitHub draws it, the one borrowed mark in the set, since a logo is recognised
+ * before it is read and cannot be improved by redrawing. Filled on the path rather than the svg,
+ * since iconStyle's fill: none would beat an attribute.
  */
 export const githubIcon = html`
     <svg viewBox="0 0 16 16" class="icon" aria-hidden="true">
@@ -284,12 +239,8 @@ export const githubIcon = html`
 `;
 
 /**
- * The changelog: a written record, drawn as a sheet with a turned corner and three ruled lines.
- *
- * The turned corner is what keeps it apart from the list icon, which is also ruled lines and means
- * the crossword's clues (brand.md §4). List has no page around it and hangs a bullet off each rule;
- * this is a page first and lines second, which is what a log is: a document you read, not a set of
- * items you pick from. The two never share a row, and the rule is app-wide regardless.
+ * The changelog: a sheet with a turned corner and three ruled lines. The turned corner keeps it
+ * apart from the list icon, which is also ruled lines but means the crossword's clues (brand.md §4).
  */
 export const changelogIcon = html`
     <svg viewBox="0 0 24 24" class="icon" aria-hidden="true">
@@ -302,10 +253,8 @@ export const changelogIcon = html`
 `;
 
 /**
- * The author's homepage: a house, which is the one shape that means "home" without a word.
- *
- * Not an arrow and not a globe. An arrow would say "back", which this is not: it leaves the app. A
- * globe says "somewhere on the web", which the GitHub mark two buttons along already says better.
+ * The author's homepage: a house, the one shape that means home without a word. Not an arrow, which
+ * would say back, nor a globe, which the GitHub mark already says better.
  */
 export const homeIcon = html`
     <svg viewBox="0 0 24 24" class="icon" aria-hidden="true">
@@ -315,12 +264,9 @@ export const homeIcon = html`
 `;
 
 /**
- * Reporting an issue: a flag, which is what "report this" has looked like on the web for years.
- *
- * Deliberately not the warning triangle. That one marks a choice the app is cautioning you about
- * and it appears elsewhere on the same session; two icons meaning different things must look
- * different (brand.md §4). A bug was the other candidate and says too little: the link takes you to
- * an issue tracker, which takes requests as readily as defects.
+ * Reporting an issue: a flag, what report this has looked like for years. Not the warning triangle,
+ * which means something else on the same session (brand.md §4), and not a bug, since the tracker
+ * takes requests as readily as defects.
  */
 export const flagIcon = html`
     <svg viewBox="0 0 24 24" class="icon" aria-hidden="true">
@@ -330,29 +276,15 @@ export const flagIcon = html`
 `;
 
 /*
- * The six puzzle-type marks, which are one icon drawn six ways (ADR-0022).
- *
- * Every one of them is the same 2x2 of rounded cells on the same 24x24 box, and what tells them
- * apart is what is printed in the four squares: the type's own vocabulary, at the scale a solver
- * meets it on the board. They are identity marks rather than action icons, so they are the one
- * group here that carries letterforms, and they only ever appear on the puzzle-type tiles with the
- * type's name under them.
- *
- * Their parts need rules iconStyle does not give: a filled square, a washed one, a printed
- * character, and a region rule heavier than a grid line. Those live in typeIconStyle, which a
- * shadow root composes alongside iconStyle.
+ * The six puzzle-type marks, one icon drawn six ways (ADR-0022): the same 2x2 of rounded cells,
+ * told apart by what is printed in the squares. Identity marks rather than action icons, so their
+ * parts need rules iconStyle does not give, which live in typeIconStyle.
  */
 
 /** Sizing and paint for the parts a type mark is built from. Compose alongside iconStyle. */
 export const typeIconStyle = css`
-    /*
-     * The square the puzzle prints solid: a crossword block, a filled nonogram square.
-     *
-     * It keeps the stroke it inherits rather than dropping it, unlike the fill icon. A stroke is
-     * drawn centred on the path, so an outlined cell is half a stroke bigger than its rect on every
-     * side; a block with stroke: none came out a stroke narrower than the outlined square beside it,
-     * which is visible at this size and reads as a wonky grid.
-     */
+    /* The square the puzzle prints solid; it keeps its inherited stroke, unlike the fill icon, so it
+       stays the same size as the outlined squares beside it. */
     .icon .block {
         fill: currentColor;
     }
@@ -452,12 +384,9 @@ export const kakuroIcon = html`
 `;
 
 /**
- * Suguru: three squares drawn as one region, beside a fourth that is not in it.
- *
- * The region is the type, so it is one outline rather than three cells with a rule between them:
- * that is how a suguru board draws it, and it is the only thing separating this mark from the
- * sudoku one. Its digits run 1..n over the region, which is why the three inside it can hold 2, 1,
- * and 3 with no row or column saying otherwise.
+ * Suguru: three squares drawn as one region, beside a fourth that is not in it. The region is the
+ * type, so it is one outline rather than three cells, and its digits run 1..n with no row or column
+ * rule.
  */
 export const suguruIcon = html`
     <svg viewBox="0 0 24 24" class="icon" aria-hidden="true">
@@ -473,11 +402,8 @@ export const suguruIcon = html`
 `;
 
 /**
- * The mark for each puzzle type, keyed by the value that travels over the wire.
- *
- * A map rather than a switch in the picker, so a new type adds a drawing here and nothing else.
- * A type with no entry renders no mark rather than a broken one, which is what makes the tile
- * degrade to the labelled button it used to be.
+ * The mark for each puzzle type, keyed by the wire value. A map rather than a switch, so a new type
+ * adds a drawing here, and a type with no entry renders no mark rather than a broken one.
  */
 export const puzzleTypeIcons = {
     crossword: crosswordIcon,

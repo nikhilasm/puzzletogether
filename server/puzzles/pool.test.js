@@ -1,14 +1,8 @@
 /**
  * The pool's one guarantee about content: a puzzle comes back on the difficulty that was asked for.
- *
- * Everything else the pool does is latency, which a test cannot see the point of. This can be seen,
- * because three of the four generators measure the difficulty of what they made rather than dialling
- * it in, so a single draw lands off the band often enough to reach a player (ADR-0017).
- *
- * Both tests run against a real worker thread and real generation, since the redraw is a property of
- * the whole path rather than of any one generator. targetSize 0 turns the background refill off: it
- * would otherwise generate two more of everything these tests ask for, which is work no assertion
- * here reads.
+ * Three of the four generators measure difficulty rather than dialling it in, so a single draw lands
+ * off the band often enough to reach a player (ADR-0017); both tests run a real worker with the
+ * background refill off (targetSize 0).
  */
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -54,10 +48,9 @@ describe('taking a puzzle at a difficulty', () => {
     }, 30000);
 
     /**
-     * The budget has to be finite, and this is why. A 4×4 sudoku falls to naked and hidden singles
-     * however it is dug, so hard there is not unlucky, it is unreachable: 25 draws in a row measured
-     * easy. What matters is that the room still gets a puzzle and the console says what happened,
-     * rather than a worker spinning on a request it can never satisfy.
+     * The budget has to be finite, and this is why: a 4×4 sudoku falls to singles however it is dug,
+     * so hard there is unreachable and 25 draws in a row measured easy. What matters is that the room
+     * still gets a puzzle and the console says so, rather than a worker spinning forever.
      */
     it('settles for the nearest band, and says so, when the difficulty cannot be reached', async () => {
         const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});

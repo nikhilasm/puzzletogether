@@ -1,11 +1,7 @@
 /**
- * How the grid is drawn: cell geometry, region rules, pencil-mark positions, presence stripes, and
- * the cursor's own colour.
- *
- * These are the assertions that a screenshot would have made for us if screenshots were reliable
- * across engines. Every one of them corresponds to something that went wrong once: cells a pixel
- * out in Firefox, marks that moved when their neighbors changed, dots that only landed on the top
- * row. They are worth their runtime in both browsers.
+ * How the grid is drawn: cell geometry, region rules, pencil-mark positions, presence stripes, and the
+ * cursor's own colour. These are the assertions a screenshot would make if screenshots were reliable
+ * across engines, each one guarding something that went wrong once and worth its runtime in both.
  */
 
 import { expect, test } from '@playwright/test';
@@ -277,13 +273,10 @@ test.describe('the cursor', () => {
         const washes = await page.locator('pt-sudoku-board').evaluate((board) => {
             const cells = [...board.shadowRoot.querySelectorAll('pt-cell')];
             /*
-             * The wash is a background-*image* now, not a background-color.
-             *
-             * The two are separate longhands so that a given square shows its faint printed ground
-             * *and* the cursor wash on top, rather than one replacing the other and blinking out
-             * every time somebody moves. That means the colour to read here is the gradient's, and
-             * reading backgroundColor instead returns the given tint on every cell, which is why
-             * this used to see 0.05 for the cursor and 0.05 for its column and call them equal.
+             * The wash is a background-image now, not a background-color, so a given square can show
+             * its faint printed ground and the cursor wash on top rather than one replacing the other.
+             * The colour to read is therefore the gradient's, not backgroundColor, which returns the
+             * given tint on every cell.
              */
             const alpha = (cell) => {
                 const image = getComputedStyle(cell).backgroundImage;

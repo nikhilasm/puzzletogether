@@ -1,17 +1,8 @@
 /**
- * The nonogram puzzle module: the four methods every puzzle type implements (design-spec.md §7).
- *
- * Nonogram is the type that tests the abstraction hardest, and the two places it does not reuse are
- * both real differences rather than accidents:
- *
- * - **A cell is tri-state**, not a digit. The wire values are single characters (# and x), and
- *   validateOp below is what holds them to that. It used to be the schema's job: every cell value
- *   was one character until crossword's rebus squares widened the bound to 8 (ADR-0007). Nothing
- *   changed here, because this module matched against an array of allowed values rather than
- *   searching a string, and an array includes cannot match a substring the way sudoku's did.
- * - **Completion counts fills only.** A cross is the player's note that a cell is empty, not an
- *   answer, so isComplete ignores them entirely and a grid solves whether or not the player marked
- *   the blanks. That is why this module cannot use the shared value-grid helpers.
+ * The nonogram puzzle module: the four methods every puzzle type implements (design-spec.md §7). It
+ * reuses the shared value-grid helpers least, since a cell is tri-state rather than a digit
+ * (validateOp holds the wire values to single characters) and completion counts fills only, a cross
+ * being the player's note (ADR-0007).
  */
 
 import { randomUUID } from 'node:crypto';
@@ -25,11 +16,8 @@ import { generateNonogram } from './generate.js';
 const DOC_VERSION = 1;
 
 /**
- * The two things a player can put in a cell.
- *
- * Carried in meta rather than agreed as a constant on both sides, so the client reads what this
- * puzzle uses instead of knowing what nonograms use. Single characters, to stay inside the schema's
- * cell-value rule.
+ * The two things a player can put in a cell, carried in meta so the client reads what this puzzle
+ * uses. Single characters, to stay inside the schema's cell-value rule.
  */
 const VALUES = { fill: '#', cross: 'x' };
 
@@ -130,11 +118,9 @@ export default {
     },
 
     /**
-     * Classifies the requested cells against the picture, for the Check feature.
-     *
-     * Only fills are judged. A cross sits where the player believes nothing goes, so it is graded on
-     * that belief, right when the cell is genuinely blank, while a cell left untouched is
-     * 'empty' rather than wrong, because saying nothing is not a mistake.
+     * Classifies the requested cells against the picture, for the Check feature. Only fills are
+     * judged: a cross is graded on the player's belief that the cell is blank, while a cell left
+     * untouched is empty rather than wrong.
      *
      * @param {import('../../../shared/protocol.js').PuzzleDoc} doc - The puzzle document.
      * @param {import('../../../shared/protocol.js').BoardState} board - Current board.

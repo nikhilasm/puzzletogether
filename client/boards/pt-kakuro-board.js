@@ -1,15 +1,8 @@
 /**
- * The kakuro grid: clue squares, and a cursor that reads along runs.
- *
- * Almost all of this type's client cost is *not here*. The clue squares are drawn by <pt-cell> from
- * the pair of sums the document puts on them (ADR-0014), blocked squares already refuse the cursor,
- * and pencil marks already lay out three by three for the nine digits, so what is left is the two
- * questions every type answers about its own grid: what a keystroke writes, and which squares the
- * cursor implies.
- *
- * The run index is a private cache rather than a module of its own, following kenken's cage lookup.
- * Crossword's entries earned a file because navigating a crossword is a subject in itself; a kakuro
- * run is a list of squares the document already carries, so indexing it is four lines.
+ * The kakuro grid: clue squares, and a cursor that reads along runs. Most of this type's client
+ * cost is elsewhere (pt-cell draws the clue squares from the document's sums, ADR-0014), so what is
+ * left is what a keystroke writes and which squares the cursor implies, plus a small private run
+ * index.
  */
 
 import { toCoords } from '../../shared/puzzle-doc.js';
@@ -35,12 +28,9 @@ export class PtKakuroBoard extends PtBoard {
     #runCache = null;
 
     /**
-     * The two runs crossing the cursor, which is what a solver is reading.
-     *
-     * Not the row and the column, which is the base element's default and would be wrong here: a
-     * kakuro row is several runs with nothing to do with each other, so washing the whole row would
-     * highlight squares whose sums the player is not working on. This is the same argument as
-     * crossword's entry highlight, in a puzzle where the cursor lies on two entries at once.
+     * The two runs crossing the cursor, which is what a solver is reading. Not the base element's
+     * row and column, since a kakuro row is several unrelated runs, the same argument as crossword's
+     * entry highlight.
      */
     isHighlighted(idx) {
         if (this.selection == null) return false;
@@ -48,12 +38,9 @@ export class PtKakuroBoard extends PtBoard {
     }
 
     /**
-     * Arrow keys skip the clue squares rather than stopping at them.
-     *
-     * Crossword's rule without the direction half: a kakuro cursor points nowhere in particular, it
-     * is simply somewhere, so an arrow always moves and never turns. Stopping dead at a clue square
-     * would strand the cursor mid-grid, since a kakuro's blocked squares run through the middle of
-     * the puzzle rather than around its edge.
+     * Arrow keys skip the clue squares rather than stopping at them, always moving and never
+     * turning. Stopping at a clue square would strand the cursor, since a kakuro's blocked squares
+     * run through the middle of the grid.
      *
      * @param {number} from - Cell the selection is leaving.
      * @param {number} deltaRow - -1, 0, or 1.

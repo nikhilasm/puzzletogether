@@ -1,51 +1,22 @@
 /**
- * Where a kakuro's blocks go: a symmetric, clustered pattern at a difficulty's density
- * (ADR-0016).
- *
- * Split out of generate.js, which chooses the clues. The two steps are independent: this file knows
- * nothing about sums, and the clue chooser takes whatever shape it is handed.
- *
- * **The pattern is the aesthetic, not the count.** Measured, the layouts this replaced were already
- * at 17 to 30 per cent blocks, which is what a printed kakuro carries. What they were not was
- * arranged: interior squares agreed with their 180 degree partner 71 per cent of the time against
- * the 69 per cent two coin flips would agree by chance, and blocks landed as scattered singles
- * rather than the clumps and staircases a real grid has. Three rules fix that, and only the second
- * costs the puzzle anything:
- *
- * 1. **Blocks are placed in symmetric pairs**, so the pattern reads as designed. Free: it says where
- *    a block goes, not how many there are.
- * 2. **A density target per difficulty**, which is the run-length knob stated in the units the eye
- *    reads. Every block shortens two runs, so this is the one rule with a cost.
- * 3. **A preference for placing next to a block already down**, which is what turns a scatter into
- *    clumps and thick corners.
- *
- * **The symmetry is of the interior, not of the grid.** A kakuro's clue border is the top row and
- * the left column only, so rotating the whole grid 180 degrees would map that border onto the last
- * row and column, where a kakuro has ordinary squares. Interior squares are rows and columns 1 to
- * n-1, and that region does map onto itself. The border is therefore never a candidate here, which
- * is also what keeps clueSquare in range: it subtracts 1 or n with no bounds check, on the promise
- * that row 0 and column 0 are entirely blocked.
+ * Where a kakuro's blocks go: a symmetric, clustered pattern at a difficulty's density (ADR-0016).
+ * The symmetry is of the interior (rows and columns 1 to n-1), never the clue border, which is what
+ * keeps clueSquare in range on the promise that row 0 and column 0 are entirely blocked.
  */
 
 import { deriveRuns, hasNoShortRun, MAX_RUN, MIN_RUN } from './runs.js';
 
 /**
- * How often a block extends a clump rather than starting a new one.
- *
- * Three in four leaves roughly a quarter of the pairs as fresh seeds, so a 13x13 comes out with
- * four or five clumps rather than one blob or forty specks. Both ends of this look wrong: at 0 the
- * pattern is the scatter this file exists to replace, and at 1 the whole budget grows off whichever
- * square happened to be picked first, walling off a corner and leaving every other run at full
- * length.
+ * How often a block extends a clump rather than starting a new one. Three in four leaves roughly a
+ * quarter of the pairs as fresh seeds; at 0 the pattern is a scatter, and at 1 the whole budget grows
+ * off one square, walling off a corner and leaving every other run at full length.
  */
 const CLUSTER_BIAS = 0.75;
 
 /**
  * The square an interior square is paired with, under a 180 degree turn about the interior's centre.
- *
- * The offered sides are 7, 9, 11 and 13, all odd, so the interior side is even and its centre falls
- * between squares. **No square is ever its own partner**, which is why placement can treat every
- * orbit as a pair with no special case, and why a layout's block count is always even.
+ * No square is ever its own partner (the interior side is even), so placement treats every orbit as a
+ * pair with no special case, and a layout's block count is always even.
  *
  * @param {number} idx - Flat index of an interior square.
  * @param {number} n - Grid side length.
@@ -84,15 +55,9 @@ function orbitsOf(n) {
 }
 
 /**
- * Whether the open squares are still one connected region.
- *
- * New with symmetric placement, and needed because of it. A single block rarely walls a grid off;
- * a mirrored pair at a quarter density does it readily, and a walled-off region is a second puzzle
- * sharing the page: separately clued, separately ambiguous, and visibly wrong. The clue chooser
- * cannot see this, since disconnected halves are perfectly consistent with each other.
- *
- * Exported because repair blocks squares too, and a grid it walls off is as wrong as one drawn that
- * way.
+ * Whether the open squares are still one connected region. A mirrored pair at a quarter density
+ * readily walls a grid off, and a walled-off region is a second puzzle sharing the page; exported
+ * because repair blocks squares too, and a grid it walls off is as wrong as one drawn that way.
  *
  * @param {Uint8Array} white - One entry per cell, 1 for an open square.
  * @param {number} n - Grid side length.
@@ -155,20 +120,9 @@ function touchesBlock(idx, white, n) {
 }
 
 /**
- * Picks which pair to place next, from what is left.
- *
- * A cascade rather than a score, because the three rules are not comparable: an over-long run is a
- * fault to be fixed, clustering is a preference, and the rest is arbitrary. Each step falls through
- * to the next when nothing matches, so placement never stalls on a preference it cannot satisfy.
- *
- * **Clustering counts only blocks placed here, not the border.** Counting the border would make
- * every square in the first interior row and column a candidate from the first placement, and clumps
- * would grow along the frame: the border would come out chewed into a staircase and the interior
- * left empty, which is the opposite of the pattern wanted. Border steps still happen, when a clump
- * reaches the frame or a fresh seed lands against it, at about the rate they did before.
- *
- * Only one square of the pair is tested. Under symmetry the answer for the other is the same: if a
- * square touches a block, its partner touches that block's partner.
+ * Picks which pair to place next, from what is left. A cascade rather than a score, since the three
+ * rules are not comparable; clustering counts only blocks placed here, not the border, so clumps grow
+ * in the interior rather than chewing a staircase along the frame.
  */
 function pickOrbit(remaining, white, n, longCells, rng) {
     if (longCells) {
@@ -197,11 +151,9 @@ function cellsInLongRuns(white, n, limit) {
 }
 
 /**
- * Places symmetric pairs until the grid is dense enough and no run is too long.
- *
- * A pair that leaves a run of one square, or splits the open squares in two, is refused and dropped
- * rather than retried later: blocks are only ever added, so a pair that is illegal now is illegal
- * for the rest of the draw. That bounds the whole loop at one pass over the pairs.
+ * Places symmetric pairs until the grid is dense enough and no run is too long. A pair that leaves a
+ * run of one square or splits the open squares is refused and dropped rather than retried, since
+ * blocks are only ever added, which bounds the loop at one pass over the pairs.
  */
 function placePairs(white, n, target, limit, rng) {
     const remaining = rng.shuffle(orbitsOf(n));
@@ -250,12 +202,9 @@ export function withinLaw(white, n) {
 }
 
 /**
- * Cuts any run the symmetric pass could not shorten, one block at a time.
- *
- * The safety net, and the one place a layout loses its symmetry. Symmetric placement gets there on
- * its own most of the time, since a pair that splits a long run is what it reaches for first, but a
- * pair has to be legal at both ends and late in a draw many are not. A grid with one odd block is
- * better than a grid with a run of eleven, so the fault is preferred to the failure.
+ * Cuts any run the symmetric pass could not shorten, one block at a time. The safety net and the one
+ * place a layout loses its symmetry: a grid with one odd block is better than a grid with a run of
+ * eleven, so the fault is preferred to the failure.
  */
 function subdivide(white, n, limit, rng) {
     for (let guard = 0; guard < n * n; guard += 1) {

@@ -1,9 +1,7 @@
 /**
- * The game screen: puzzle header, timer, the shared grid, and every control that acts on it.
- *
- * Owns no board state. It reads the store, hands the board and keypad what they need, and turns
- * their events back into store calls, which is what keeps physical keyboard, on-screen keypad, and
- * touch on one input path (design-spec.md §11). The only local state is which dialog is open.
+ * The game screen: puzzle header, timer, the shared grid, and every control that acts on it. Owns
+ * no board state; it reads the store and turns board and keypad events back into store calls,
+ * keeping every input path together (design-spec.md §11).
  */
 
 import { LitElement, css, html, nothing } from 'lit';
@@ -84,19 +82,9 @@ export class PtGame extends LitElement {
                 display: block;
             }
 
-            /* Title and timer are a caption on the grid, not a banner above it: they sit close
-               enough to read as one block with it, and the type steps down so the grid stays the
-               largest thing on the screen. Weight, not size, is what separates them from the
-               timer underneath. */
-            /*
-             * A flex row rather than a centred text run, because of what sits at the end of it.
-             *
-             * The help control is a box with an icon in it, and aligning a box against a line of
-             * type is vertical-align arithmetic that the two engines round differently: grid
-             * alignment is already the one place this app has shipped a Firefox-only bug. Centring
-             * both as flex items asks neither engine for a baseline. It wraps, so a long caption on
-             * a 320px screen drops the control to its own line instead of widening the page.
-             */
+            /* Title and timer are a caption on the grid, a flex row centred as items so aligning the
+               help control against the type asks neither engine for a baseline, and it wraps on a
+               narrow screen. */
             .header {
                 display: flex;
                 flex-wrap: wrap;
@@ -113,21 +101,9 @@ export class PtGame extends LitElement {
                 font-weight: 700;
             }
 
-            /*
-             * The way into the rules, on the caption that names the type rather than in the action
-             * row below it.
-             *
-             * That row is defined by scope: things that act on the room's puzzle or on your seat in
-             * it. Help acts on nothing, so a fifth button there would blunt the one rule keeping
-             * Undo and Reveal apart, and a host's four already come to about 618px against the
-             * row's 480, so it would buy a third line as well. Here it costs no row at all and sits
-             * on the word it explains.
-             *
-             * Borderless and --graphite, like the roster's remove control: an annotation on the
-             * heading rather than a control competing with it. It inherits the header's size so the
-             * mark is drawn at the caption's own scale, and takes the 2.25rem box the dialogs'
-             * close controls take, which is this app's size for a secondary icon-only control.
-             */
+            /* The way into the rules, on the caption rather than the action row, since Help acts on
+               nothing; borderless and --graphite like the roster's remove control, an annotation
+               rather than a competing control. */
             .header .help {
                 display: flex;
                 flex: none;
@@ -142,17 +118,8 @@ export class PtGame extends LitElement {
                 font-size: inherit;
             }
 
-            /*
-             * The empty item that keeps the caption centred on the caption.
-             *
-             * Flex centring divides the row between everything in it, so the control at the end was
-             * pushing the words left by half its width: the heading was centred and the title was
-             * not. An equal item at the head of the row balances it, so the words sit exactly where
-             * they would if the control did not exist and the mark hangs off their right edge.
-             *
-             * Drawn only when the control is, since a spacer with nothing to answer is the same
-             * error mirrored.
-             */
+            /* The empty item that balances the help control at the row's other end, so flex centring
+               lands the words where they would sit without it; drawn only when the control is. */
             .header .balance {
                 flex: none;
                 width: 2.25rem;
@@ -185,20 +152,9 @@ export class PtGame extends LitElement {
                 align-items: center;
             }
 
-            /*
-             * Everything that acts on the puzzle or the room, in one row under a rule.
-             *
-             * Erase and Undo live on the keypad because they act on the cell you are in; Puzzle
-             * Select, Check, Reveal, and Leave room act on the room's puzzle or on your seat in it,
-             * and two of them are host-only. Keeping them apart is what stops a player reaching for
-             * Undo and finding Reveal. The rule is the separation: a border, not a shadow
-             * (brand.md §1).
-             *
-             * **Leave room is the last of them rather than a block of its own.** Set apart and
-             * shrunk it read as an afterthought rather than as a quiet one, and it was the only
-             * button on the screen at its own size. It keeps the end of the reading order and says
-             * what it is with colour, the channel that does not cost it a tap target.
-             */
+            /* Everything that acts on the puzzle or the room, in one row under a border rule
+               (brand.md §1) that keeps it apart from the cell actions on the keypad; Leave room is
+               last rather than a block of its own, saying what it is with colour. */
             .puzzle-actions {
                 display: flex;
                 flex-wrap: wrap;
@@ -222,14 +178,9 @@ export class PtGame extends LitElement {
                 font-size: var(--text-sm);
             }
 
-            /*
-             * Sits under the grid, which is what the actions it reports on happened to.
-             *
-             * It stays in the DOM empty rather than being rendered conditionally, since a live
-             * region has to exist before the text arrives or the announcement is missed, and takes
-             * no height at all in that state: an empty block has no line box, and the margins are
-             * hung off :not(:empty) so they arrive with the words.
-             */
+            /* Sits under the grid, kept in the DOM empty so the live region exists before text
+               arrives, its margins hung off :not(:empty) so it takes no height until it has
+               words. */
             .notice {
                 margin: 0;
                 color: var(--graphite);
@@ -291,14 +242,9 @@ export class PtGame extends LitElement {
     }
 
     /**
-     * Starts the wave when a result lands, and holds the congrats modal back until it is over.
-     *
-     * On the transition into a result rather than on the result itself, because dismissing the modal
-     * rewrites solved and nobody wants the grid celebrating a second time for the same puzzle.
-     *
-     * **A reveal is not a solve.** The grid was filled in by the room giving up on it, and answering
-     * that with the same colours the room gets for finishing would be the app misreading the moment.
-     * The modal already says "Revealed" rather than "Solved!"; this agrees with it.
+     * Starts the wave when a result lands, and holds the congrats modal back until it is over, on
+     * the transition into a result so dismissing the modal does not celebrate twice. A reveal is not
+     * a solve, so it gets no wave, agreeing with the modal's Revealed heading.
      */
     willUpdate() {
         const solved = this.#store.state.solved;
@@ -344,11 +290,8 @@ export class PtGame extends LitElement {
     }
 
     /**
-     * Moves the cursor along after a value lands, if this puzzle type advances at all.
-     *
-     * Called from both input paths rather than from inside the board, so that the physical keyboard
-     * and the on-screen pad cannot drift apart, which is the whole point of the one-input-path rule
-     * (design-spec.md §11). Sudoku and kenken return null here and nothing moves.
+     * Moves the cursor along after a value lands, if this puzzle type advances at all. Called from
+     * both input paths so the physical keyboard and the pad cannot drift apart (design-spec.md §11).
      */
     #advance(cell) {
         const next = this.#board?.advanceAfterInput?.(cell);
@@ -393,11 +336,8 @@ export class PtGame extends LitElement {
     }
 
     /**
-     * Backspace or Delete on the grid.
-     *
-     * In a crossword this peels one letter off, so a rebus square being assembled can be corrected
-     * a letter at a time; the Erase key still clears the square outright. Everywhere else a cell
-     * holds one value and the two are the same action.
+     * Backspace or Delete on the grid. In a crossword this peels one letter off so a rebus square
+     * can be corrected a letter at a time; everywhere else it clears the square.
      */
     #onCellClear(event) {
         if (this.#takesLetters) roomStore.backspaceLetter(event.detail.cell);
@@ -572,14 +512,9 @@ export class PtGame extends LitElement {
     }
 
     /**
-     * The pinned input panel: this puzzle's keys, its one setting, and its clue if it has one.
-     *
-     * It comes straight after the grid in the DOM even though it is drawn at the foot of the screen,
-     * because that is the order it is *used* in: a keyboard or screen-reader user reaching past the
-     * grid should meet the keys next, not Check and Reveal.
-     *
-     * Everything type-specific about it is slotted from here rather than branched inside the panel,
-     * which is what keeps <pt-keypad> from knowing there is such a thing as a crossword.
+     * The pinned input panel: this puzzle's keys, its one setting, and its clue if it has one. It
+     * follows the grid in the DOM even though drawn at the foot, so a keyboard or screen-reader user
+     * meets the keys next, and everything type-specific is slotted from here.
      */
     #renderPanel(board, doc, state, isPlaying) {
         const letters = board.input === 'letters';
@@ -620,15 +555,10 @@ export class PtGame extends LitElement {
     }
 
     /**
-     * The one setting beside the keys that changes what a keypress means, plus anything else this
-     * type needs within reach of a thumb.
-     *
-     * Every type has exactly one setting, which is not a coincidence worth hiding: Notes for the
-     * digit puzzles, a brush for nonogram, Rebus for crossword. The slot is the same, so the shape of
-     * the screen never changes between types even though its contents do (design-spec.md §4).
-     *
-     * Crossword adds one thing on top of its setting, the way into the clue list, because it is the
-     * only type whose puzzle is partly written somewhere other than the grid.
+     * The one setting beside the keys that changes what a keypress means: Notes for digits, a brush
+     * for nonogram, Rebus for crossword, always in the same slot so the screen's shape never changes
+     * (design-spec.md §4). Crossword adds the way into the clue list, being the only type whose
+     * puzzle is partly written off the grid.
      */
     #renderSetting(board, state, isPlaying) {
         if (board.input === 'brushes') {
@@ -641,11 +571,9 @@ export class PtGame extends LitElement {
         }
 
         if (board.input === 'letters') {
-            // Clues leads the row. It is the only control here that does not change or clear a
-            // square, since it opens the puzzle's other half, so it reads as the way *in* rather
-            // than as one more thing to do to the square you are on. Rebus,
-            // Backspace, and Undo follow, in the order the other types put their setting and their
-            // two corrections.
+            // Clues leads the row, the only control here that opens the puzzle's other half rather
+            // than acting on a square. Rebus, Backspace, and Undo follow, in the order the other
+            // types put their setting and corrections.
             return html`
                 <button
                     slot="actions"
@@ -720,11 +648,8 @@ export class PtGame extends LitElement {
     }
 
     /**
-     * The row of actions on the puzzle and on the room, under its rule.
-     *
-     * The row renders only the actions this player actually has: a non-host in a room with checking
-     * switched off gets Leave room and nothing else. Every player has Leave room, so the rule is
-     * always drawn and always drawn around something.
+     * The row of actions on the puzzle and on the room, under its rule, rendering only the actions
+     * this player has. Every player has Leave room, so the rule is always drawn around something.
      */
     #renderControls(state, isPlaying) {
         const settings = state.room?.settings ?? {};

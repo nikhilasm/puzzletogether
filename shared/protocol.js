@@ -1,8 +1,6 @@
 /**
- * The wire contract: event names, error codes, and a @typedef for every payload shape.
- *
- * Single source of truth for both sides (ADR-0006). shared/schema.js validates the same shapes
- * at runtime; when one changes, the other changes in the same commit.
+ * The wire contract: event names, error codes, and a @typedef for every payload shape (ADR-0006).
+ * shared/schema.js validates the same shapes at runtime; the two change in the same commit.
  */
 
 /**
@@ -12,11 +10,8 @@
 export const PROTOCOL_VERSION = 1;
 
 /**
- * Client → server events. Every one takes an ack callback.
- *
- * GAME_START covers design-spec.md §10's game:newPuzzle as well: starting from select and
- * starting again from solved differ in nothing but the state they leave, so a second event with
- * identical semantics would only be a second thing to keep in step.
+ * Client to server events; every one takes an ack callback. GAME_START also covers game:newPuzzle,
+ * since starting from select and restarting from solved differ only in the state they leave.
  */
 export const CLIENT_EVENT = {
     ROOM_CREATE: 'room:create',
@@ -69,15 +64,10 @@ export const ERROR = {
 };
 
 /**
- * The errors that end a seat rather than fail a request.
- *
- * Each arrives unasked for and says the same thing: the seat this socket held is gone. There is
- * nothing to retry and nothing to acknowledge, so a client answers all five identically by giving
- * the seat up and saying why (ADR-0025). A set here rather than five branches there, because the
- * list is a fact about the protocol.
- *
- * NOT_IN_ROOM is also an ack code, where it means a request arrived without a seat. That is a
- * different message on a different channel; only the ones pushed as an error event reach this.
+ * The errors that end a seat rather than fail a request; each says the seat this socket held is
+ * gone, so a client answers all five identically by giving the seat up (ADR-0025). NOT_IN_ROOM is
+ * also an ack code meaning a request arrived without a seat, a different channel that does not
+ * reach this.
  */
 export const SEAT_ENDED = new Set([
     ERROR.KICKED,

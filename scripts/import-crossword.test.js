@@ -1,15 +1,7 @@
 /**
- * The importer, and above all the things it refuses.
- *
- * The refusals are the point of the file (design-spec.md §8): a crossword that imports slightly
- * wrong is worse than one that does not import, because a grid whose numbering is off by one looks
- * entirely normal and is discovered by a room mid-solve. So every refusal gets a test, built on a
- * crafted file rather than waiting for one to turn up.
- *
- * .puz files are assembled here byte by byte instead of read off disk. The four real ones are
- * gitignored, since free to download is not free to redistribute, so a test that depended on them
- * would
- * pass on this machine and fail on every other.
+ * The importer, and above all the things it refuses (design-spec.md §8). A crossword that imports
+ * slightly wrong is worse than one that does not, so every refusal gets a test, built on a crafted
+ * .puz assembled byte by byte here rather than a real file (the four real ones are gitignored).
  */
 
 import { describe, expect, it } from 'vitest';
@@ -75,10 +67,9 @@ describe('readPuz', () => {
     });
 
     /**
-     * The notes string sits *after* the clues and before the extension sections. Stopping the string
-     * scan one short leaves the section scan starting inside somebody's prose, where it finds
-     * nothing, and reports a puzzle with no rebus and no circles rather than failing. That is
-     * exactly the bug this file was written after.
+     * The notes string sits after the clues and before the extension sections. Stopping the string
+     * scan one short leaves the section scan starting inside prose, reporting a puzzle with no rebus or
+     * circles rather than failing, which is the bug this file was written after.
      */
     it('finds the extensions even when the puzzle carries notes', () => {
         const gext = new Uint8Array(25);

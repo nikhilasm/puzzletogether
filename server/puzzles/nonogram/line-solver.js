@@ -1,15 +1,8 @@
 /**
  * The nonogram line-solver: the one piece of logic that decides both whether a puzzle is fair and
- * how hard it is.
- *
- * Ambiguous nonograms are the classic failure mode of naive generation (ADR-0004), so a candidate is
- * only ever emitted if this resolves it completely; a puzzle a line-solver cannot finish is one a
- * player would have to guess at. That makes the solver the uniqueness proof.
- *
- * It is also the measurement. Sweeping rows and columns until nothing changes is exactly the process
- * a person follows, so **how many sweeps it took is a property of the puzzle**, not a parameter that
- * was fed in, which is what lets nonogram label itself with a measured difficulty the way sudoku
- * does, and unlike kenken.
+ * how hard it is, the uniqueness proof since a puzzle it cannot finish would have to be guessed
+ * (ADR-0004). It is also the measurement, since how many sweeps it took is a property of the puzzle,
+ * letting nonogram label a measured difficulty like sudoku.
  */
 
 /** Cell states inside the solver. Kept numeric so a line is a Uint8Array. */
@@ -18,11 +11,8 @@ export const FILL = 1;
 export const CROSS = 2;
 
 /**
- * Narrows one line as far as its clues allow, given what is already known about it.
- *
- * Works by enumerating every placement of the blocks that is consistent with the known cells, then
- * keeping only what all of them agree on: a cell filled in every placement must be filled, and one
- * empty in every placement must be crossed. Anything they disagree about stays unknown.
+ * Narrows one line as far as its clues allow, given what is already known. Works by enumerating
+ * every consistent block placement and keeping only what all agree on, leaving the rest unknown.
  *
  * @param {number[]} clues - Block lengths for this line, in order.
  * @param {Uint8Array} line - Known state per cell.
@@ -122,10 +112,8 @@ function writeLine(grid, rows, cols, index, isRow, line) {
  * @param {number} rows - Row count.
  * @param {number} cols - Column count.
  * @returns {{ grid: Uint8Array, solved: boolean, sweeps: number }|null} The furthest the solver got,
- *   how many sweeps *deduced something*, and whether it finished; null when the clues contradict
- *   each other. The final sweep, which by definition changes nothing, is not counted: it is how the
- *   loop learns it is finished, not work the puzzle demanded. Without that subtraction the count can
- *   never fall below two, and no small grid could ever measure easy.
+ *   how many sweeps deduced something (the final no-op sweep is not counted), and whether it
+ *   finished; null when the clues contradict each other.
  */
 export function lineSolve(rowClues, colClues, rows, cols) {
     const grid = new Uint8Array(rows * cols).fill(UNKNOWN);

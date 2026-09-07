@@ -1,15 +1,8 @@
 /**
- * Every clue, Across and Down, over the grid.
- *
- * A dialog rather than a panel beside the board (design-spec.md §4): two scrolling lists and a 15×15
- * do not fit a phone together, and on the desktop column they would take the grid's width to show
- * something a solver reads once per entry. The cost is that scanning for a way in becomes a tap
- * rather than a glance, which is exactly what the always-visible clue bar is there to offset.
- *
- * Built on the native <dialog>, like <pt-confirm>, so focus trapping, Escape, and the inert
- * backdrop come from the platform rather than from hand-written key handling.
- *
- * Holds nothing: it is given the entries and the current one, and reports which clue was picked.
+ * Every clue, Across and Down, over the grid, as a dialog rather than a panel beside the board since
+ * two lists and a 15×15 do not fit a phone (design-spec.md §4). Built on the native dialog like
+ * pt-confirm for focus trapping and Escape, and holds nothing: it is given the entries and reports
+ * which was picked.
  */
 
 import { LitElement, css, html, nothing } from 'lit';
@@ -33,11 +26,8 @@ export class PtClueList extends LitElement {
         iconStyle,
         css`
             dialog {
-                /*
-                 * Nearly the whole viewport. This is a reading surface: the point of opening it is
-                 * to see as many clues at once as possible, so the usual modal restraint would be
-                 * working against the only reason it exists.
-                 */
+                /* Nearly the whole viewport, since this is a reading surface and the point is to see
+                   as many clues at once as possible. */
                 width: min(48rem, 94vw);
                 max-width: none;
                 height: min(80vh, 44rem);
@@ -49,18 +39,8 @@ export class PtClueList extends LitElement {
                 box-shadow: var(--shadow-modal);
             }
 
-            /*
-             * dialog[open], never bare dialog.
-             *
-             * The UA stylesheet hides a closed dialog with dialog:not([open]) { display: none },
-             * and an author display on dialog beats it outright, since origin wins over
-             * specificity, so styling the bare selector would leave the clue list on screen
-             * permanently.
-             *
-             * Flex rather than the calc(100% - 4.5rem) this used to give .lists: that number was
-             * the head's height written down twice, and it was already wrong by a few pixels once
-             * the head's padding changed.
-             */
+            /* dialog[open], never bare dialog, since an author display on dialog would beat the UA
+               rule that hides a closed one and leave the list on screen. */
             dialog[open] {
                 display: flex;
                 flex-direction: column;
@@ -70,15 +50,8 @@ export class PtClueList extends LitElement {
                 background: color-mix(in srgb, var(--ink) 40%, transparent);
             }
 
-            /*
-             * One padding value for the head and the columns, so the heading, the column headings,
-             * and the clues all start on the same left edge.
-             *
-             * One value, and a real one: the scale goes 1, 2, 3, 4, 6, 8, 12, and an undefined
-             * custom property with no fallback makes the whole declaration invalid at
-             * computed-value time. A typo there leaves the box with no padding at all rather than
-             * with the wrong padding.
-             */
+            /* One padding value for the head and the columns, so the heading, the column headings,
+               and the clues start on the same left edge. */
             .head {
                 display: flex;
                 flex: none;
@@ -95,10 +68,8 @@ export class PtClueList extends LitElement {
                 font-weight: 600;
             }
 
-            /*
-             * Borderless, like the About dialog's. A dismissal is not an action to be weighed, and a
-             * framed button in the corner of a reading surface reads as one more thing on the page.
-             */
+            /* Borderless, like the About dialog's, since a dismissal is not an action to be
+               weighed. */
             .close {
                 display: flex;
                 flex: none;
@@ -118,14 +89,8 @@ export class PtClueList extends LitElement {
                 }
             }
 
-            /*
-             * Two columns where there is room, one where there is not.
-             *
-             * **No rule between them, and none under the head.** Three hairlines in a box this size
-             * cut a reading surface into panes, and none of them was doing work the whitespace was
-             * not already doing: the Across and Down headings say where one list ends. The dialog's
-             * own border is the only line here now.
-             */
+            /* Two columns where there is room, one where there is not, with no rule between them
+               since the headings already say where one list ends. */
             .lists {
                 display: grid;
                 flex: 1;
@@ -161,17 +126,8 @@ export class PtClueList extends LitElement {
                 list-style: none;
             }
 
-            /*
-             * align-items: center, which is what was missing.
-             *
-             * A flex row defaults to stretch, so the number and the clue were each as tall as the
-             * button and their text sat at the top of that box. On a one-line clue nothing showed;
-             * on a clue that wrapped to two, the number hung at the first line while the row's own
-             * padding centred nothing, and every row in the list looked differently aligned.
-             * Centring the items is right for the number, which should sit against the *clue*
-             * rather than against the clue's first line, and align-self puts it back to the top
-             * where the clue is long enough for that to matter more.
-             */
+            /* align-items: center so the number sits against the whole clue rather than the top of a
+               stretched row; align-self puts it back to the top for a long clue. */
             li button {
                 display: flex;
                 gap: var(--space-3);
@@ -196,11 +152,8 @@ export class PtClueList extends LitElement {
                 }
             }
 
-            /*
-             * The entry the cursor is in, marked the same way the grid marks it: the accent wash.
-             * Someone glancing between the grid and this list should not have to learn two
-             * vocabularies for "you are here".
-             */
+            /* The entry the cursor is in, marked with the same accent wash the grid uses so there is
+               one vocabulary for you are here. */
             li button[aria-current='true'] {
                 background: color-mix(in srgb, var(--accent) 20%, transparent);
                 font-weight: 700;
@@ -220,10 +173,8 @@ export class PtClueList extends LitElement {
                 min-width: 0;
             }
 
-            /*
-             * A finished entry fades rather than disappearing. It is still a clue, and a solver
-             * re-reads the ones they have answered when a crossing goes wrong.
-             */
+            /* A finished entry fades rather than disappearing, since a solver re-reads answered clues
+               when a crossing goes wrong. */
             li button[data-done] .text {
                 color: var(--graphite);
             }
@@ -238,8 +189,8 @@ export class PtClueList extends LitElement {
                     overflow: visible;
                 }
 
-                /* Stacked, the two lists need the space between them the gap was giving them
-                   side by side. Their headings do the dividing, as they do in two columns. */
+                /* Stacked, the two lists need the space the side-by-side gap gave them, with their
+                   headings still dividing. */
                 .column + .column {
                     margin-top: var(--space-4);
                 }

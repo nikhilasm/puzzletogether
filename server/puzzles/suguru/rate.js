@@ -1,19 +1,8 @@
 /**
  * Difficulty rating by how much work two logical rules do before a solver has to guess
- * (design-spec.md §8), the same measured-not-requested approach nonogram and kakuro take.
- *
- * **Naked singles carries both of the design's first two named deductions.** A cell whose
- * candidates have narrowed to one is forced whether that narrowing came from a geometric neighbor
- * or from a region-mate, since both are peers in solver.js's sense; there is no separate "region's
- * one remaining empty cell" rule to write, because the moment a region has one cell left, that
- * cell's region-mates, all of them peers, have already struck every other value from it. The third
- * rule, a digit confined to one legal cell in its region even though that cell still has other
- * candidates, is not something peer-pruning alone ever finds, so it is the one written out below.
- *
- * **Every generated suguru is required to settle by these two rules alone.** A grid the rules
- * cannot finish rates hard rather than failing generation, the same guarantee kakuro makes for
- * itself: the case is kept because a hand-made puzzle could still arrive unsettled, not because this
- * generator ever produces one.
+ * (design-spec.md §8), measured rather than requested. Naked singles covers both of the design's first
+ * two deductions, since region-mates are peers too, leaving only the region hidden single written out
+ * below; a grid the two rules cannot settle rates hard rather than failing generation.
  */
 
 import { buildPeers } from './solver.js';
@@ -22,10 +11,8 @@ import { buildPeers } from './solver.js';
 export const DIFFICULTY_ORDER = ['easy', 'medium', 'hard'];
 
 /**
- * Where the bands sit, as a fraction of the grid's side.
- *
- * Normalized the way kakuro's and nonogram's thresholds are: a deduction travels one region or one
- * neighborhood at a time, so a larger grid needs more sweeps to say the same thing.
+ * Where the bands sit, as a fraction of the grid's side. Normalized because a deduction travels one
+ * region or neighborhood at a time, so a larger grid needs more sweeps to say the same thing.
  */
 const EASY_FRACTION = 0.5;
 const HARD_FRACTION = 0.85;

@@ -1,8 +1,6 @@
 /**
- * The one function that decides what an op means. Imported by both client and server so the two
- * cannot drift in how they interpret the same op (ADR-0001).
- *
- * Pure: no clock reads, no randomness, no mutation of its arguments.
+ * Decides what an op means, imported by both client and server so the two cannot drift (ADR-0001).
+ * Pure: no clock reads, no randomness, no argument mutation.
  */
 
 import { OP_TYPE } from './protocol.js';
@@ -33,12 +31,9 @@ function normalizeMarks(marks) {
 }
 
 /**
- * Applies one op to a board and returns a new board.
- *
- * Conflicts resolve by per-cell last-writer-wins, ordered by the server-assigned seq: a write
- * carrying a lower seq than the cell already holds is dropped. That makes application
- * order-independent, which is the invariant that lets a client apply ops as they arrive and still
- * match the server's snapshot.
+ * Applies one op to a board and returns a new board. Conflicts resolve by per-cell
+ * last-writer-wins ordered by seq, which makes application order-independent so a client can apply
+ * ops as they arrive and still match the server's snapshot.
  *
  * @param {BoardState} board - Current board; not mutated.
  * @param {Op} op - The op to apply, already schema-validated.
@@ -78,9 +73,8 @@ function nextCellState(current, op, meta) {
             // Entering a value clears that cell's pencil marks; they were notes toward it.
             return { value: op.value ?? null, marks: [], ...stamp };
         case OP_TYPE.MARKS:
-            // A cell holds a value or marks, never both. That is how a cell renders, how players
-            // think about it, and what lets undo restore any earlier state with a single write,
-            // since it makes a cell's whole state expressible in one op.
+            // A cell holds a value or marks, never both. That lets undo restore any earlier state
+            // with a single write.
             return { value: null, marks: normalizeMarks(op.marks ?? []), ...stamp };
         case OP_TYPE.CLEAR:
             return { value: null, marks: [], ...stamp };

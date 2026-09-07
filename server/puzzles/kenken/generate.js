@@ -1,15 +1,8 @@
 /**
- * KenKen generation: a random Latin square, partitioned into cages, tightened until it has exactly
- * one answer (design-spec.md §8).
- *
- * The order matters. Sudoku starts from a full grid and *removes* information, re-proving uniqueness
- * after each dig. KenKen starts from a partition that is usually too loose and *adds* information by
- * splitting cages, for the same reason: the expensive check is uniqueness, so the search should
- * approach it from the side where it can stop the moment the answer is yes.
- *
- * A time budget and retry cap are the mitigation design-spec.md §14 asks for. They bound how long
- * generation *searches for a good puzzle*, not whether it produces one: the refinement loop always
- * terminates in a uniquely solvable grid.
+ * KenKen generation: a random Latin square, partitioned into cages, tightened by splitting until it
+ * has exactly one answer (design-spec.md §8). Unlike sudoku it adds constraints rather than removing
+ * them, and a time budget and retry cap bound the search for a good puzzle, not whether it produces
+ * one, since the refinement loop always terminates in a uniquely solvable grid.
  */
 
 import { buildCages, splitLargestCage } from './cages.js';

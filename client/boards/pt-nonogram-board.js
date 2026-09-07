@@ -1,14 +1,7 @@
 /**
- * The nonogram grid: clue gutters, marks instead of digits, and painting by drag.
- *
- * This is the type that asked most of <pt-board>, and what it needed was two hooks rather than an
- * exception: somewhere to draw alongside the grid (renderTopGutter / renderSideGutter), and a say
- * in how a cell value is drawn (valueGlyphs). Both are general, since a puzzle either draws a
- * gutter or it does not, and every other type is unaffected by their existence.
- *
- * Painting is the one behaviour genuinely new here. A nonogram is solved by dragging across runs of
- * cells, so a stroke is collected locally and sent as a **single batched fill op** when the pointer
- * lifts: twenty painted cells are one write, one echo, and one undo step rather than twenty of each.
+ * The nonogram grid: clue gutters, marks instead of digits, and painting by drag. It needed two
+ * general hooks from pt-board (gutters and valueGlyphs) plus one new behaviour, painting: a stroke
+ * is collected locally and sent as a single batched fill op when the pointer lifts.
  */
 
 import { css, html } from 'lit';
@@ -18,12 +11,9 @@ import { effectiveValue, toCoords } from '../../shared/puzzle-doc.js';
 import { PtBoard } from './pt-board.js';
 
 /**
- * Takes or gives up the pointer for the duration of a stroke, tolerating engines that disagree about
- * when a capture is still held.
- *
- * Capture is what keeps a drag attached to the grid when the finger wanders off it. It is a
- * convenience, not the mechanism, since the stroke is tracked from the events themselves, so every
- * failure here is swallowed rather than allowed to interrupt painting.
+ * Takes or gives up the pointer for a stroke, tolerating engines that disagree about when a capture
+ * is held. A convenience rather than the mechanism, since the stroke is tracked from the events
+ * themselves, so every failure here is swallowed.
  */
 function capture(grid, pointerId, take) {
     try {
@@ -43,44 +33,22 @@ export class PtNonogramBoard extends PtBoard {
     static styles = [
         ...PtBoard.styles,
         css`
-            /*
-             * The board is its own size container, which is what lets the clues size themselves off
-             * something that cannot move underneath them.
-             *
-             * Sizing them from --cell-size looked right and was circular: the cell size comes from
-             * the grid's width, the grid's width is what is left after the side gutter, and the
-             * gutter is as wide as its clues. The board reflowed two or three times settling that
-             * loop, and a tap landing during the settle painted the wrong square. The host's width
-             * is fixed by the page, so 1cqw closes the loop.
-             */
+            /* The board is its own size container so clues size off the host's fixed width via 1cqw,
+               rather than off --cell-size, which was circular and reflowed. */
             :host {
                 container-type: inline-size;
             }
 
-            /*
-             * The counting bands are the grid's own line, thicker, not the ink the picture is drawn
-             * in.
-             *
-             * Sudoku's heavy rules are --ink because they divide the puzzle into regions that carry a
-             * rule. A nonogram's bands divide nothing; they exist to be counted against. Drawn in
-             * --ink they read as filled squares that happen to be thin, competing with the picture
-             * they are supposed to help measure. Same colour as the hairlines, three times the
-             * weight: unmistakably a major division, unmistakably not a mark.
-             */
+            /* The counting bands are the hairline colour at three times the weight, not --ink, so
+               they do not read as thin filled squares competing with the picture. */
             :host {
                 --grid-heavy-color: var(--grid-rule-solid);
                 --grid-heavy-width: 3px;
             }
 
-            /*
-             * Clues are quiet. They state the puzzle rather than being part of the picture, so they
-             * sit in --graphite and step down in size while the grid keeps its weight: the grid is
-             * still the loudest thing on the screen (brand.md §1).
-             *
-             * A track's share of the board's width stands in for the cell size, so a 20×20's clues
-             * shrink with its squares instead of pushing the grid off a phone. The clamp stops that
-             * going illegible at one end or overbearing at the other.
-             */
+            /* Clues are quiet in --graphite so the grid stays loudest (brand.md §1), sized off a
+               track's share of the board width and clamped so a 20×20's clues shrink with its
+               squares without going illegible. */
             .clues {
                 display: flex;
                 gap: 0.4em;
@@ -111,15 +79,9 @@ export class PtNonogramBoard extends PtBoard {
                 opacity: 0.4;
             }
 
-            /*
-             * A nonogram's highlight is the only one that is not context.
-             *
-             * Everywhere else the wash says "this is what your cursor implies" and is a faint tint
-             * under the cursor's own strength. Here it is the extent of a drag *in progress*, which
-             * has to be legible over the marks already in the run and has to be readable while the
-             * finger is still down, including on the square the cursor happens to be sitting on,
-             * which is why this deliberately paints over [selected] rather than ducking under it.
-             */
+            /* A nonogram's highlight is the extent of a drag in progress rather than context, so it
+               is stronger and deliberately paints over [selected] to stay legible over the run
+               while the finger is down. */
             pt-cell[highlighted] {
                 background: color-mix(in srgb, var(--focus-color) 48%, transparent);
             }
@@ -135,25 +97,18 @@ export class PtNonogramBoard extends PtBoard {
     }
 
     /**
-     * The squares this stroke has covered so far, washed while the finger is still down.
-     *
-     * A drag is committed on release, so without this the grid says nothing at all until the gesture
-     * is over, and the whole reason to drag rather than tap is to lay down a run of a particular
-     * length against a clue. Showing the extent as it grows is what makes that countable before it is
-     * too late to adjust.
+     * The squares this stroke has covered so far, washed while the finger is still down. A drag
+     * commits on release, so showing the extent as it grows is what makes a run countable against
+     * its clue before it is too late to adjust.
      */
     isHighlighted(idx) {
         return this.#stroke?.cells.has(idx) ?? false;
     }
 
     /**
-     * The finished picture is left alone; the wave runs through the ground around it.
-     *
-     * Every other type celebrates the squares that were filled in, because those are what the room
-     * worked out. A nonogram inverts that: the filled squares *are* the answer, a picture drawn in
-     * --ink, and washing the room's colours across it would be painting over the thing that was
-     * just completed. What is left is the shape of the picture in negative, which is the same wave
-     * saying the same thing about the same puzzle.
+     * The finished picture is left alone; the wave runs through the ground around it. A nonogram's
+     * filled squares are the answer drawn in --ink, so washing colours across them would paint over
+     * what was just completed.
      */
     celebrates(idx) {
         if (!super.celebrates(idx)) return false;
@@ -167,12 +122,9 @@ export class PtNonogramBoard extends PtBoard {
     }
 
     /**
-     * A heavier rule every fifth column: the same hook sudoku uses for its regions.
-     *
-     * These divide nothing: a nonogram has no regions, and the guides carry no rule about what may go
-     * where. They are there to be **counted against**, which is the whole of solving a nonogram:
-     * matching a clue of 7 to a run of squares is guesswork on an unmarked 20×20 grid and immediate
-     * on a grid banded in fives.
+     * A heavier rule every fifth column: the same hook sudoku uses for its regions. These divide
+     * nothing and are there to be counted against, which is what makes matching a clue to a run
+     * immediate on a banded grid.
      */
     isHeavyRight(idx) {
         const col = idx % this.doc.size.cols;
@@ -186,12 +138,9 @@ export class PtNonogramBoard extends PtBoard {
     }
 
     /**
-     * Starts listening for strokes once the grid exists.
-     *
-     * A stroke *begins* on the grid but has to be able to *end* anywhere, so the release is watched
-     * on the window. Letting go outside the window, or past the bottom of it, which is easy to do
-     * on a tall grid, otherwise leaves the stroke open and silently discards everything the player
-     * just painted.
+     * Starts listening for strokes once the grid exists. A stroke begins on the grid but can end
+     * anywhere, so the release is watched on the window, or letting go outside it would discard the
+     * stroke.
      */
     firstUpdated() {
         super.firstUpdated();
@@ -226,11 +175,8 @@ export class PtNonogramBoard extends PtBoard {
     }
 
     /**
-     * Keyboard input: the two marks, on the keys that mean them.
-     *
-     * Space fills because it is the key already under a hand on the grid, and x crosses because
-     * that is the character the cell shows. Backspace and Delete already empty a cell via
-     * <pt-board>, so there is no third key to find.
+     * Keyboard input: the two marks, on the keys that mean them. Space fills and x crosses;
+     * Backspace and Delete already empty a cell via pt-board.
      */
     valueForKey(key) {
         const { fill, cross } = this.doc.meta.values;
@@ -250,12 +196,8 @@ export class PtNonogramBoard extends PtBoard {
     }
 
     /**
-     * The cell a pointer event belongs to.
-     *
-     * The event's own target is authoritative and free, and it is what a press gives us. A drag
-     * cannot use it, because once the grid captures the pointer every move reports the grid as its
-     * target, so those fall back to hit-testing the coordinates, which is only sound because
-     * nothing moves under a captured pointer.
+     * The cell a pointer event belongs to. A press uses the event's own target, while a drag falls
+     * back to hit-testing coordinates, since a captured pointer reports the grid as its target.
      */
     #cellAt(event) {
         const target = event.target?.closest?.('pt-cell');
@@ -266,12 +208,9 @@ export class PtNonogramBoard extends PtBoard {
     }
 
     /**
-     * Opens a stroke, and decides there and then what the whole of it will write.
-     *
-     * Deciding once, from the first cell, is what makes dragging predictable: starting on a cell that
-     * already holds what the brush paints means the stroke *erases*, so one gesture covers both
-     * painting a run and taking it back, and a mis-tap is undone by tapping again. A stroke that
-     * re-decided per cell would leave a checkerboard behind instead.
+     * Opens a stroke, deciding from the first cell what the whole of it will write. Starting on a
+     * cell that already holds the brush value makes the stroke erase, so one gesture both paints a
+     * run and takes it back; re-deciding per cell would leave a checkerboard.
      */
     #onStrokeStart = (event) => {
         if (!this.interactive || (event.button != null && event.button !== 0)) return;
@@ -296,11 +235,9 @@ export class PtNonogramBoard extends PtBoard {
     };
 
     /**
-     * Extends the stroke, locked to the row or column it started along.
-     *
-     * Nonogram runs are straight, and an unlocked drag on a phone paints a wobbly diagonal smear of
-     * whatever the thumb passed over. The axis is fixed by the first cell the stroke reaches outside
-     * its origin, and cells off that line are ignored rather than ending the stroke.
+     * Extends the stroke, locked to the row or column it started along, since an unlocked drag on a
+     * phone paints a wobbly diagonal. The axis is fixed by the first cell reached outside the
+     * origin, and cells off that line are ignored.
      */
     #onStrokeMove = (event) => {
         if (!this.#stroke) return;
@@ -327,12 +264,9 @@ export class PtNonogramBoard extends PtBoard {
     };
 
     /**
-     * Closes the stroke and sends it as one op.
-     *
-     * The stroke is dispatched *before* the capture is released, because releasing can throw: the
-     * capture lapses on its own in some engines, and releasePointerCapture treats a pointer it no
-     * longer holds as an error. Losing what the player just painted to a bookkeeping call on the way
-     * out would be the worst possible trade.
+     * Closes the stroke and sends it as one op. Dispatched before the capture is released, since
+     * releasePointerCapture can throw on a pointer it no longer holds and losing the stroke to that
+     * would be the worst trade.
      */
     #onStrokeEnd = (event) => {
         const stroke = this.#stroke;

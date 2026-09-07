@@ -1,14 +1,8 @@
 /**
- * The server's log, and the only place server code writes to the console.
- *
- * One record per event: JSON in production, so a log search can filter on a field rather than parse
- * a sentence, and a readable line in development. What is written is decided by PT_LOG_LEVEL, which
- * is the point of the module: a diagnostic gated behind isDev is a line you do not have on the one
- * machine you need it from (ADR-0026).
- *
- * Two rules nothing here can enforce. **Nothing on the op or focus path logs**: both run at rate
- * limit speed per socket, so a line per event turns the hot path into I/O. **A reconnect token and a
- * solution are never fields.** A token is a seat credential; a solution is the puzzle.
+ * The server's log and the only place server code writes to the console: one record per event, JSON
+ * in production and a readable line in development, gated by PT_LOG_LEVEL (ADR-0026). Two rules
+ * nothing here can enforce: nothing on the op or focus path logs, and a reconnect token or solution
+ * is never a field.
  */
 
 import { config } from './config.js';
@@ -70,12 +64,9 @@ function write(level, event, fields) {
 }
 
 /**
- * The log. Every server module writes through this; none writes to the console directly.
- *
- * Each method takes an event name in domain.action form and a flat object of fields. A field named
- * err holds the thrown value and is described rather than serialised. Levels read as: debug is
- * detail worth having while developing, info is something an operator would want in the record,
- * warn is degraded but handled, error is something that failed and a player noticed.
+ * The log; every server module writes through this, none to the console directly. Each method takes
+ * an event name in domain.action form and a flat object of fields, where a field named err holds a
+ * thrown value that is described rather than serialised.
  *
  * @type {Record<'debug'|'info'|'warn'|'error', (event: string, fields?: object) => void>}
  */

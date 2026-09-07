@@ -31,14 +31,9 @@ export async function joinRoom(page, name, code) {
 }
 
 /**
- * Starts a puzzle as the host, and waits for the grid.
- *
- * The type is clicked before the size, because choosing a type resets the size to that type's
- * default: a 4×4 nonogram does not exist, so the picker cannot carry a sudoku's size across.
- *
- * A banked type is chosen rather than described, so side names a card instead of a size button
- * (ADR-0009). Passing nothing takes whichever card the bank lists first, which is what most tests
- * want: they need *a* crossword, not a particular one.
+ * Starts a puzzle as the host, and waits for the grid. The type is clicked before the size, since
+ * choosing a type resets the size to that type's default; a banked type names a card rather than a
+ * size button (ADR-0009), and passing nothing takes whichever card the bank lists first.
  */
 export async function startPuzzle(page, side = '4×4', type = 'Sudoku') {
     await page.locator('pt-puzzle-picker .option', { hasText: type }).click();

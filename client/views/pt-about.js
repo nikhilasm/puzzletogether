@@ -1,19 +1,7 @@
 /**
- * What this app is, what version of it you are looking at, and what it is built out of.
- *
- * It exists because the footer stopped being able to say those things. Once the theme control became
- * an icon button and the links moved onto one line, a version number sitting under them was the only
- * prose left down there, and a version number on its own answers a question almost nobody asks
- * while the questions people *do* ask (what is this, who made the puzzles, can I look at the code)
- * had nowhere to be answered at all.
- *
- * Built on the native <dialog> for the same reason <pt-confirm> is: focus trapping, Escape, and
- * an inert backdrop come from the platform rather than from hand-written key handling, which is the
- * part of a custom modal that is usually subtly wrong.
- *
- * Nothing here is live. It is the one screen in the app with no room, no socket, and no state, so
- * it takes its facts from shared/constants.js and holds none of its own beyond whether it is open,
- * which its owner sets.
+ * What this app is, what version you are looking at, and what it is built out of, since the footer's
+ * version line alone answered a question almost nobody asks. Built on the native dialog like
+ * pt-confirm, and the one screen with no room, socket, or state beyond whether it is open.
  */
 
 import { LitElement, css, html } from 'lit';
@@ -31,16 +19,8 @@ export class PtAbout extends LitElement {
         controls,
         iconStyle,
         css`
-            /*
-             * No position here, deliberately.
-             *
-             * A modal dialog is centred by the UA's own dialog:modal rule: position: fixed against
-             * the viewport, with inset: 0 and auto margins. Setting position: relative to hang the
-             * close button off overrode that, which took the panel out of the viewport and put it in
-             * the document: on a phone with the page scrolled it opened wherever the top of the
-             * document happened to be, usually off screen. The close button gets its containing
-             * block from .sheet instead, which owns the padding with it.
-             */
+            /* No position here, deliberately: setting it would override the UA's dialog:modal
+               centring and drop the panel into the document, off screen on a scrolled phone. */
             dialog {
                 max-width: 28rem;
                 padding: 0;
@@ -66,13 +46,8 @@ export class PtAbout extends LitElement {
                 padding: var(--space-6);
             }
 
-            /*
-             * The wordmark, at the dialog's own scale rather than the page's.
-             *
-             * It is the heading here, so it is set as one: --text-xl and Fraunces with the same
-             * WONK the page's wordmark carries, which is what makes the dialog read as part of this
-             * app rather than as a browser-standard about box.
-             */
+            /* The wordmark at the dialog's own scale, set as a heading in Fraunces with the page's
+               WONK so the dialog reads as part of this app. */
             h2 {
                 margin: 0 0 var(--space-4);
                 font-family: var(--font-display);
@@ -110,22 +85,16 @@ export class PtAbout extends LitElement {
                 color: var(--accent-text);
             }
 
-            /* The version, set in the mono face every other machine-readable string in the app
-               uses, the room code above all. It is a fact to be quoted back in a bug report, not
-               prose. */
+            /* The version, in the mono face every machine-readable string takes, a fact to be quoted
+               back in a bug report. */
             .version {
                 font-family: var(--font-mono);
                 font-size: var(--text-sm);
                 color: var(--graphite);
             }
 
-            /*
-             * The close control, in the corner rather than as a button on a row of its own.
-             *
-             * This dialog asks nothing and so has no answer to give: a pt-confirm-style pair of
-             * buttons at the foot would be one button pretending to be a choice. Escape and the
-             * backdrop both close it too; this is the affordance that says so.
-             */
+            /* The close control in the corner rather than a row of its own, since this dialog asks
+               nothing and Escape and the backdrop close it too. */
             .close {
                 position: absolute;
                 top: var(--space-3);

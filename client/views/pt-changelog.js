@@ -1,14 +1,7 @@
 /**
- * What has changed in this app, newest release first.
- *
- * The sibling of <pt-about>: About says what this is, and this says what it has been. Both are
- * peripheral, both are opened from the footer's toolbar, and both are built on the native <dialog>
- * for the reason <pt-confirm> is: focus trapping, Escape, and an inert backdrop come from the
- * platform rather than from hand-written key handling.
- *
- * The releases are CHANGELOG.md, read at build time rather than fetched (ADR-0024). A changelog is
- * written by hand at the moment a version ships and is the same for everybody, so it stays in the
- * bundle: a fetch would put a spinner and a failure state in front of prose that is already there.
+ * What has changed in this app, newest release first, the sibling of pt-about built on the native
+ * dialog like pt-confirm. The releases are CHANGELOG.md read at build time rather than fetched
+ * (ADR-0024), since a fetch would put a spinner in front of prose already in the bundle.
  */
 
 import { LitElement, css, html } from 'lit';
@@ -71,9 +64,8 @@ export class PtChangelog extends LitElement {
                 color: var(--ink);
                 text-align: left;
                 box-shadow: var(--shadow-modal);
-                /* Firefox draws the scrollbar from these two; WebKit and Blink ignore them and
-                   take the pseudo-element rules below. Both aim at the same bar so the panel
-                   scrolls the same on every platform. */
+                /* Firefox draws the scrollbar from these two while WebKit and Blink take the
+                   pseudo-element rules below, both aimed at the same bar. */
                 scrollbar-width: thin;
                 scrollbar-color: color-mix(in srgb, var(--ink) 25%, transparent) transparent;
             }
@@ -119,21 +111,15 @@ export class PtChangelog extends LitElement {
                 font-weight: 600;
             }
 
-            /*
-             * The rail and its dots. --rail-x is how far in from a release's left edge the line
-             * runs, and --rail-y how far down it the dot sits, which is the middle of the version's
-             * line box. Both are this ornament's own geometry rather than anything reusable.
-             */
+            /* The rail and its dots: --rail-x is how far in the line runs, --rail-y how far down the
+               dot sits, both this ornament's own geometry. */
             .timeline {
                 --rail-x: 0.5rem;
                 --rail-y: 0.75rem;
             }
 
-            /*
-             * A release heading is its version and its date on one line, and the version is set in
-             * the mono face every machine-readable string in the app takes, the room code above all.
-             * It is a fact to be quoted back in a bug report rather than prose.
-             */
+            /* A release block, padded left of the rail; its version is set in the mono face every
+               machine-readable string takes. */
             .release {
                 position: relative;
                 padding-left: calc(var(--rail-x) + var(--space-4));
@@ -144,10 +130,8 @@ export class PtChangelog extends LitElement {
                 padding-bottom: 0;
             }
 
-            /*
-             * One rail segment per release, running its whole height. The releases are stacked on
-             * padding rather than margin so the segments meet and read as a single line.
-             */
+            /* One rail segment per release running its whole height, the releases stacked on padding
+               so the segments meet as one line. */
             .release::before {
                 content: '';
                 position: absolute;
@@ -227,11 +211,8 @@ export class PtChangelog extends LitElement {
                 text-underline-offset: 0.15em;
             }
 
-            /*
-             * A quoted string in the mono face, which runs large next to the UI face, so it is set
-             * back a step. The ground is the faintest wash of ink there is: enough to bound the
-             * span, not enough to be a second surface in a dialog that has one.
-             */
+            /* A quoted string in the mono face, set back a step with the faintest wash of ink to
+               bound it. */
             code {
                 padding: 0.1em 0.3em;
                 border-radius: var(--radius-control);

@@ -1,15 +1,8 @@
 /**
- * Which entry a square belongs to, in each direction: the index behind highlighting,
- * auto-advance, and keeping the clue in step with the cursor.
- *
- * **In the client, deliberately, and not in shared/** (design-spec.md §7). shared/ is what
- * *both sides* need, and the server does not need this: a crossword's validateOp, isComplete,
- * and checkCells are the value-grid code sudoku and kenken already share, and none of them ever
- * asks what an entry is. Everything below serves rendering and navigation, which are the board's.
- *
- * entries[].cells is stored explicitly in the document, so this is indexing rather than
- * derivation: there is no algorithm here that two sides could implement differently, which is the
- * usual reason to force something into shared/.
+ * Which entry a square belongs to, in each direction: the index behind highlighting, auto-advance,
+ * and keeping the clue in step with the cursor. In the client rather than shared/, since only
+ * rendering and navigation need it and it is indexing rather than a shared algorithm
+ * (design-spec.md §7).
  */
 
 /**
@@ -47,12 +40,9 @@ export function indexEntries(doc) {
 }
 
 /**
- * The entry through a square in a direction, falling back to the other direction.
- *
- * The fallback is not a nicety. A square can belong to an Across entry and no Down one: an
- * unchecked square, common in British-style grids and at the edges of themed American ones. A
- * cursor pointing Down at such a square has to mean *something*, and answering with the entry that
- * does exist is the only reading that leaves the player somewhere.
+ * The entry through a square in a direction, falling back to the other direction. The fallback
+ * matters for an unchecked square that has only one entry, so a cursor pointing the missing way
+ * still lands somewhere.
  *
  * @param {EntryIndex} index - Built by indexEntries.
  * @param {number} cell - Flat cell index.
@@ -79,17 +69,10 @@ export function hasDirection(index, cell, dir) {
 }
 
 /**
- * The next square to type into, **skipping squares that already hold a letter**.
- *
- * A solver typing a word into a half-filled entry is filling the gaps, not overwriting the
- * crossings that got them there: with FR__T on screen, typing U-I should produce FRUIT rather than
- * FUIT_. Jumping is what every crossword people have used does, and doing anything else makes the
- * crossings, which are the whole point of the grid, actively hostile to type around.
- *
- * Falls back to the immediate next square when everything ahead is full, so the cursor still lands
- * somewhere the player can see. Either way it returns null at the end of the entry rather than
- * running on into the next: filling the last square of a word is a moment to look up and read a new
- * clue, and being moved somewhere else unannounced is how a player loses their place.
+ * The next square to type into, skipping squares that already hold a letter so filling a half-filled
+ * entry fills the gaps rather than overwriting the crossings. Falls back to the immediate next
+ * square when everything ahead is full, and returns null at the end of the entry rather than
+ * running on.
  *
  * @param {EntryIndex} index - Built by indexEntries.
  * @param {number} cell - The square just filled.
@@ -143,12 +126,9 @@ export function stepEntry(index, from, step) {
 }
 
 /**
- * The next entry **in the same direction**, wrapping within it.
- *
- * Distinct from stepEntry, which walks the printed clue list and so falls off the end of the
- * Acrosses into the Downs. This is what the clue bar's next button does: a solver working down the
- * Across clues means 7A → 8A, and being turned around at the end of the column is a change of task
- * rather than a step through one.
+ * The next entry in the same direction, wrapping within it. Unlike stepEntry, which falls off the
+ * Acrosses into the Downs, this is the clue bar's next button, staying in the column a solver is
+ * working.
  *
  * @param {EntryIndex} index - Built by indexEntries.
  * @param {Entry|null} from - The entry the cursor is in.

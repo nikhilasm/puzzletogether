@@ -1,13 +1,7 @@
 /**
- * The landing screen: create a room, or join one with a four-character code.
- *
- * Deliberately two fields and nothing else: the product's appeal is "send a friend a four-letter
- * code", so there is no account, no password, and no signup wall (ADR-0005).
- *
- * The two paths sit behind **tabs** rather than side by side. Both need a name, so a single form
- * showing every field at once left it ambiguous which button the code field belonged to; a tab
- * makes it one question at a time. The name input is rendered once, outside the branch, so it keeps
- * what you typed when you change your mind about which tab you wanted.
+ * The landing screen: create a room, or join one with a four-character code, two fields and no
+ * account or signup wall (ADR-0005). The two paths sit behind tabs so it is one question at a time,
+ * with the name input rendered once outside the branch so it keeps what you typed.
  */
 
 import { LitElement, css, html, nothing } from 'lit';
@@ -49,11 +43,8 @@ export class PtLanding extends LitElement {
                 border-bottom: var(--border);
             }
 
-            /*
-             * Text with a rule under it rather than a pair of buttons. These are not two actions to
-             * choose between: they name which half of one form you are looking at, and boxing them
-             * made them compete with the button that actually does something.
-             */
+            /* Text with a rule under it rather than a pair of buttons, since these name which half of
+               one form you are looking at rather than being two actions. */
             .tab {
                 padding: var(--space-2) var(--space-2);
                 border: none;

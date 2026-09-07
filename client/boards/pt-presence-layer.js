@@ -1,21 +1,8 @@
 /**
  * The presence overlay: a stripe along the bottom edge of every cell somebody is looking at, split
- * into one segment per player.
- *
- * A row of dots in the cell's top-right corner had two problems with one cause: presence drawn *in*
- * the cell's content area, at a size that grew with the room. The dots covered the top-right pencil
- * mark, and past three players there was nowhere left to go, so the layer capped at three and wrote
- * +n for the rest.
- *
- * A stripe fixes both by construction. It occupies an edge rather than the interior, so it can
- * never sit on a note or a value; and the room subdivides a footprint that does not change, so
- * eight players make eight thin bands instead of eight dots' worth of cell. Reading "how many
- * people are here" off the number of colours is also faster than counting dots, which is what the
- * +n was quietly admitting.
- *
- * A separate layer on purpose. Focus updates arrive at ~10/s per player, and routing them through
- * <pt-cell> would re-render the grid constantly (architecture.md §6). It draws only the cells
- * somebody is in, so its cost scales with players, not with grid size.
+ * into one segment per player. A stripe occupies an edge rather than the interior, so it never
+ * covers a note or value and the room subdivides a fixed footprint; a separate layer since focus
+ * updates at ~10/s would otherwise re-render the grid (architecture.md §6).
  */
 
 import { LitElement, css, html, nothing } from 'lit';
@@ -39,26 +26,16 @@ export class PtPresenceLayer extends LitElement {
             pointer-events: none;
         }
 
-        /*
-         * The stripe hangs off the bottom of the cell and is inset from its sides, so it reads as
-         * belonging to one square rather than as a rule running between two. The bottom edge is the
-         * one part of a cell nothing else claims: the label is top-left, and the mark grid's own 6%
-         * padding keeps the last row of notes clear of it.
-         */
+        /* The stripe hangs off the bottom edge, inset from the sides, so it belongs to one square;
+           the bottom edge is the one part nothing else claims. */
         .cell {
             display: flex;
             align-items: flex-end;
             padding: 0 6%;
         }
 
-        /*
-         * Sized by the cell, like everything else in the grid, and clamped at both ends: 3px is the
-         * least that reads as a colour rather than as a hairline on a 25×25, and past 6px a mini's
-         * 90px squares would be wearing a bar instead of a stripe.
-         *
-         * The gap is what keeps two players' colours from merging into one band. It shows whatever
-         * is under the layer, so it costs nothing on a nonogram's filled square.
-         */
+        /* Sized by the cell and clamped between 3px and 6px, with a gap that keeps two players'
+           colours from merging into one band. */
         .stripe {
             display: flex;
             gap: 1px;
@@ -66,22 +43,13 @@ export class PtPresenceLayer extends LitElement {
             height: clamp(3px, calc(var(--cell-size, 40px) * var(--presence-stripe, 0.09)), 6px);
         }
 
-        /*
-         * Every player gets the same share of the stripe, however many there are: an equal flex of
-         * a fixed width, which is the whole reason this scales where a row of dots did not. The
-         * zero min-width is because a flex item will not otherwise shrink below its content, and
-         * eight of them on a phone are asking to.
-         */
+        /* Every player gets an equal flex share of a fixed width, with min-width: 0 so eight of them
+           still shrink to fit on a phone. */
         .who {
             flex: 1 1 0;
             min-width: 0;
-            /*
-             * Rounded, which at this height is a capsule, since --radius-round clamps to half the
-             * shorter side. Each player's share reads as a thing rather than as a length of rule,
-             * and a lone player in a cell gets a mark instead of a dash. This is one of the few
-             * places the round radius is right on a square grid (brand.md §4): the stripe is a
-             * badge sitting on the cell, not part of its ruling.
-             */
+            /* Rounded to a capsule so each share reads as a badge rather than a length of rule, one
+               of the few places the round radius is right on a square grid (brand.md §4). */
             border-radius: var(--radius-round);
             animation: appear var(--motion-presence) ease-in;
         }

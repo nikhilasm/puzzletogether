@@ -1,10 +1,7 @@
 /**
- * Every puzzle type has help, in the shape both places that render it assume.
- *
- * Help is the second per-type entry, alongside the board registry, and it is the one that fails
- * quietly: boardFor throws at a type it does not know, while helpFor returns null and the screens
- * simply leave the way in undrawn. A type shipped without an entry would therefore reach a player as
- * a missing button rather than as an error, which is exactly the kind of gap this suite is for.
+ * Every puzzle type has help, in the shape both places that render it assume. Help fails quietly,
+ * since helpFor returns null rather than throwing, so a type shipped without an entry reaches a player
+ * as a missing button rather than an error, which is the gap this suite guards.
  */
 
 import { describe, expect, it } from 'vitest';

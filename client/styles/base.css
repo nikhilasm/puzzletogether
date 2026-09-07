@@ -23,10 +23,8 @@ body {
     -webkit-font-smoothing: antialiased;
 }
 
-/*
- * The graph-paper rule. It rides on a pseudo-element at ~3% so page content stays full-opacity,
- * and it should be invisible until you look for it (brand.md §4).
- */
+/* The graph-paper rule, on a pseudo-element so page content stays full-opacity, invisible until you
+   look for it (brand.md §4). */
 body::before {
     content: '';
     position: fixed;
@@ -56,11 +54,8 @@ pt-app {
         --motion-presence: 0ms;
         --motion-modal: 0ms;
         --motion-celebrate: 0ms;
-        /*
-         * Collapsed for consistency, but the grid's wave is skipped outright rather than run at
-         * 0ms; see prefersReducedMotion in pt-celebration-layer.js. A duration this rule cannot
-         * reach holds the congrats modal back, and a silent pause is not a reduced animation.
-         */
+        /* Collapsed for consistency, but the grid's wave is skipped outright rather than run at
+           0ms; see prefersReducedMotion in pt-celebration-layer.js. */
         --motion-celebrate-sweep: 0ms;
         --motion-celebrate-pulse: 0ms;
     }

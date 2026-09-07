@@ -1,25 +1,8 @@
 /**
- * The nonogram input control: which of the three marks a tap or a drag lays down.
- *
- * This is the keypad's slot, holding what a nonogram has instead of digits (design-spec.md §4). It is
- * a *tri-toggle* rather than three buttons that do something, because picking a brush changes what
- * the grid does next rather than changing the grid: the same reason Notes is a toggle and Check is
- * a button (brand.md §4).
- *
- * **This bar is where the app's toggle pattern started**, and every other setting has arrived at it
- * (ADR-0011): mutually exclusive aria-pressed buttons, the pressed one carrying an accent border, a
- * 16% accent wash, a filled accent icon, and a bold label.
- *
- * Cross is the one brush whose icon cannot fill, being two crossed lines with no interior; the
- * other three channels carry it, and actionButton has the reasoning.
- *
- * **The host is display: contents**, so the three buttons are direct children of the panel's
- * button bar rather than a box inside it. Boxed, the three brushes were one flex item against Undo's
- * one and took half the row between them; unboxed, all four are the same width. The group's name
- * moves onto the host, since the element that carried it no longer draws a box.
- *
- * Nonogram has no Notes toggle above this: a cross *is* the note, so the thing that would have been a
- * mode is one of the three brushes instead.
+ * The nonogram input control: which of the three marks a tap or drag lays down, the keypad's slot
+ * for a type that has no digits (design-spec.md §4). A tri-toggle of mutually exclusive aria-pressed
+ * buttons following the app's toggle pattern (ADR-0011), on a display: contents host so the three
+ * buttons share the panel's row on equal terms.
  */
 
 import { LitElement, css, html } from 'lit';

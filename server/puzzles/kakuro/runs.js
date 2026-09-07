@@ -1,14 +1,7 @@
 /**
  * A kakuro layout's runs: the maximal straight lines of open squares that each clue is written for.
- *
- * Everything else about kakuro is derived from these. The fill has to keep a run's digits distinct,
- * the sums are read off them, the solver constrains them, and the client highlights them, so this
- * file is the one place the geometry is worked out and every other file takes it as given.
- *
- * **A kakuro grid is not symmetric, unlike a crossword's.** Its clue border runs along the top and
- * left only, so a 180° rotation would map the border onto the last row and column, where a kakuro
- * has ordinary squares. There is nothing to preserve, which is what lets the layout be drawn by
- * placing blocks one at a time and keeping whichever ones leave a legal grid.
+ * Everything else about kakuro is derived from these, so this file is the one place the geometry is
+ * worked out and every other file takes it as given.
  */
 
 /** Reading directions, as they travel in the document's meta. */
@@ -16,11 +9,9 @@ export const ACROSS = 'A';
 export const DOWN = 'D';
 
 /**
- * Shortest run a layout may contain.
- *
- * A run of one square is a clue that names its own digit, which is a given wearing a sum's clothes.
- * Kakuro conventionally has none, and allowing them here would let the layout drawer relieve its own
- * difficulty in a way nothing downstream could see.
+ * Shortest run a layout may contain. A run of one square is a given wearing a sum's clothes, which
+ * kakuro conventionally has none of, and allowing them would let the layout drawer relieve its own
+ * difficulty invisibly.
  */
 export const MIN_RUN = 2;
 

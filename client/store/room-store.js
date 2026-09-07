@@ -1,11 +1,7 @@
 /**
- * Single source of truth for room, board, presence, and input state on the client.
- *
- * Owns the socket; components never touch one directly. Holds optimistic pendingOps and exposes
- * serverState + pendingOps as view, so there is no rollback machinery; re-deriving is cheap
- * (ADR-0001). Every input source lands on the same few methods here, which is where the Notes/Solve
- * branch happens once rather than in each component. Does not own routing or rendering; see
- * <pt-app> for those.
+ * Single source of truth for room, board, presence, and input state on the client; owns the socket
+ * and holds optimistic pendingOps, rendering serverState + pendingOps with no rollback machinery
+ * (ADR-0001). Every input source lands on the same methods here; does not own routing or rendering.
  */
 
 import { io } from 'socket.io-client';
@@ -266,11 +262,9 @@ export class RoomStore {
     }
 
     /**
-     * Switches which mark a nonogram tap or drag lays down.
-     *
-     * Client-side only, like the Notes mode: the op says what it writes, so the server never needs to
-     * know which brush produced it. It is also **per player**: two people can be painting and
-     * crossing the same picture at once without fighting over one setting.
+     * Switches which mark a nonogram tap or drag lays down. Client-side and per player, like Notes
+     * mode: the op says what it writes, so two people can paint the same picture without fighting
+     * over one setting.
      *
      * @param {string} brush - One of 'fill', 'cross', or 'erase'.
      * @returns {void}
@@ -281,11 +275,9 @@ export class RoomStore {
     }
 
     /**
-     * Switches a crossword between one letter per square and a whole word in one.
-     *
-     * The same shape of setting as Notes and the brush: client-side, per player, and it changes
-     * what a keypress *means* rather than changing the grid. Every puzzle type has exactly one of
-     * these above its keys (design-spec.md §4).
+     * Switches a crossword between one letter per square and a whole word in one. Client-side and
+     * per player like Notes and the brush, changing what a keypress means rather than the grid
+     * (design-spec.md §4).
      *
      * @param {boolean} rebus - True to append letters rather than replace them.
      * @returns {void}
@@ -296,13 +288,9 @@ export class RoomStore {
 
     /**
      * Writes a letter into a crossword square, appending when the square is being built into a word.
-     *
-     * Every keystroke sends the **whole** value the square now holds, never an "append", which is
-     * what keeps a rebus off the op vocabulary entirely (ADR-0007). Per-cell last-writer-wins, undo
-     * pre-images, and gap-recovery snapshots all keep working on a value that is simply longer.
-     *
-     * Appending stops at the cell-value bound rather than silently dropping the keystroke past it,
-     * because a limit the player cannot see is one they will keep pressing against.
+     * Every keystroke sends the whole value the square now holds, never an append, which keeps a
+     * rebus off the op vocabulary (ADR-0007); appending stops at the cell-value bound rather than
+     * dropping the keystroke silently.
      *
      * @param {number} cell - Cell index.
      * @param {string} letter - The letter pressed, already filtered by the board.
@@ -322,10 +310,9 @@ export class RoomStore {
     }
 
     /**
-     * Removes the last letter of a square being built into a rebus, or clears it outright.
-     *
-     * While assembling a word, taking back the last letter is the correction the player means;
-     * clearing the lot is not. One letter left is the same as an empty square, so that clears.
+     * Removes the last letter of a square being built into a rebus, or clears it outright. Taking
+     * back the last letter is the correction the player means; one letter left is the same as an
+     * empty square, so that clears.
      *
      * @param {number} cell - Cell index.
      * @returns {void}
@@ -342,13 +329,9 @@ export class RoomStore {
 
     /**
      * Undoes this player's most recent edit by making a new one that restores the earlier value.
-     *
-     * Forward-only: if somebody else has written to a cell since, that cell is left alone, because
-     * rewinding over their work would be the greater surprise (design-spec.md §6).
-     *
-     * A drag walks back as one action, and one cell of it having moved on does not strand the other
-     * nineteen: the cells still holding what this player left there are restored, and the notice
-     * says the rest were not.
+     * Forward-only: a cell someone else has written to since is left alone, and a drag walks back as
+     * one action, restoring whichever of its cells still hold what this player left (design-spec.md
+     * §6).
      *
      * @returns {void}
      */
@@ -705,13 +688,9 @@ export class RoomStore {
     }
 
     /**
-     * Gives up a seat somebody else ended, keeping only the reason.
-     *
-     * The same shape of ending as leave(), deliberately: there is one path out of a room and one
-     * shape of state after it, whether the player chose it, the host did, or the room ran out.
-     *
-     * The socket is closed before the state is replaced, because closing it fires a disconnect that
-     * has to land on the state being thrown away rather than on the fresh one.
+     * Gives up a seat somebody else ended, keeping only the reason; the same shape of ending as
+     * leave(). The socket is closed before the state is replaced, because closing it fires a
+     * disconnect that must land on the old state rather than the fresh one.
      */
     #endSeat(reason) {
         const code = this.#state.code;

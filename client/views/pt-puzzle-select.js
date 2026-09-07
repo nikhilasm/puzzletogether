@@ -1,9 +1,7 @@
 /**
- * The screen between puzzles: where the host picks what the room plays next.
- *
- * The room returns here after a Back to Puzzle Select and sits here on first join. Non-hosts get
- * the streak, the greyed list of puzzles this room can play, and a statement that they are waiting,
- * never controls that would be rejected server-side (design-spec.md §4).
+ * The screen between puzzles, where the host picks what the room plays next; reached after Back to
+ * Puzzle Select and on first join. Non-hosts get the greyed list and a statement that they are
+ * waiting, never controls that would be rejected (design-spec.md §4).
  */
 
 import { LitElement, css, html, nothing } from 'lit';
@@ -41,12 +39,8 @@ export class PtPuzzleSelect extends LitElement {
                 font-size: var(--text-sm);
             }
 
-            /*
-             * The whole column, not a reading measure. A banked type's card list is the widest thing
-             * this screen shows, a title with an author and a publication on two lines, and the
-             * picker keeps its own option rows at 26rem and centred, so the extra width reaches the
-             * list and nothing else.
-             */
+            /* The whole column, not a reading measure, since a banked type's card list is the widest
+               thing here and the picker centres its own option rows at 26rem. */
             pt-puzzle-picker {
                 max-width: 40rem;
                 margin: 0 auto var(--space-6);
@@ -58,14 +52,8 @@ export class PtPuzzleSelect extends LitElement {
                 align-items: center;
             }
 
-            /*
-             * Set well apart: leaving is not what you came to this screen to do. Spacing rather
-             * than a rule, because the footer already draws one a little below it.
-             *
-             * It is a full-size button here as it is on the game screen: the same control at the
-             * same size in the same place in the reading order, saying what it is with the red
-             * accent rather than by being smaller than everything around it.
-             */
+            /* Set well apart by spacing since the footer already draws a rule below it, a full-size
+               button as on the game screen, saying what it is with the red accent. */
             .leave {
                 margin-top: var(--space-8);
             }

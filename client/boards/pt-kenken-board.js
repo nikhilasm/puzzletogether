@@ -1,15 +1,7 @@
 /**
- * The kenken grid: cage borders and digit input.
- *
- * Everything else (cell DOM, selection, presence, op emission) comes from <pt-board>. The cage
- * labels need no rendering code: DocCell.label already draws in a cell's top-left corner, which is
- * where a cage clue goes, so the server writes the label and this file only says where it sits
- * relative to the notes.
- *
- * The heavy rules are the same hook sudoku uses, asking a different question. Sudoku asks "is this
- * the edge of a region", which it computes from the region shape; kenken asks "is my neighbor in a
- * different cage", which it reads off the cage map. Neither needed a change to <pt-board>; this
- * is the abstraction doing what design-spec.md §7 says it does.
+ * The kenken grid: cage borders and digit input, with everything else from pt-board. The cage
+ * labels need no rendering code, and the heavy rules are the same hook sudoku uses asking whether a
+ * neighbour is in a different cage (design-spec.md §7).
  */
 
 import { PtBoard } from './pt-board.js';
@@ -35,24 +27,16 @@ export class PtKenkenBoard extends PtBoard {
     }
 
     /**
-     * The cage clue gets a row of the mark grid to itself.
-     *
-     * Kenken is the one type so far whose cells carry both a clue and notes, and both are drawn in
-     * the top-left corner, the clue because that is where a kenken clue goes and the note "1"
-     * because a mark's position is what says which digit it is. The marks paint after the label, so a cell
-     * with a full set of notes hid its own clue. Giving the clue a row costs the notes one row of
-     * height and settles it for good.
+     * The cage clue gets a row of the mark grid to itself. Kenken's cells carry both a clue and
+     * notes in the top-left corner, so a full set of notes hid the clue until it got its own row.
      */
     get reservesLabelRow() {
         return true;
     }
 
     /**
-     * The cage clue said as arithmetic: 12+ becomes "cage 12 plus".
-     *
-     * Named as a cage, because otherwise the clue and the digit written in the cell arrive as two
-     * bare numbers in a row and nothing says which is which. A single-cell cage is drawn as its
-     * target alone and is spoken the same way, since there is no operator to name.
+     * The cage clue said as arithmetic: 12+ becomes "cage 12 plus". Named as a cage so it is not
+     * confused with the digit written in the cell.
      *
      * @param {string} label - The cage clue as drawn.
      * @returns {string} The clue as a screen reader should say it.

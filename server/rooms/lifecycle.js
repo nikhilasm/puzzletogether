@@ -27,9 +27,8 @@ function nextColorIndex(room) {
 }
 
 /**
- * Adds a new player to a room and issues their reconnect token.
- *
- * The first player to join becomes host. Names are labels: they may collide and confer nothing.
+ * Adds a new player to a room and issues their reconnect token; the first to join becomes host.
+ * Names are labels: they may collide and confer nothing.
  *
  * @param {Room} room - The room being joined.
  * @param {string} name - Requested display name.
@@ -145,11 +144,9 @@ export function dropPlayer(room, playerId) {
 }
 
 /**
- * Reassigns a player's colour, provided nobody else in the room holds it.
- *
- * Uniqueness is the whole point: colour is an identity here, and two players sharing one would make
- * the presence stripes ambiguous, the one channel the roster cannot fall back on a name for
- * (brand.md §3). Re-picking the colour you already have is a no-op that succeeds.
+ * Reassigns a player's colour, provided nobody else in the room holds it, since colour is an
+ * identity the presence stripes cannot make ambiguous (brand.md §3). Re-picking your own colour is a
+ * no-op that succeeds.
  *
  * @param {Room} room - The room.
  * @param {string} playerId - The player changing colour. Nobody may change anyone else's.

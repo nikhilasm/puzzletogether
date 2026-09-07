@@ -1,12 +1,7 @@
 /**
- * What checking, solving, revealing, or abandoning a puzzle does to a room.
- *
- * Split out from lifecycle.js, which owns seats and rooms, because the streak rules in
- * design-spec.md §4 are the part of this most worth testing directly: Check is free, Reveal and
- * abandonment both reset the streak, and only a genuine solve increments it.
- *
- * Every function here reads room.solution, which is exactly why they live on the server and why
- * Check and Reveal are RPCs rather than client-side features.
+ * What checking, solving, revealing, or abandoning a puzzle does to a room, split from lifecycle.js
+ * because the streak rules are worth testing directly (design-spec.md §4). Every function here reads
+ * room.solution, which is why they live on the server and why Check and Reveal are RPCs.
  */
 
 import { CHECK_STATE, ROOM_STATE } from '../../shared/protocol.js';
